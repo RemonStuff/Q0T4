@@ -15,6 +15,7 @@ Turn every `LanguageModelError` into a clear message and the right recording beh
 ## Tests to write first
 - `NoPermissions before streaming shows the consent message and records nothing`
 - `NotFound retries once with the fallback copilot model and succeeds`
+- `after a NotFound fallback, the footer and metadata name the fallback model, not the original`
 - `NotFound with no fallback available shows the no-model message`
 - `NotFound does not retry more than once`
 - `Blocked shows the quota message`
