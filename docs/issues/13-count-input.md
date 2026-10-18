@@ -26,7 +26,7 @@ interface CostModel {
 
 ## Implementation tasks
 - [ ] `src/core/budget/countInput.ts`
-- [ ] `src/core/cost/costModel.ts` (interface) and `tokenCostModel.ts`
+- [ ] `src/core/cost/tokenCostModel.ts` (the `CostModel` interface already exists in `costModel.ts`, added in #4 for the fixed-rate test double)
 - [ ] Add `Cancelled` / `CountError` to `core/errors`
 
 ## Acceptance criteria

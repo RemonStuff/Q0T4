@@ -58,6 +58,11 @@ The project is strictly test-driven, with core logic kept apart from VS Code beh
 - `src/core/`: all decisions, no `vscode` import, at least 90% line and branch coverage
 - `src/ports/`: the interfaces core uses to reach VS Code
 - `src/adapters/`: thin VS Code implementations of the ports
+- `test/fakes/`: tested test doubles for every port, so core tests never need VS Code or a real model:
+  - a scripted `FakeModel` with a deterministic tokenizer, injectable errors and cancellation
+  - `InMemoryLedger` (JSON lines per writer, like the real ledger files)
+  - `FixedClock` (instant + IANA time zone)
+  - a fixed-rate credits cost model, plus fakes for config, UI, chat output and price sources
 
 Workflow:
 
