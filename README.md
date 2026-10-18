@@ -21,7 +21,7 @@ There's no extension to install yet. What works today is the development setup: 
 
 ### Once released (planned)
 
-1. Install the `.vsix` from [GitHub Releases](https://github.com/RemonStuff/Q0T4/releases): Extensions view → `…` → **Install from VSIX…**. GitHub Copilot Chat must be installed.
+1. Install the `.vsix` from [GitHub Releases](https://github.com/RemonStuff/Q0T4/releases): Extensions view → `…` → **Install from VSIX…**. You need a GitHub Copilot subscription signed in to VS Code (Copilot Chat is built into VS Code 1.104+).
 2. Open Copilot Chat and start a message with `@q0t4`. It stays selected for the rest of the conversation.
 3. Each reply ends with a footer such as
    `RemonStuff/Q0T4: 112k / 150k this week · resets Mon · GPT-5`
