@@ -1,27 +1,31 @@
-# 26: Settings schema, `parseSubjects` and the config adapter
+# 26: Settings schema, `parseConfig` and the config adapter
 
-**Iteration:** 4 (Subjects)
+**Iteration:** 4 (Repo subjects)
 
 ## Description
-Make subjects and budget settings configurable under `q0t4.*` ([PLAN §3](../PLAN.md#3-settings-q0t4)). The package.json `contributes.configuration` declares the schema and defaults. Pure `parseConfig` validates the raw values and **never throws**: broken entries fall back to the defaults and produce a list of warnings, shown once per change. The `vscodeConfig` adapter implements `ConfigPort`, including change events.
+Make budgets configurable under `q0t4.*` ([PLAN §3](../PLAN.md#3-settings-q0t4)). Subjects are repos (`owner/repo`) plus `general` for chats with no folder open. Every repo automatically gets `defaultWeeklyLimit`. `q0t4.subjects` only *overrides* limits, for specific repos or names.
+
+The package.json `contributes.configuration` declares the schema and defaults. Pure `parseConfig` validates the raw values and **never throws**: broken entries fall back to the defaults and produce a list of warnings, shown once per change. It also provides `limitFor(subject)`. The `vscodeConfig` adapter implements `ConfigPort`, including change events.
 
 ## Tests to write first
-- `returns the default subjects when the setting is unset`
-- `default subjects are general 200k, frontend 150k and backend 150k with the spec keywords`
-- `lower-cases and trims subject names`
-- `rejects a negative or non-numeric weeklyLimit and warns`
+- `returns the default config when nothing is set`: `subjects = { general: 200k }`, `defaultWeeklyLimit = 150k`, `fallbackSubject = "general"`
+- `limitFor returns the configured limit for a listed repo`
+- `limitFor matches repo keys case-insensitively ("remonstuff/q0t4" = "RemonStuff/Q0T4")`
+- `limitFor returns defaultWeeklyLimit for an unlisted repo`
+- `trims subject keys and keeps their original casing for display`
+- `rejects a negative or non-numeric weeklyLimit, warns and uses defaultWeeklyLimit`
 - `accepts weeklyLimit 0 (subject disabled)`
-- `normalises keywords: trims, lower-cases, removes duplicates and empties`
-- `warns and uses the first subject when fallbackSubject is not defined`
+- `rejects a negative defaultWeeklyLimit and uses 150k`
+- `warns when two keys differ only by case and keeps the first`
 - `clamps warnAtPercent and dailyPaceWarning to 1–100`
 - `rejects an unknown resetDay and uses monday`
 - `includeHistory defaults to true`
 - *(integration)* `vscodeConfig reads q0t4.* and fires onDidChange on update`
-- *(integration)* `package.json configuration defaults match core DEFAULT_SUBJECTS`
+- *(integration)* `package.json configuration defaults match core defaults`
 
 ## Implementation tasks
-- [ ] `contributes.configuration` with descriptions (including the premium-request note on `classifierModelFamily`)
-- [ ] `src/core/subjects/parseConfig.ts`
+- [ ] `contributes.configuration`: `subjects`, `defaultWeeklyLimit`, `fallbackSubject`, `resetDay`, `warnAtPercent`, `dailyPaceWarning`, `includeHistory`, with descriptions and an example of an `owner/repo` key
+- [ ] `src/core/subjects/parseConfig.ts` with `limitFor`
 - [ ] `src/adapters/vscodeConfig.ts`
 - [ ] Replace `DEFAULT_SUBJECTS` usage in the handler with `ConfigPort`
 

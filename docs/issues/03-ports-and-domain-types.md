@@ -6,7 +6,7 @@
 Define the small interfaces core uses to reach the outside world, plus the shared domain types. These are the contracts that the fakes (#04) and adapters implement. Keep them minimal: add a member only when a test needs it.
 
 - **Ports:** `ModelPort`, `ModelSelectorPort`, `StoragePort`, `ClockPort`, `ConfigPort`, `ChatOutputPort`, `UiPort`, `ReferenceReaderPort`, `CancellationSignal`. Signatures are in [PLAN §2](../PLAN.md#2-architecture).
-- **Domain types:** `SubjectName`, `SubjectConfig`, `Q0T4Config`, `ChatMessage { role: "user" | "assistant"; text }`, `HistoryTurn`, `ResultMetadata { v: 1; subject; model; inputTokens; outputTokens; classifierTokens; stopped }` (`model` is the answering model's display name, or `undefined` when no model was called), `DayUsage`, `ModelErrorKind`.
+- **Domain types:** `SubjectName`, `SubjectConfig`, `Q0T4Config`, `ChatMessage { role: "user" | "assistant"; text }`, `HistoryTurn`, `ResultMetadata { v: 1; subject; model; inputTokens; outputTokens; stopped }` (`model` is the answering model's display name, or `undefined` when no model was called), `DayUsage`, `ModelErrorKind`.
 
 ## Tests to write first
 - `ResultMetadata round-trips through JSON.stringify/parse unchanged`: `ChatResult.metadata` must be JSON-serialisable

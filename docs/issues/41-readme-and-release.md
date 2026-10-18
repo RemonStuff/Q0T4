@@ -7,7 +7,7 @@ Make Q0T4 releasable. Write a README that explains what the extension does, how 
 - Inline completions, agent mode and the normal Copilot chat aren't counted
 - Token counts won't exactly match how GitHub meters Copilot (premium requests, hidden prompts, framing overhead)
 - The cut-off can overshoot by one recount interval
-- The classifier may use a premium request
+- Subjects come from the repo's git remote (`owner/repo`), falling back to the folder name, so a folder copied without `.git` gets its own budget
 - Usage is stored per machine
 
 Finish the marketplace metadata, add a CHANGELOG, and add a tag-triggered release workflow that attaches the `.vsix` to a GitHub Release.
