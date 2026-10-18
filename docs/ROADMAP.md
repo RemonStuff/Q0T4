@@ -10,7 +10,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 
 | # | Iteration | What you can try at the end | Issues |
 |---|---|---|---|
-| 0 | Test harness | `@q0t4` installs, is sticky, and replies "not wired yet" | [01](issues/01-project-scaffold.md) ✅, [02](issues/02-vitest-and-coverage.md) ✅, [03](issues/03-ports-and-domain-types.md), [04](issues/04-test-doubles.md), [05](issues/05-integration-runner-and-fake-provider.md), [06](issues/06-ci-workflow.md), [07](issues/07-stub-participant-and-vsix.md) |
+| 0 | Test harness | `@q0t4` installs, is sticky, and replies "not wired yet" | [01](issues/01-project-scaffold.md) ✅, [02](issues/02-vitest-and-coverage.md) ✅, [03](issues/03-ports-and-domain-types.md) ✅, [04](issues/04-test-doubles.md), [05](issues/05-integration-runner-and-fake-provider.md), [06](issues/06-ci-workflow.md), [07](issues/07-stub-participant-and-vsix.md) |
 | 1 | Walking skeleton | `@q0t4` answers through the model chosen in the picker, with attached files | [08](issues/08-build-messages.md), [09](issues/09-model-resolution.md), [10](issues/10-chat-handler-forwarding.md), [11](issues/11-wire-participant-to-model.md), [12](issues/12-attached-references.md) |
 | 2 | Counting and the hard stop | Footer with usage, a pre-check refusal, and the ⛔ cut-off mid-stream (single subject, running total, tokens) | [13](issues/13-count-input.md), [14](issues/14-pre-check-refusal.md), [15](issues/15-stream-guard.md), [16](issues/16-recording-policy.md), [17](issues/17-format-footer-and-warnings.md), [18](issues/18-history-footer-strip-and-metadata.md), [19](issues/19-wire-budget-enforcement.md) |
 | 3 | Weekly storage | Usage in an append-only ledger, safe across windows; weekly reset on `resetDay`; daily pace warning | [20](issues/20-budget-calendar-week.md), [21](issues/21-next-reset.md), [22](issues/22-ledger.md), [23](issues/23-ledger-resilience.md), [24](issues/24-daily-pace-warning.md), [25](issues/25-wire-ledger.md) |
@@ -21,7 +21,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 | 8 | Pool, reserve and sync | A 35k-credit monthly pool split across repos, rolling weekly budgets, reserve borrowing, pace warnings, `/sync` with GitHub's figure | [54](issues/54-budget-calendar-cycle.md), [55](issues/55-rolling-weekly-budget.md), [56](issues/56-pool-settings.md), [57](issues/57-reserve-borrowing.md), [58](issues/58-monthly-pace-warning.md), [59](issues/59-sync-command.md), ~~[60](issues/60-auto-sync-usage-api.md)~~ *(not planned)*, [61](issues/61-pool-footer-status.md), [62](issues/62-wire-pool-mode.md) |
 | 9 | Public API | Another extension can check budgets and send metered requests; **v1.0 release** | [63](issues/63-public-api-facade.md), [64](issues/64-api-send-request.md), [65](issues/65-api-contract-tests.md), [66](issues/66-readme-and-release-v1.md) |
 
-**Totals:** 60 issues (41 + 19 new): 26 S and 34 M, none L. 2 done (#1, #2). #60 is not planned (enterprise allowance), so 57 issues remain to build. Numbers 42–47 were used by pull requests.
+**Totals:** 60 issues (41 + 19 new): 26 S and 34 M, none L. 3 done (#1–#3). #60 is not planned (enterprise allowance), so 57 issues remain to build. Numbers 42–47 were used by pull requests.
 
 ## Dependency graph (by iteration)
 
@@ -51,7 +51,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 ### Iteration 0: Test harness
 - [x] 01 Project scaffold
 - [x] 02 Vitest and enforced core coverage (needs 01)
-- [ ] 03 Port interfaces and domain types (needs 01) ∥
+- [x] 03 Port interfaces and domain types (needs 01) ∥
 - [ ] 04 Test doubles (needs 02, 03)
 - [ ] 05 Integration runner and fake LM provider (needs 01) ∥
 - [ ] 06 GitHub Actions CI (needs 02, 05)
@@ -135,3 +135,4 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 3. CI is green: lint, typecheck, unit (ubuntu and windows), integration (xvfb), package
 4. The manual checks in the issue are done, where the issue lists any
 5. Unit-dependent behaviour is tested in every unit (`describe.each` over tokens and credits), from iteration 2 on
+6. The root `README.md` is updated: the project description and how to use what exists after this PR

@@ -34,7 +34,7 @@ CI configuration can't be unit tested in any useful way. Instead, prove each gat
   - `integration` (ubuntu): `xvfb-run -a npm run test:integration`, caching `.vscode-test/`
   - `package` (needs all of the above): `npx @vscode/vsce package`, uploading `q0t4-*.vsix` as an artifact
 - [ ] `.github/ISSUE_TEMPLATE/bug.md` with a required "Failing test that reproduces it" section
-- [ ] `.github/pull_request_template.md` with a red → green → refactor checklist
+- [ ] `.github/pull_request_template.md` with a red → green → refactor checklist and a **"README updated"** checkbox (every PR updates the root README: PLAN §8)
 - [ ] CI badge in the README stub
 
 ## Acceptance criteria
