@@ -43,7 +43,7 @@ src/
     chatHandler.ts   orchestrates one request through the ports
     types.ts     domain types (Subject, SubjectConfig, Usage, ChatTurn, ResultMetadata…)
   ports/
-    ModelPort            sendRequest(messages, signal) → AsyncIterable<string>; countTokens(text|msg); id, family, vendor, maxInputTokens
+    ModelPort            sendRequest(messages, signal) → AsyncIterable<string>; countTokens(text|msg); id, name, family, vendor, maxInputTokens
     ModelSelectorPort    select({ vendor?, family? }) → ModelPort[]
     StoragePort          get<T>(key), set(key, value), keys()
     ClockPort            now(): Date; timeZone(): string (IANA)
@@ -72,8 +72,8 @@ test/
 4. **Count input** with `countTokens` per message.
 5. **Pre-check:** refuse if `used + input > limit`. The refusal shows used, limit, remaining and reset date, and the classifier tokens are still recorded.
 6. **Stream** chunks to the output through `StreamGuard`, which recounts output at adaptive intervals and cancels with a "⛔ Stopped" note once `used + input + output ≥ limit`.
-7. **`finally`** (always, including on cancel and error): record input + output (+ classifier) for today, then write the sentinel, the footer `*frontend: 112k / 150k this week · resets Mon*` and any ⚠️ warnings (`warnAtPercent`, daily pace).
-8. **Return** `{ metadata: { v: 1, subject, inputTokens, outputTokens, classifierTokens, stopped } }`.
+7. **`finally`** (always, including on cancel and error): record input + output (+ classifier) for today, then write the sentinel, the footer `*frontend: 112k / 150k this week · resets Mon · GPT-5*` (the last part is the name of the model that answered) and any ⚠️ warnings (`warnAtPercent`, daily pace).
+8. **Return** `{ metadata: { v: 1, subject, model, inputTokens, outputTokens, classifierTokens, stopped } }`, where `model` is the answering model's name.
 
 ### Module responsibilities
 
@@ -156,7 +156,7 @@ There's one key per week: `q0t4.usage.v1.<weekStart YYYY-MM-DD>`, where the date
 
 1. ✅ **Decided: keep `extensionDependencies: ["github.copilot-chat"]`** (Q0T4 is used with a work Copilot subscription). Integration tests therefore install `github.copilot-chat` into the test VS Code instance (`installExtensions` in `.vscode-test.mjs`), and models still come from the fake `q0t4-test` provider. The test VS Code version is pinned to one that the installed Copilot Chat supports (issues 05, 07).
 2. ✅ **Decided: no.** Nothing is charged when `sendRequest` rejects before the first chunk. Input + output are charged once streaming has started (issue 16).
-3. **Default classifier model.** The participant **can** see the model picked in the chat: `request.model` exposes `name`, `id`, `family` and `vendor`, which is what `classifierModelFamily: ""` uses. The API does **not** expose whether a model is premium or its request multiplier. *Proposal: show the model name in the footer, and keep `""` as the classifier default with the premium-request note in the README. Still open: confirm the footer change, and whether the classifier should default to a cheaper family instead.*
+3. **Default classifier model.** The participant **can** see the model picked in the chat: `request.model` exposes `name`, `id`, `family` and `vendor`, which is what `classifierModelFamily: ""` uses. The API does **not** expose whether a model is premium or its request multiplier. ✅ **Decided: the footer shows the chat's model name** (the model that actually answered, including after a fallback). **Still open:** should the classifier default to a cheaper family than the chat's model?
 4. ✅ **Decided: no sync.** Budgets are per machine; `setKeysForSync` isn't used.
 5. **Accept non-Copilot models** (BYOK vendors picked in the UI)? *Recommendation: yes, budget them the same way.*
 6. **Reserve output headroom in the pre-check**, e.g. refuse if `remaining < input + N`? *Recommendation: an optional setting, off by default.*
