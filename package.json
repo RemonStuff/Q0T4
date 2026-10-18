@@ -1,0 +1,43 @@
+{
+  "name": "q0t4",
+  "displayName": "Q0T4",
+  "description": "Weekly token budgets per repo for GitHub Copilot Chat, through the @q0t4 chat participant.",
+  "version": "0.0.1",
+  "publisher": "RemonStuff",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/RemonStuff/Q0T4.git"
+  },
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "categories": [
+    "AI",
+    "Chat"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [],
+  "contributes": {},
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test:tooling",
+    "test:tooling": "node --test \"test/tooling/**/*.test.mjs\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22.20.5",
+    "@types/vscode": "1.104.0",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.2"
+  }
+}
