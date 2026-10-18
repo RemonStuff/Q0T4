@@ -1,27 +1,29 @@
-# 33: Wire subjects end to end
+# 33: Wire repo subjects end to end
 
-**Iteration:** 4 (Subjects)
+**Iteration:** 4 (Repo subjects)
 
 ## Description
-Connect subject resolution, per-subject limits from settings, same-subject history and classifier charging through the participant. Reload the config on change. Show `parseConfig` warnings once per change through `UiPort.showInfo`.
+Connect subject resolution, per-repo limits (configured or `defaultWeeklyLimit`) and same-subject history through the participant. Reload the config on change. Show `parseConfig` warnings once per change through `UiPort.showInfo`.
 
 ## Tests to write first
-*(integration, fake provider)*
-- `a react prompt is charged to frontend via keyword`
-- `a follow-up prompt without keywords stays on the thread subject`
-- `/use backend switches the thread subject`
-- `a prompt with no keyword is classified by the fake model's scripted answer and charged classifier tokens`
-- `exhausting frontend refuses frontend prompts but backend still works`
+*(integration, fake provider plus a temporary git repo opened as the workspace)*
+- `a prompt in a repo with origin test-owner/test-repo is charged to test-owner/test-repo`
+- `the footer names the repo subject and its limit`
+- `an unlisted repo gets defaultWeeklyLimit`
+- `a repo listed in q0t4.subjects gets its configured limit`
+- `a follow-up prompt stays on the thread subject`
+- `/use general charges the prompt to general and the thread keeps general`
+- `exhausting one repo's budget refuses it, while /use general still works`
 - `changing q0t4.subjects at runtime takes effect on the next request`
 
 ## Implementation tasks
-- [ ] Update the composition root, wiring `ConfigPort` into the handler and `BudgetStore`
-- [ ] A `vscodeUi.showInfo` minimal adapter (expanded in #36)
+- [ ] Update the composition root, wiring `ConfigPort` and `WorkspacePort` into the handler and `BudgetStore`
+- [ ] A minimal `vscodeUi.showInfo` adapter (expanded in #36)
 - [ ] Update `docs/manual-testing.md`
 
 ## Acceptance criteria
 - [ ] The listed tests pass, core coverage holds, and CI is green with a `.vsix` artifact
-- [ ] Manual: set `frontend.weeklyLimit` to 2000, ask a few React questions until refused, then ask an SQL question and see it answered under `backend`
+- [ ] Manual: open this repo, chat, and see `RemonStuff/Q0T4` in the footer; set its `weeklyLimit` to 2000 and chat until refused; `/use general` still answers; open a folder that isn't a repo and see the folder name as the subject
 
 ## Depends on
 #31, #32

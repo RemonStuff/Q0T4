@@ -3,7 +3,7 @@
 **Iteration:** 5 (Visibility)
 
 ## Description
-`@q0t4 /status` shows a markdown table of every configured subject with its usage this week, read straight from `BudgetStore.snapshot`. It never calls a model and costs no tokens.
+`@q0t4 /status` shows a markdown table of every **known subject** (configured, used this week, or the current repo; see #29) with its usage this week, read straight from `BudgetStore.snapshot`. It never calls a model and costs no tokens.
 
 | Subject | Used | Limit | % | Today | Requests |
 |---|---|---|---|---|---|
@@ -11,7 +11,9 @@
 The reset date goes below the table.
 
 ## Tests to write first
-- `renders one row per configured subject in config order`
+- `renders one row per subject used this week, the current repo first, then by usage descending`
+- `includes configured subjects with 0 usage`
+- `marks limits that come from defaultWeeklyLimit as "(default)"`
 - `shows used, limit, percent, today and requests with compact units`
 - `marks subjects at or above warnAtPercent with ⚠️ and exhausted ones with ⛔`
 - `shows 0 for subjects with no usage this week`

@@ -1,6 +1,6 @@
 # 32: Same-subject history filter and `includeHistory`
 
-**Iteration:** 4 (Subjects)
+**Iteration:** 4 (Repo subjects)
 
 ## Description
 The spec sends only **same-subject** history. Filter the history pairs by the subject in each response's metadata. A request turn goes with the response turn that follows it. When `includeHistory` is false, send no history at all.

@@ -3,10 +3,12 @@
 **Iteration:** 5 (Visibility)
 
 ## Description
-A status bar item shows the last-used subject and its usage, e.g. `$(pulse) frontend 112k/150k`, with a ⚠️ or ⛔ state. Clicking it runs "Q0T4: Show Usage" (#37). The text and state are computed in pure core. The `vscodeUi` adapter just renders them. The item refreshes after each request, on config change, at the weekly reset (a timer set from `msUntilReset`) and on activation.
+A status bar item shows the current repo's subject (or the last-used subject when no folder is open) and its usage, e.g. `$(pulse) RemonStuff/Q0T4 112k/150k`, with a ⚠️ or ⛔ state. Clicking it runs "Q0T4: Show Usage" (#37). The text and state are computed in pure core. The `vscodeUi` adapter just renders them. The item refreshes after each request, on config change, at the weekly reset (a timer set from `msUntilReset`) and on activation.
 
 ## Tests to write first
-- `shows the last-used subject with used/limit`
+- `shows the current repo subject with used/limit`
+- `updates when the active editor moves to another workspace folder`
+- `shows the last-used subject when no folder is open`
 - `shows the fallback subject with 0 when nothing was used yet`
 - `state is warning at or above warnAtPercent`
 - `state is error when exhausted`

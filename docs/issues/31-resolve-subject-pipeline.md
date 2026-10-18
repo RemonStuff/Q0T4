@@ -1,25 +1,23 @@
 # 31: Core `resolveSubject` pipeline
 
-**Iteration:** 4 (Subjects)
+**Iteration:** 4 (Repo subjects)
 
 ## Description
-Combine the detectors in the order from the spec, stopping at the first that answers:
+Combine the detectors in order, stopping at the first that answers:
 1. `/use <subject>`
-2. The thread subject
-3. A keyword match
-4. The classifier
-5. `fallbackSubject`
+2. The thread subject (from history metadata)
+3. The current repo (#27, #30)
+4. `fallbackSubject` when no folder is open
 
-The result also says *how* the subject was chosen, so it can be shown as a short progress note (e.g. "Subject: frontend (keyword: react)") and debugged.
+Resolving never calls a model and costs no tokens. The result also says *how* the subject was chosen, shown as a short progress note (e.g. "Subject: RemonStuff/Q0T4 (repo)") so it's visible and debuggable.
 
 ## Tests to write first
-- `/use wins over the thread subject and keywords`
-- `the thread subject wins over a keyword match`
-- `a keyword match is used before the classifier, and the classifier is not called`
-- `the classifier is used when no keyword matches`
-- `falls back to fallbackSubject when the classifier fails`
-- `reports the source: use, thread, keyword, classifier or fallback`
-- `returns classifier tokens only when the classifier ran`
+- `/use wins over the thread subject and the repo`
+- `the thread subject wins over the current repo`
+- `the current repo is used when there is no /use and no thread subject`
+- `falls back to fallbackSubject when no folder is open`
+- `reports the source: use, thread, repo or fallback`
+- `never calls the model`
 - `handler shows a progress note naming the subject and source`
 
 ## Implementation tasks

@@ -1,6 +1,6 @@
 # Q0T4: Plan
 
-Q0T4 is a VS Code extension that adds a chat participant, `@q0t4`, to the Copilot Chat panel. It forwards your prompts to Copilot's language models and gives each **subject** a **weekly token budget**. Every prompt is assigned to a subject, its tokens are counted, and once a subject has used up its weekly limit, chats on that subject stop until the week resets.
+Q0T4 is a VS Code extension that adds a chat participant, `@q0t4`, to the Copilot Chat panel. It forwards your prompts to Copilot's language models and gives each **subject** a **weekly token budget**. A subject is **the repo you're working in** (e.g. `RemonStuff/Q0T4`), and `/use` can override it. Every prompt is assigned to a subject, its tokens are counted, and once a subject has used up its weekly limit, chats on that subject stop until the week resets.
 
 The project is test-driven throughout. This document covers the architecture, the data model, the risks and the testing rules. The work itself is broken down in [ROADMAP.md](ROADMAP.md) and [issues/](issues/).
 
@@ -10,12 +10,13 @@ The project is test-driven throughout. This document covers the architecture, th
 
 | Spec item | What the API actually offers | Our approach |
 |---|---|---|
-| Use `request.model` | `ChatRequest.model: LanguageModelChat` is **non-optional**. It's the model picked in the chat UI and shouldn't be held after the request ends. | Use it. Fall back to `vscode.lm.selectChatModels({ vendor: "copilot" })` only when sending fails with `LanguageModelError.NotFound`, or when `classifierModelFamily` names a different family. |
+| Use `request.model` | `ChatRequest.model: LanguageModelChat` is **non-optional**. It's the model picked in the chat UI and shouldn't be held after the request ends. | Use it. Fall back to `vscode.lm.selectChatModels({ vendor: "copilot" })` only when sending fails with `LanguageModelError.NotFound`. |
+| Subject = the repo being worked on *(decided, replaces the spec's keywords and classifier)* | `vscode.workspace.workspaceFolders` and `workspace.getWorkspaceFolder(uri)` identify the open folder. The built-in Git extension (`vscode.extensions.getExtension("vscode.git").exports.getAPI(1)`) lists each repository's remotes. | `WorkspacePort.currentRepo()` returns the folder name and its remotes. Pure core normalises the `origin` URL to `owner/repo`, falling back to the first remote and then the folder name. With no folder open, the subject is `fallbackSubject`. |
 | Count tokens with `countTokens()` | `countTokens(text: string \| LanguageModelChatMessage, token?)` returns `Thenable<number>`. **Responses don't report usage**, so there are no prompt or completion token counts. | Input = the sum of `countTokens(message)` over every message we send. Output = `countTokens(accumulatedText)`. Message-framing overhead isn't visible to us. That's documented as one reason our numbers differ from GitHub's. |
 | Cancel the stream when the budget is reached | There is no portable max-output-tokens option (`modelOptions` depends on the vendor). We cancel by cancelling the token passed to `sendRequest` or by breaking out of `for await`. | Give the model its own `CancellationTokenSource`, linked to the chat's token, and cancel it from the `StreamGuard`. Tokens that arrive before cancellation still count. The overshoot is limited to one recount interval (see §5). |
 | Reuse the subject for each thread | **There's no thread or session ID.** `ChatContext.history` contains only *this participant's* turns, and `ChatResponseTurn.result.metadata` comes back exactly as we returned it. | Thread = the history we're given. The thread's subject is `metadata.subject` from the newest `ChatResponseTurn`. Metadata must be JSON-serialisable. |
 | Send same-subject history | `ChatResponseTurn.response` holds the markdown parts we streamed, **including our footer and warnings**. | Emit the footer and warnings after a sentinel (`<!-- q0t4:footer -->`). The pure history builder strips everything from the sentinel on. |
-| Messages sent to the model | `LanguageModelChatMessageRole` has only `User` and `Assistant`, with **no System role**. | Send instructions as a leading `User` message, for both the classifier and any future preamble. |
+| Messages sent to the model | `LanguageModelChatMessageRole` has only `User` and `Assistant`, with **no System role**. | Send any instructions as a leading `User` message. v1 needs none. |
 | Attached references | `ChatPromptReference.value: string \| Uri \| Location \| unknown`. | `ReferenceReaderPort` reads Uri files and Location ranges. Strings are used as they are. Unknown values and images are skipped, with a progress note. |
 | Sticky participant and slash commands | These are declared in package.json under `contributes.chatParticipants[]` with `isSticky: true` and `commands: [status, subjects, use]`. At runtime `request.command` holds the name, and the `/use` argument is the start of `request.prompt`. | Parse `/use` in pure core. |
 | Consent and quota errors | The first `sendRequest` shows a consent dialog. Failures are `LanguageModelError` with `code` set to `NoPermissions`, `NotFound`, `Blocked` or `Unknown`. `ExtensionContext.languageModelAccessInformation.canSendRequest(model)` checks consent without prompting. | The adapter maps these to a core `ModelErrorKind`, and core turns each kind into a friendly message and a recording policy (issue 38). |
@@ -36,7 +37,7 @@ src/
     budget/      preCheck, StreamGuard (adaptive recount + cut-off), recordingPolicy
     time/        weekStart, dayKey, nextReset (Intl.DateTimeFormat with the IANA zone from ClockPort)
     storage/     BudgetStore over StoragePort: schema v1, pruning, corruption handling
-    subjects/    parseSubjects, matchKeywords, threadSubject, parseUse, classifier, resolveSubject
+    subjects/    parseConfig, repoIdentifier (normalise remotes), threadSubject, parseUse, resolveSubject
     messages/    buildMessages (history filter, footer strip, references, prompt), trimToWindow
     format/      tokens (112k / 1.2M), footer, warnings, refusal, statusTable, subjectList, statusBarText
     errors/      ModelErrorKind → user-facing message
@@ -51,10 +52,11 @@ src/
     ChatOutputPort       markdown(text), progress(text)
     UiPort               setStatusBar(state), confirm(message) → boolean, openSettings(query), showInfo(text)
     ReferenceReaderPort  read(ref) → { label, text } | undefined
+    WorkspacePort        currentRepo() → { folderName, remotes: { name, url }[] } | undefined
     CancellationSignal   { isCancellationRequested; onCancellationRequested(cb) } (vscode.CancellationToken fits structurally)
   adapters/
     vscodeModel, vscodeModelSelector, globalStateStorage, systemClock, vscodeConfig,
-    chatStreamOutput, vscodeUi, referenceReader, errorMapping
+    chatStreamOutput, vscodeUi, referenceReader, workspaceRepo (vscode.git API), errorMapping
   extension.ts           registers the participant and commands; returns the test API
 test/
   unit/                  Vitest, mirrors src/core
@@ -67,13 +69,13 @@ test/
 ### Request flow (`chatHandler`)
 
 1. **Parse the command.** `/status` and `/subjects` render and return. `/use` is parsed in pure core.
-2. **Resolve the subject**, in this order: `/use` argument → thread subject (history metadata) → whole-word keyword match → classifier model (its tokens are charged to the chosen subject) → `fallbackSubject`.
+2. **Resolve the subject**, in this order: `/use` argument → thread subject (history metadata) → current repo (`owner/repo` from the git remote, or the folder name) → `fallbackSubject` (no folder open). Resolving costs no tokens.
 3. **Build the messages:** same-subject history when `includeHistory` is on (footers stripped), then attached references, then the prompt. Trim to fit `maxInputTokens`.
 4. **Count input** with `countTokens` per message.
-5. **Pre-check:** refuse if `used + input > limit`. The refusal shows used, limit, remaining and reset date, and the classifier tokens are still recorded.
+5. **Pre-check:** refuse if `used + input > limit`. The refusal shows used, limit, remaining and reset date.
 6. **Stream** chunks to the output through `StreamGuard`, which recounts output at adaptive intervals and cancels with a "⛔ Stopped" note once `used + input + output ≥ limit`.
-7. **`finally`** (always, including on cancel and error): record input + output (+ classifier) for today, then write the sentinel, the footer `*frontend: 112k / 150k this week · resets Mon · GPT-5*` (the last part is the name of the model that answered) and any ⚠️ warnings (`warnAtPercent`, daily pace).
-8. **Return** `{ metadata: { v: 1, subject, model, inputTokens, outputTokens, classifierTokens, stopped } }`, where `model` is the answering model's name.
+7. **`finally`** (always, including on cancel and error): record input + output for today, then write the sentinel, the footer `*RemonStuff/Q0T4: 112k / 150k this week · resets Mon · GPT-5*` (the last part is the name of the model that answered) and any ⚠️ warnings (`warnAtPercent`, daily pace).
+8. **Return** `{ metadata: { v: 1, subject, model, inputTokens, outputTokens, stopped } }`, where `model` is the answering model's name.
 
 ### Module responsibilities
 
@@ -82,7 +84,7 @@ test/
 | `core/time` | yes | Week start for a given `resetDay` and IANA zone, day keys, next reset instant, and labels like "Mon" and "Mon 19 Oct". |
 | `core/storage` | yes (through StoragePort) | Reading and writing usage, summing the week window, today's total, pruning, quarantining corrupt data. |
 | `core/budget` | yes | Pre-check decision, StreamGuard scheduling and cut-off, the rules for what gets recorded when. |
-| `core/subjects` | yes (classifier through ModelPort) | Validating config, keyword matching, thread subject, `/use`, classifier prompt and parsing, the resolution pipeline. |
+| `core/subjects` | yes | Validating config, limit lookup (configured or default), normalising git remotes to `owner/repo`, thread subject, `/use`, the resolution pipeline. |
 | `core/messages` | yes | Building the message list, filtering history, stripping footers, reference blocks, trimming to the context window. |
 | `core/format` | yes | Every user-visible string: footer, warnings, refusal, `/status` table, `/subjects` list, status bar text. |
 | `adapters/*` | no | Thin wrappers that turn VS Code objects into port types. Each one is covered by an integration test and contains no logic. |
@@ -93,12 +95,12 @@ test/
 
 | Key | Type | Default |
 |---|---|---|
-| `subjects` | `{ [name]: { weeklyLimit: number; description?: string; keywords?: string[] } }` | `general` 200 000; `frontend` 150 000 (react, css, html, tsx, component, tailwind); `backend` 150 000 (api, sql, database, endpoint, server, auth) |
+| `subjects` | `{ [repoOrName]: { weeklyLimit: number; description?: string } }`, with keys like `"RemonStuff/Q0T4"` (matched case-insensitively) or plain names like `"general"`, for overriding limits | `{ "general": { "weeklyLimit": 200000 } }` |
+| `defaultWeeklyLimit` | number: the limit for any repo not listed in `subjects` | `150000` |
 | `fallbackSubject` | string | `"general"` |
 | `resetDay` | enum monday…sunday | `"monday"` |
 | `warnAtPercent` | number 1–100 | `80` |
 | `dailyPaceWarning` | number 1–100 (% of the weekly limit used in one day; warning only) | `30` |
-| `classifierModelFamily` | string (`""` = the chat's model) | `""` |
 | `includeHistory` | boolean | `true` |
 
 Invalid values never throw. `parseSubjects` falls back to the defaults for any broken entry and reports a warning (issue 26).
@@ -115,9 +117,9 @@ There's one key per week: `q0t4.usage.v1.<weekStart YYYY-MM-DD>`, where the date
   "weekStart": "2026-10-12",
   "resetDay": "monday",
   "subjects": {
-    "frontend": {
+    "RemonStuff/Q0T4": {
       "days": {
-        "2026-10-14": { "input": 41200, "output": 18800, "classifier": 0, "requests": 7, "stopped": 0 }
+        "2026-10-14": { "input": 41200, "output": 18800, "requests": 7, "stopped": 0 }
       }
     }
   }
@@ -140,7 +142,8 @@ There's one key per week: `q0t4.usage.v1.<weekStart YYYY-MM-DD>`, where the date
 |---|---|---|
 | **The cut-off happens in the extension.** The model keeps generating until our cancellation takes effect. | A small overshoot past the limit. | StreamGuard recounts every ~400 characters while far from the limit and on **every chunk** once the estimated remaining budget is below 10% (or under 2× the last chunk). Overshoot is bounded by one interval, recorded honestly, and documented. |
 | **`countTokens` latency.** It may be async, IPC-backed and slow on long texts. | Slower streaming. | Adaptive recounting with a cheap `chars/4` estimate between recounts. Recount only the accumulated text, never per chunk while far from the limit. Covered by FakeModel call-count tests. |
-| **Our counts ≠ GitHub's metering.** Copilot bills *premium requests*, not tokens, and our count leaves out framing and hidden system prompts. | User confusion. | README "Known limits". The footer says "this week" and never claims to match billing. The classifier may itself use a premium request (open question 3). |
+| **Our counts ≠ GitHub's metering.** Copilot bills *premium requests*, not tokens, and our count leaves out framing and hidden system prompts. | User confusion. | README "Known limits". The footer says "this week" and never claims to match billing. Q0T4 makes no model calls of its own beyond the user's request. |
+| **Repo detection.** The Git extension may be disabled, a folder may have no remote, or a multi-root workspace has several repos. | Wrong or unstable subject. | Fallback chain: `origin` remote → first remote → folder name → `fallbackSubject`. In multi-root workspaces, use the folder of the active editor, then the first folder. Show "Subject: X (repo)" as a progress note so it's visible, and `/use` overrides. |
 | **The footer pollutes history.** It's part of `ChatResponseTurn.response`. | Wasted tokens, and the model echoes footers. | Sentinel plus stripping in pure core. Tests cover a missing sentinel and sentinel-like text in user content. |
 | **No thread ID.** | The subject can't be stored per thread. | Derive it from history metadata. Tests cover missing or old metadata and subjects that have since been removed. |
 | **Time zones and DST.** | The wrong week or day bucket. | `ClockPort.timeZone()` (IANA) plus `Intl.DateTimeFormat` in core, so results never depend on the machine's `TZ`. FixedClock tests cover DST in both directions, the year boundary and ±14h zones. CI runs unit tests on Linux and Windows. |
@@ -156,12 +159,12 @@ There's one key per week: `q0t4.usage.v1.<weekStart YYYY-MM-DD>`, where the date
 
 1. ✅ **Decided: keep `extensionDependencies: ["github.copilot-chat"]`** (Q0T4 is used with a work Copilot subscription). Integration tests therefore install `github.copilot-chat` into the test VS Code instance (`installExtensions` in `.vscode-test.mjs`), and models still come from the fake `q0t4-test` provider. The test VS Code version is pinned to one that the installed Copilot Chat supports (issues 05, 07).
 2. ✅ **Decided: no.** Nothing is charged when `sendRequest` rejects before the first chunk. Input + output are charged once streaming has started (issue 16).
-3. **Default classifier model.** The participant **can** see the model picked in the chat: `request.model` exposes `name`, `id`, `family` and `vendor`, which is what `classifierModelFamily: ""` uses. The API does **not** expose whether a model is premium or its request multiplier. ✅ **Decided: the footer shows the chat's model name** (the model that actually answered, including after a fallback). **Still open:** should the classifier default to a cheaper family than the chat's model?
+3. ✅ **Decided: the footer shows the chat's model name** (`request.model.name`, i.e. the model that actually answered, including after a fallback). The API does **not** expose whether a model is premium or its request multiplier. The classifier question is gone, because subjects come from the repo (question 8).
 4. ✅ **Decided: no sync.** Budgets are per machine; `setKeysForSync` isn't used.
 5. **Accept non-Copilot models** (BYOK vendors picked in the UI)? *Recommendation: yes, budget them the same way.*
 6. **Reserve output headroom in the pre-check**, e.g. refuse if `remaining < input + N`? *Recommendation: an optional setting, off by default.*
 7. **`/use <subject>` with no question:** set the thread subject and confirm without calling the model? *Recommendation: yes.*
-8. **Should the thread subject win over keywords** when a later prompt clearly matches another subject? The spec's order says yes, and `/use` is the way to switch. Confirm?
+8. ✅ **Decided: the subject is the repo** (replaces the spec's keywords and classifier). Every repo automatically gets its own weekly budget (`defaultWeeklyLimit`, overridable per repo in `subjects`), and `/use` stays as the manual override. Order: `/use` → thread → repo → `fallbackSubject`.
 9. **Minimum `engines.vscode`** (the fake provider needs a recent stable LM provider API; proposed `^1.104.0`) and **distribution**: Marketplace, Open VSX, or `.vsix` from GitHub Releases only?
 
 ---

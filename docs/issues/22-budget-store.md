@@ -3,7 +3,7 @@
 **Iteration:** 3 (Weekly storage)
 
 ## Description
-Persistent weekly usage over `StoragePort`, using the schema in [PLAN §4](../PLAN.md#4-data-model-globalstate): one key per week, `q0t4.usage.v1.<weekStart>`, with per-subject, per-day totals of `input`, `output`, `classifier`, `requests` and `stopped`. Weekly usage is the **sum of day entries inside the current window**. That window can cover two stored week keys, which happens when `resetDay` changed.
+Persistent weekly usage over `StoragePort`, using the schema in [PLAN §4](../PLAN.md#4-data-model-globalstate): one key per week, `q0t4.usage.v1.<weekStart>`, with per-subject, per-day totals of `input`, `output`, `requests` and `stopped`. Weekly usage is the **sum of day entries inside the current window**. That window can cover two stored week keys, which happens when `resetDay` changed.
 
 ## Tests to write first
 - `record adds tokens to today's entry for the subject`
@@ -13,7 +13,8 @@ Persistent weekly usage over `StoragePort`, using the schema in [PLAN §4](../PL
 - `usedThisWeek is 0 at the start of a new week`
 - `usedToday returns only today's entry`
 - `usage of other subjects is not counted`
-- `classifier tokens count towards used`
+- `subjects are matched case-insensitively, so "remonstuff/q0t4" and "RemonStuff/Q0T4" share one budget`
+- `subjectsSeen lists every subject with usage in the stored weeks` (used by /use and /status)
 - `snapshot returns per-subject used, today and requests for /status`
 
 ## Implementation tasks

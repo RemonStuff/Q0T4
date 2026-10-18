@@ -22,7 +22,6 @@ Turn every `LanguageModelError` into a clear message and the right recording beh
 - `Blocked mid-stream records input and output so far`
 - `Unknown errors include the original message`
 - `the footer is still written after every error kind`
-- `classifier errors of any kind fall back silently to fallbackSubject`
 - *(integration)* `errorMapping maps each LanguageModelError code from the fake provider`
 
 ## Implementation tasks

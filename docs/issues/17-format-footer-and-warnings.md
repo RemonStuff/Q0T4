@@ -3,7 +3,7 @@
 **Iteration:** 2 (Counting and the hard stop)
 
 ## Description
-Every user-visible usage string comes from pure `core/format`. This issue covers compact token units, the footer `*frontend: 112k / 150k this week · resets Mon · GPT-5*` (ending with the name of the model that answered, from `ModelPort.name`) behind a hidden sentinel (`<!-- q0t4:footer -->`) so it can be stripped from history later (#18), and the ⚠️ warning once usage passes `warnAtPercent`.
+Every user-visible usage string comes from pure `core/format`. This issue covers compact token units, the footer `*RemonStuff/Q0T4: 112k / 150k this week · resets Mon · GPT-5*` (ending with the name of the model that answered, from `ModelPort.name`) behind a hidden sentinel (`<!-- q0t4:footer -->`) so it can be stripped from history later (#18), and the ⚠️ warning once usage passes `warnAtPercent`.
 
 ## Tests to write first
 - `formats 0 as "0"`, `950 as "950"`, `1000 as "1k"`, `112400 as "112k"`, `1250000 as "1.25M"`
