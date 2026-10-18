@@ -4,19 +4,24 @@ See [PLAN.md](PLAN.md) for the architecture and testing rules. Each issue is in 
 
 Every iteration ends with **CI green** and a **`.vsix` you can install** (downloaded from the CI artifact) and try by following `docs/manual-testing.md`.
 
+Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7–9 generalise it to **GitHub AI Credits, a monthly pool with a reserve, and a public API**, released as **v1.0** ([PLAN §9](PLAN.md#9-credits-cycles-pools-and-the-public-api)). From iteration 2 on, budget logic is unit-generic (tokens or credits) and usage is stored in an append-only ledger, so the later iterations add to it rather than rework it.
+
 ## Iterations
 
 | # | Iteration | What you can try at the end | Issues |
 |---|---|---|---|
-| 0 | Test harness | `@q0t4` installs, is sticky, and replies "not wired yet" | [01](issues/01-project-scaffold.md), [02](issues/02-vitest-and-coverage.md), [03](issues/03-ports-and-domain-types.md), [04](issues/04-test-doubles.md), [05](issues/05-integration-runner-and-fake-provider.md), [06](issues/06-ci-workflow.md), [07](issues/07-stub-participant-and-vsix.md) |
+| 0 | Test harness | `@q0t4` installs, is sticky, and replies "not wired yet" | [01](issues/01-project-scaffold.md) ✅, [02](issues/02-vitest-and-coverage.md) ✅, [03](issues/03-ports-and-domain-types.md), [04](issues/04-test-doubles.md), [05](issues/05-integration-runner-and-fake-provider.md), [06](issues/06-ci-workflow.md), [07](issues/07-stub-participant-and-vsix.md) |
 | 1 | Walking skeleton | `@q0t4` answers through the model chosen in the picker, with attached files | [08](issues/08-build-messages.md), [09](issues/09-model-resolution.md), [10](issues/10-chat-handler-forwarding.md), [11](issues/11-wire-participant-to-model.md), [12](issues/12-attached-references.md) |
-| 2 | Counting and the hard stop | Footer with usage, a pre-check refusal, and the ⛔ cut-off mid-stream (single subject, running total) | [13](issues/13-count-input.md), [14](issues/14-pre-check-refusal.md), [15](issues/15-stream-guard.md), [16](issues/16-recording-policy.md), [17](issues/17-format-footer-and-warnings.md), [18](issues/18-history-footer-strip-and-metadata.md), [19](issues/19-wire-budget-enforcement.md) |
-| 3 | Weekly storage | Usage resets weekly on `resetDay`, with a daily pace warning | [20](issues/20-week-and-day-keys.md), [21](issues/21-next-reset.md), [22](issues/22-budget-store.md), [23](issues/23-budget-store-resilience.md), [24](issues/24-daily-pace-warning.md), [25](issues/25-wire-weekly-storage.md) |
+| 2 | Counting and the hard stop | Footer with usage, a pre-check refusal, and the ⛔ cut-off mid-stream (single subject, running total, tokens) | [13](issues/13-count-input.md), [14](issues/14-pre-check-refusal.md), [15](issues/15-stream-guard.md), [16](issues/16-recording-policy.md), [17](issues/17-format-footer-and-warnings.md), [18](issues/18-history-footer-strip-and-metadata.md), [19](issues/19-wire-budget-enforcement.md) |
+| 3 | Weekly storage | Usage in an append-only ledger, safe across windows; weekly reset on `resetDay`; daily pace warning | [20](issues/20-budget-calendar-week.md), [21](issues/21-next-reset.md), [22](issues/22-ledger.md), [23](issues/23-ledger-resilience.md), [24](issues/24-daily-pace-warning.md), [25](issues/25-wire-ledger.md) |
 | 4 | Repo subjects | Each repo gets its own weekly budget automatically (`owner/repo` from the git remote), per-repo limits in settings, sticky thread subject, `/use` override | [26](issues/26-settings-schema-and-config.md), [27](issues/27-repo-identifier.md), [28](issues/28-thread-subject.md), [29](issues/29-use-command-parsing.md), [30](issues/30-workspace-repo-adapter.md), [31](issues/31-resolve-subject-pipeline.md), [32](issues/32-same-subject-history.md), [33](issues/33-wire-subjects.md) |
 | 5 | Visibility | Status bar, `/status`, `/subjects`, and the Show Usage, Reset This Week and Edit Subjects commands | [34](issues/34-status-command.md), [35](issues/35-subjects-command.md), [36](issues/36-status-bar.md), [37](issues/37-commands.md) |
-| 6 | Hardening and release | Friendly consent, missing-model and quota errors; long threads trimmed; README; release `.vsix` | [38](issues/38-model-error-handling.md), [39](issues/39-context-window-trimming.md), [40](issues/40-storage-and-config-failures.md), [41](issues/41-readme-and-release.md) |
+| 6 | Hardening and release | Friendly consent, missing-model and quota errors; long threads trimmed; README; **v0.1 release** | [38](issues/38-model-error-handling.md), [39](issues/39-context-window-trimming.md), [40](issues/40-storage-and-config-failures.md), [41](issues/41-readme-and-release.md) |
+| 7 | Live pricing | `budgetUnit: "credits"`: costs from live per-model prices (refreshed daily), stale-price warnings, `/status` shows the price table | [48](issues/48-credit-cost-model.md), [49](issues/49-price-table-parsers.md), [50](issues/50-price-source-adapters.md), [51](issues/51-price-refresher.md), [52](issues/52-model-name-mapping.md), [53](issues/53-wire-credits-mode.md) |
+| 8 | Pool, reserve and sync | A 35k-credit monthly pool split across repos, rolling weekly budgets, reserve borrowing, pace warnings, `/sync` with GitHub's figure | [54](issues/54-budget-calendar-cycle.md), [55](issues/55-rolling-weekly-budget.md), [56](issues/56-pool-settings.md), [57](issues/57-reserve-borrowing.md), [58](issues/58-monthly-pace-warning.md), [59](issues/59-sync-command.md), ~~[60](issues/60-auto-sync-usage-api.md)~~ *(not planned)*, [61](issues/61-pool-footer-status.md), [62](issues/62-wire-pool-mode.md) |
+| 9 | Public API | Another extension can check budgets and send metered requests; **v1.0 release** | [63](issues/63-public-api-facade.md), [64](issues/64-api-send-request.md), [65](issues/65-api-contract-tests.md), [66](issues/66-readme-and-release-v1.md) |
 
-**Totals:** 41 issues: 24 S and 17 M, none L.
+**Totals:** 60 issues (41 + 19 new): 26 S and 34 M, none L. 2 done (#1, #2). #60 is not planned (enterprise allowance), so 57 issues remain to build. Numbers 42–47 were used by pull requests.
 
 ## Dependency graph (by iteration)
 
@@ -31,15 +36,21 @@ it3: 04 → 20 → 21, 22 → 23;  17,22 → 24;  19,21,23,24 → 25
 it4: 25 → 26 → 27 → 30;  26 → 29;  18,26 → 28 → 32;  27,28,29,30 → 31;  31,32 → 33
 it5: 33 → 34, 35, 36 → 37
 it6: 33 → 38, 39;  25,26 → 40;  38,39,40 → 41
+it7: 13 → 48;  03 → 49;  25,49 → 50;  26,48,49 → 51;  48,49 → 52;  34,36,50,51,52 → 53
+it8: 20,21 → 54;  22,54 → 55;  26,55 → 56;  14,15,56 → 57;  24,55 → 58;  53,56 → 59   (60 not planned)
+     34,36,57,58,59 → 61 → 62
+it9: 62 → 63 → 64 → 65;  41,65 → 66
 ```
+
+Some later-iteration issues have no dependency on the iterations just before them, so they can be pulled forward when convenient: #48 and #49 (pure core) can start any time after #13, and #54 any time after #21.
 
 ## Checklist (dependency order)
 
 Each issue depends only on issues with lower numbers, so working top to bottom is always valid. Issues marked ∥ can be done in parallel with the one above.
 
 ### Iteration 0: Test harness
-- [ ] 01 Project scaffold
-- [ ] 02 Vitest and enforced core coverage (needs 01)
+- [x] 01 Project scaffold
+- [x] 02 Vitest and enforced core coverage (needs 01)
 - [ ] 03 Port interfaces and domain types (needs 01) ∥
 - [ ] 04 Test doubles (needs 02, 03)
 - [ ] 05 Integration runner and fake LM provider (needs 01) ∥
@@ -54,21 +65,21 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [ ] 12 Attached references (needs 08, 11). 🎯 **Install and try**
 
 ### Iteration 2: Counting and the hard stop
-- [ ] 13 `countInput` (needs 10)
+- [ ] 13 `countInput` and the `CostModel` interface (needs 10)
 - [ ] 14 `preCheck` and refusal (needs 13)
 - [ ] 15 `StreamGuard` (needs 13) ∥
 - [ ] 16 Recording policy (needs 15)
-- [ ] 17 Footer and warning formatting (needs 03) ∥ (can start any time after iteration 0)
+- [ ] 17 Amounts, footer and warning formatting (needs 03) ∥ (can start any time after iteration 0)
 - [ ] 18 Footer stripping and metadata (needs 08, 17)
 - [ ] 19 globalState adapter and wiring (needs 14, 15, 16, 18). 🎯 **Install and try**
 
 ### Iteration 3: Weekly storage
-- [ ] 20 Week and day keys (needs 04)
+- [ ] 20 `BudgetCalendar`: day keys and the week window (needs 04)
 - [ ] 21 Next reset (needs 20)
-- [ ] 22 `BudgetStore` v1 (needs 20) ∥
-- [ ] 23 Store resilience (needs 22)
+- [ ] 22 `Ledger`: append-only entries and totals (needs 20) ∥
+- [ ] 23 Ledger resilience (needs 22)
 - [ ] 24 Daily pace warning (needs 17, 22) ∥
-- [ ] 25 Wire weekly storage (needs 19, 21, 23, 24). 🎯 **Install and try**
+- [ ] 25 Wire the ledger: file adapter and system clock (needs 19, 21, 23, 24). 🎯 **Install and try**
 
 ### Iteration 4: Repo subjects
 - [ ] 26 Settings schema, `parseConfig` and limits (needs 25)
@@ -90,7 +101,32 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [ ] 38 Model error mapping (needs 33)
 - [ ] 39 Context-window trimming (needs 33) ∥
 - [ ] 40 Storage and config failures (needs 25, 26) ∥
-- [ ] 41 README and release (needs 38, 39, 40). 🎯 **Release candidate**
+- [ ] 41 README and release v0.1 (needs 38, 39, 40). 🎯 **v0.1 release**
+
+### Iteration 7: Live pricing
+- [ ] 48 `CreditCostModel`: tiers, snapshots, unknown models (needs 13)
+- [ ] 49 Price-table parsers and validation (needs 03) ∥
+- [ ] 50 Price source and price-table store adapters (needs 25, 49)
+- [ ] 51 `PriceRefresher`, price settings and refresh command (needs 26, 48, 49) ∥
+- [ ] 52 Map VS Code models to price-table entries (needs 48, 49) ∥
+- [ ] 53 Wire credits mode end to end (needs 34, 36, 50, 51, 52). 🎯 **Install and try**
+
+### Iteration 8: Pool, reserve and sync
+- [ ] 54 `BudgetCalendar`: billing cycle level (needs 20, 21)
+- [ ] 55 Rolling weekly budget from a monthly share (needs 22, 54)
+- [ ] 56 Pool, share and reserve settings (needs 26, 55)
+- [ ] 57 Reserve borrowing: auto, ask, off (needs 14, 15, 56)
+- [ ] 58 Monthly pace warning (needs 24, 55) ∥
+- [ ] 59 `/sync` and the calibration ratio (needs 53, 56) ∥
+- [ ] ~~60 Optional automatic sync from the usage API~~ *not planned: enterprise allowance (PLAN open question 12)*
+- [ ] 61 Pool-mode footer, `/status` and status bar (needs 34, 36, 57, 58, 59)
+- [ ] 62 Wire pool mode end to end (needs 61). 🎯 **Install and try**
+
+### Iteration 9: Public API
+- [ ] 63 Public API façade: status, canSpend, usage events (needs 62)
+- [ ] 64 `api.sendRequest` with metering and cut-off (needs 63)
+- [ ] 65 Contract tests with a fake consumer extension (needs 64)
+- [ ] 66 README and release v1.0 (needs 41, 65). 🎯 **v1.0 release**
 
 ## Definition of done (every issue)
 0. The work is on its own branch (`<type>/<NN>-<short-title>`) and merged through a PR that says `Closes #NN`. Docs-only work uses `docs/<topic>` branches, which skip the automated tests (see [PLAN §8](PLAN.md#8-branches-and-pull-requests)).
@@ -98,3 +134,4 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 2. All tests are green, and core line and branch coverage is ≥ 90%
 3. CI is green: lint, typecheck, unit (ubuntu and windows), integration (xvfb), package
 4. The manual checks in the issue are done, where the issue lists any
+5. Unit-dependent behaviour is tested in every unit (`describe.each` over tokens and credits), from iteration 2 on

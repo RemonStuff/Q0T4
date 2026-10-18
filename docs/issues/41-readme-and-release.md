@@ -1,11 +1,11 @@
-# 41: README, packaging and release workflow
+# 41: README, packaging and release workflow (v0.1, tokens mode)
 
 **Iteration:** 6 (Hardening and release)
 
 ## Description
-Make Q0T4 releasable. Write a README that explains what the extension does, how subjects are detected, every setting, and the **known limits**:
+Make Q0T4 releasable as **v0.1: weekly token budgets per repo**. Credits, pools and the public API ship later as v1.0, in #66, which updates the README and reuses this release workflow. Write a README that explains what the extension does, how subjects are detected, every setting, and the **known limits**:
 - Inline completions, agent mode and the normal Copilot chat aren't counted
-- Token counts won't exactly match how GitHub meters Copilot (premium requests, hidden prompts, framing overhead)
+- Token counts won't exactly match how GitHub meters Copilot (AI Credits from GitHub's own token counts, including hidden prompts, framing overhead and reasoning tokens we never see)
 - The cut-off can overshoot by one recount interval
 - Subjects come from the repo's git remote (`owner/repo`), falling back to the folder name, so a folder copied without `.git` gets its own budget
 - Usage is stored per machine
@@ -23,7 +23,7 @@ Finish the marketplace metadata, add a CHANGELOG, and add a tag-triggered releas
 - [ ] CHANGELOG.md (Keep a Changelog format), LICENSE
 - [ ] Final icon (`images/icon.png`, 128×128)
 - [ ] `.github/workflows/release.yml` on `v*` tags: run the full CI, `vsce package`, create a GitHub Release with the `.vsix`
-- [ ] Marketplace / Open VSX publishing steps, only if open question 9 says so
+- [ ] Distribution for v0.1 is the `.vsix` on GitHub Releases only; no Marketplace or Open VSX publishing yet (decided, PLAN open question 9)
 
 ## Acceptance criteria
 - [ ] The listed tests pass, core coverage holds, and CI is green

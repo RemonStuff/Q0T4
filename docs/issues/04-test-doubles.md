@@ -15,7 +15,7 @@ Build the fakes that every core test relies on, test-first, so the fakes themsel
 - `throws mid-stream when an error is injected after chunk n`
 - `stops yielding after the cancellation signal fires`
 - `records sendRequest messages and countTokens calls`
-- `reports maxInputTokens, id, family and vendor from its options`
+- `reports maxInputTokens, id, name, family and vendor from its options`
 
 **FakeModelSelector**
 - `returns models matching vendor and family`
@@ -26,6 +26,21 @@ Build the fakes that every core test relies on, test-first, so the fakes themsel
 - `get returns a deep copy, not the stored reference`
 - `keys lists stored keys`
 - `set rejects when a write failure is injected`
+
+**InMemoryLedger**
+- `append then read returns the entry in a date range`
+- `read merges entries from several writer streams in time order`
+- `read skips injected corrupt lines and reports how many`
+- `append rejects when a write failure is injected`
+
+**FakePriceSource and InMemoryPriceTableStore**
+- `FakePriceSource returns scripted results in order: ok, unchanged, failed`
+- `FakePriceSource records the ETag it was called with`
+- `InMemoryPriceTableStore load returns what save stored, as a copy`
+
+**FixedRateCostModel** (the credits stand-in for unit-generic tests, [PLAN §7](../PLAN.md#unit-generic-tests))
+- `costs input and output at the configured USD-per-1M rates in credits`
+- `returns a rate snapshot naming the fixed table`
 
 **FixedClock**
 - `now returns the configured instant`

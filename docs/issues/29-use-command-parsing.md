@@ -20,7 +20,7 @@ The subject must be a **known subject**: a key in `q0t4.subjects`, the fallback 
 - `handler with setOnly writes a confirmation and returns metadata with the subject but zero tokens`
 
 ## Implementation tasks
-- [ ] `src/core/subjects/knownSubjects.ts`: configured keys ∪ fallback ∪ subjects seen by `BudgetStore` ∪ current repo
+- [ ] `src/core/subjects/knownSubjects.ts`: configured keys ∪ fallback ∪ subjects seen in the `Ledger` ∪ current repo
 - [ ] `src/core/subjects/parseUse.ts` returning `{ kind: "ask", subject, question } | { kind: "setOnly", subject } | { kind: "error", message }`
 - [ ] Formatter for the confirmation and error messages
 
