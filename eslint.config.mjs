@@ -27,6 +27,12 @@ export default defineConfig(
   js.configs.recommended,
   tseslint.configs.recommended,
   {
+    rules: {
+      // `const { dropped, ...rest } = x` is the idiomatic way to omit a field.
+      "@typescript-eslint/no-unused-vars": ["error", { ignoreRestSiblings: true }],
+    },
+  },
+  {
     files: ["**/*.mjs"],
     languageOptions: { globals: globals.node },
   },
