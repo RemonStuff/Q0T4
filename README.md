@@ -49,7 +49,10 @@ npm run coverage    # unit tests with the 90% core coverage gate
 npm run lint        # ESLint, including the rule that keeps src/core free of vscode
 npm run typecheck   # TypeScript, strict
 npm run build       # bundle to dist/extension.js
+npm run test:integration  # integration tests in a real VS Code (downloads it on first run)
 ```
+
+Integration tests use a fake language-model provider (vendor `q0t4-test`) and never call real Copilot; see [test/integration/README.md](test/integration/README.md).
 
 Press **F5** in VS Code ("Run Extension") to start an Extension Development Host.
 

@@ -1,0 +1,15 @@
+{
+  // Integration tests run in VS Code's extension host via mocha, as CommonJS.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "node16",
+    "moduleResolution": "node16",
+    "noEmit": false,
+    "outDir": "out",
+    "rootDir": ".",
+    "sourceMap": true,
+    "types": ["node", "vscode", "mocha"]
+  },
+  "include": ["test/integration"],
+  "exclude": []
+}

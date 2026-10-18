@@ -14,8 +14,8 @@ End iteration 0 with something installable. Contribute the `@q0t4` chat particip
 ## Implementation tasks
 - [ ] `contributes.chatParticipants`: `{ id: "q0t4.chat", name: "q0t4", fullName: "Q0T4", isSticky: true, commands: [status, subjects, use] }`
 - [ ] `vscode.chat.createChatParticipant` in `extension.ts`, delegating to core
-- [ ] `extensionDependencies: ["github.copilot-chat"]` (decided). Integration tests rely on #05 installing it.
-- [ ] Test: *(integration)* `package.json declares extensionDependencies github.copilot-chat`
+- [ ] `extensionDependencies: ["github.copilot-chat"]`: **decision re-opened by #5** (PLAN open question 1). Copilot Chat is built into VS Code now, and a fresh test profile doesn't load it, so the dependency would stop Q0T4 activating in integration tests. Recommended: leave it out.
+- [ ] Test, depending on that decision: *(integration)* either `package.json declares extensionDependencies github.copilot-chat`, or `Q0T4 activates without Copilot Chat present`
 - [ ] Placeholder participant icon
 
 ## Acceptance criteria

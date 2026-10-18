@@ -16,3 +16,7 @@ test/**
 esbuild.mjs
 eslint.config.mjs
 tsconfig.json
+out/**
+.vscode-test.mjs
+tsconfig.integration.json
+vitest.config.ts

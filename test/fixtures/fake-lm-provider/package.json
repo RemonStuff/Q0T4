@@ -1,0 +1,23 @@
+{
+  "name": "fake-lm-provider",
+  "displayName": "Q0T4 test: fake language-model provider",
+  "description": "Test-only. Registers the model vendor q0t4-test so integration tests never call real Copilot.",
+  "version": "0.0.0",
+  "publisher": "q0t4-test",
+  "private": true,
+  "engines": {
+    "vscode": "^1.104.0"
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "languageModelChatProviders": [
+      {
+        "vendor": "q0t4-test",
+        "displayName": "Q0T4 Test"
+      }
+    ]
+  }
+}

@@ -37,6 +37,12 @@ export default defineConfig(
     languageOptions: { globals: globals.node },
   },
   {
+    // Test-only fixture extensions are plain CommonJS, loaded by VS Code as-is.
+    files: ["test/fixtures/**/*.js"],
+    languageOptions: { sourceType: "commonjs", globals: globals.node },
+    rules: { "@typescript-eslint/no-require-imports": "off" },
+  },
+  {
     files: ["src/core/**/*.ts", "src/ports/**/*.ts"],
     rules: noVscode,
   },
