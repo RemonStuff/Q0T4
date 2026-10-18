@@ -3,13 +3,13 @@
 **Iteration:** 4 (Repo subjects)
 
 ## Description
-Connect subject resolution, per-repo limits (configured or `defaultWeeklyLimit`) and same-subject history through the participant. Reload the config on change. Show `parseConfig` warnings once per change through `UiPort.showInfo`.
+Connect subject resolution, per-repo limits (configured or `defaultLimit`) and same-subject history through the participant. Reload the config on change. Show `parseConfig` warnings once per change through `UiPort.showInfo`.
 
 ## Tests to write first
 *(integration, fake provider plus a temporary git repo opened as the workspace)*
 - `a prompt in a repo with origin test-owner/test-repo is charged to test-owner/test-repo`
 - `the footer names the repo subject and its limit`
-- `an unlisted repo gets defaultWeeklyLimit`
+- `an unlisted repo gets defaultLimit`
 - `a repo listed in q0t4.subjects gets its configured limit`
 - `a follow-up prompt stays on the thread subject`
 - `/use general charges the prompt to general and the thread keeps general`
@@ -17,7 +17,7 @@ Connect subject resolution, per-repo limits (configured or `defaultWeeklyLimit`)
 - `changing q0t4.subjects at runtime takes effect on the next request`
 
 ## Implementation tasks
-- [ ] Update the composition root, wiring `ConfigPort` and `WorkspacePort` into the handler and `BudgetStore`
+- [ ] Update the composition root, wiring `ConfigPort` and `WorkspacePort` into the handler and the `Ledger`
 - [ ] A minimal `vscodeUi.showInfo` adapter (expanded in #36)
 - [ ] Update `docs/manual-testing.md`
 

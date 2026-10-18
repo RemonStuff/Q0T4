@@ -3,18 +3,18 @@
 **Iteration:** 5 (Visibility)
 
 ## Description
-`@q0t4 /status` shows a markdown table of every **known subject** (configured, used this week, or the current repo; see #29) with its usage this week, read straight from `BudgetStore.snapshot`. It never calls a model and costs no tokens.
+`@q0t4 /status` shows a markdown table of every **known subject** (configured, used this week, or the current repo; see #29) with its usage this week, read straight from the `Ledger`. It never calls a model and costs nothing. Amounts are in the active unit.
 
-| Subject | Used | Limit | % | Today | Requests |
+| Subject | Used | Weekly budget | % | Today | Requests |
 |---|---|---|---|---|---|
 
-The reset date goes below the table.
+The reset date goes below the table. Pool columns (monthly share, used this cycle, pace) and the reserve, untracked usage and price-table lines are added in #61.
 
 ## Tests to write first
 - `renders one row per subject used this week, the current repo first, then by usage descending`
 - `includes configured subjects with 0 usage`
-- `marks limits that come from defaultWeeklyLimit as "(default)"`
-- `shows used, limit, percent, today and requests with compact units`
+- `marks limits that come from defaultLimit as "(default)"`
+- `shows used, weekly budget, percent, today and requests in the active unit` (each unit)
 - `marks subjects at or above warnAtPercent with ⚠️ and exhausted ones with ⛔`
 - `shows 0 for subjects with no usage this week`
 - `includes the long reset label below the table`

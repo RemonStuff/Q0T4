@@ -1,9 +1,9 @@
-# 20: Core week start and day keys (time zones, DST)
+# 20: Core `BudgetCalendar`: day keys and the week window (time zones, DST)
 
 **Iteration:** 3 (Weekly storage)
 
 ## Description
-Pure date logic for bucketing usage. `weekStart(instant, resetDay, timeZone)` returns the local `YYYY-MM-DD` on which the current budget week began. `dayKey(instant, timeZone)` returns the local calendar day. Both use `Intl.DateTimeFormat` with the IANA zone from `ClockPort.timeZone()`, **never the machine's `TZ`**, so tests give the same results on every CI runner. The week boundary is local midnight at the start of `resetDay`.
+The first level of `BudgetCalendar` ([PLAN §9.2](../PLAN.md#92-two-time-levels-a-monthly-cycle-with-weekly-enforcement)): the enforced **week**. `weekWindow(instant)` returns the local `[start, end)` day keys of the current budget week for `resetDay`. `dayKey(instant)` returns the local calendar day. Both use `Intl.DateTimeFormat` with the IANA zone from `ClockPort.timeZone()`, **never the machine's `TZ`**, so tests give the same results on every CI runner. The week boundary is local midnight at the start of `resetDay`. The billing-cycle level is added to the same class in #54, so keep the API cycle-agnostic.
 
 ## Tests to write first
 - `monday reset: Sunday 23:59 belongs to the previous week`
@@ -18,7 +18,7 @@ Pure date logic for bucketing usage. `weekStart(instant, resetDay, timeZone)` re
 - `result does not depend on process.env.TZ` (run with TZ set to two values)
 
 ## Implementation tasks
-- [ ] `src/core/time/calendar.ts`: `localParts(instant, tz)`, `weekStart`, `dayKey`, `addDays(key, n)`
+- [ ] `src/core/time/budgetCalendar.ts`: `localParts(instant, tz)`, `weekWindow`, `dayKey`, `addDays(key, n)`, `daysBetween(a, b)`
 - [ ] Do the arithmetic on `YYYY-MM-DD` keys (calendar days), not on milliseconds, to avoid DST traps
 
 ## Acceptance criteria
