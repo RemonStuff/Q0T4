@@ -57,6 +57,7 @@ npm run typecheck   # TypeScript, strict
 npm run build       # bundle to dist/extension.js
 npm run test:integration  # integration tests in a real VS Code (downloads it on first run)
 npm run package     # build q0t4-<version>.vsix
+npm run test:vsix   # package, install the .vsix into a clean VS Code, and smoke-test it
 ```
 
 CI (GitHub Actions) runs on every push and pull request:
@@ -64,7 +65,7 @@ CI (GitHub Actions) runs on every push and pull request:
 - lint, format check and typecheck
 - unit tests with the coverage gate, on Ubuntu and Windows
 - integration tests under `xvfb`
-- packaging; every run uploads the `.vsix` as an artifact
+- packaging, then installing the `.vsix` into a clean VS Code and smoke-testing it; every run uploads the tested `.vsix` as an artifact
 
 Branches named `docs/…` skip the test jobs.
 

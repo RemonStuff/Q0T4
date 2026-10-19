@@ -54,9 +54,10 @@
     "test:unit": "vitest run",
     "test:unit:watch": "vitest",
     "coverage": "vitest run --coverage",
-    "test:integration": "npm run build && tsc -p tsconfig.integration.json && vscode-test",
+    "test:integration": "npm run build && tsc -p tsconfig.integration.json && vscode-test --label integration",
     "vscode:prepublish": "npm run build -- --production",
-    "package": "vsce package --no-dependencies --skip-license"
+    "package": "vsce package --no-dependencies --skip-license",
+    "test:vsix": "npm run package && tsc -p tsconfig.integration.json && vscode-test --label vsix"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

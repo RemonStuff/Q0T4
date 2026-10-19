@@ -2,7 +2,7 @@
 
 See [PLAN.md](PLAN.md) for the architecture and testing rules. Each issue is in [issues/](issues/).
 
-Every iteration ends with **CI green** and a **`.vsix` you can install** (downloaded from the CI artifact) and try by following `docs/manual-testing.md`.
+Every iteration ends with **CI green** and a **`.vsix` you can install** (the CI artifact, which CI has already installed into a clean VS Code and smoke-tested).
 
 Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7–9 generalise it to **GitHub AI Credits, a monthly pool with a reserve, and a public API**, released as **v1.0** ([PLAN §9](PLAN.md#9-credits-cycles-pools-and-the-public-api)). From iteration 2 on, budget logic is unit-generic (tokens or credits) and usage is stored in an append-only ledger, so the later iterations add to it rather than rework it.
 
@@ -10,7 +10,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 
 *Updated with every PR (definition of done, item 7). Last update: 2026-10-19, PR #73.*
 
-**Now:** iteration 0, *Test harness*, is ✅ **done**. The first installable build is out: `@q0t4` replies with a stub (README "Today"). **Next up:** iteration 1, *Walking skeleton*, starting with [#8 `buildMessages`](issues/08-build-messages.md) (and [#9 model resolution](issues/09-model-resolution.md) in parallel).
+**Now:** iteration 0, *Test harness*, is ✅ **done**. The first installable build is out, and CI installs and smoke-tests every build: `@q0t4` replies with a stub (README "Today"). **Next up:** iteration 1, *Walking skeleton*, starting with [#8 `buildMessages`](issues/08-build-messages.md) (and [#9 model resolution](issues/09-model-resolution.md) in parallel).
 
 | Iteration | Done | State |
 |---|---|---|
@@ -44,6 +44,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 - **#5:** no `extensionDependencies`, because Copilot Chat is built into VS Code now.
 - **#6:** the coverage gate applies per file.
 - **#7:** the participant icon is a built-in codicon (`pulse`) until the final icon arrives in #41.
+- **#7:** manual install checks are automated. CI installs the packaged `.vsix` into a clean VS Code and smoke-tests it (`test/vsix/`). Typed chat input can't be driven headless without a signed-in Copilot, so only that stays manual ([manual-testing.md](manual-testing.md)).
 
 Both are in PLAN §6–§7.
 
@@ -174,7 +175,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 1. The tests listed under "Tests to write first" were committed **red** before the implementation
 2. All tests are green, and core line and branch coverage is ≥ 90%
 3. CI is green: lint, typecheck, unit (ubuntu and windows), integration (xvfb), package
-4. The manual checks in the issue are done, where the issue lists any
+4. Checks are automated: anything that can run headless is a test (unit, integration, or `.vsix` smoke in `test/vsix/`). Only what genuinely can't run headless goes in `docs/manual-testing.md`, with the reason (decided in #7)
 5. Unit-dependent behaviour is tested in every unit (`describe.each` over tokens and credits), from iteration 2 on
 6. The root `README.md` is updated: the project description and how to use what exists after this PR
 7. This ROADMAP is updated: the [Status](#status) section (progress, done table with the PR, next up) and the checklist tick with the PR number
