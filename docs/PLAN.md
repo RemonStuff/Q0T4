@@ -286,6 +286,7 @@ The iteration 0 issues set up CI before any feature work. Pushes to `docs/**` br
 - **Documentation-only work** goes on a `docs/<topic>` branch (e.g. `docs/plan`). **Automated tests don't run for `docs/**` branches**, neither on push nor for their PRs, so a docs branch must not contain code changes.
 - A PR merges only when CI is green (docs branches excepted) and the issue's definition of done is met. The commit history inside the branch follows red → green → refactor.
 - **Every PR updates the root `README.md`** (decided 2026-10-18), so it always holds a current project description and how to use the project at that point: what can be installed or tried, commands, settings, and the development setup. This applies to docs PRs too. The PR template has a "README updated" checkbox (issue 06).
+- **Every PR updates `docs/ROADMAP.md`** (decided 2026-10-19): the Status section (progress per iteration, the done table with the PR link, next up), the checklist tick with the PR number, and any decision or change of plan the PR makes. The PR template has a "ROADMAP updated" checkbox.
 
 ---
 

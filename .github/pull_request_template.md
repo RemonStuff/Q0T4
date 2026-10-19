@@ -15,5 +15,6 @@ Closes #
 
 - [ ] CI is green (docs/\*\* branches skip the test jobs)
 - [ ] **README updated**: project description and how to use what exists after this PR (docs/PLAN.md §8)
+- [ ] **ROADMAP updated**: Status section (progress, done table with this PR, next up) and the checklist tick (docs/PLAN.md §8)
 - [ ] Manual checks from the issue are done, where it lists any
 - [ ] For a bug fix: the failing test that reproduces it is linked in the bug report
