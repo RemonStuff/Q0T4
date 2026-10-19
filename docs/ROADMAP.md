@@ -8,7 +8,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 
 ## Status
 
-*Updated with every PR (definition of done, item 7). Last update: 2026-10-19, #8 publication. The counts below include the work completed by this change.*
+*Updated with every PR (definition of done, item 7). Last update: 2026-10-19, PR #74. The counts below include the work completed by this change.*
 
 **Now:** iteration 0, *Test harness*, is ✅ **done**. Iteration 1, *Walking skeleton*, has its first core piece: [#8 `buildMessages`](issues/08-build-messages.md) prepares completed history pairs followed by the current prompt. `@q0t4` continues to reply with the installable stub (README "Today"). **Next up:** [#9 model resolution](issues/09-model-resolution.md), then [#10 forwarding](issues/10-chat-handler-forwarding.md).
 
@@ -37,7 +37,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 | #5 Integration runner and fake LM provider | [#70](https://github.com/RemonStuff/Q0T4/pull/70) |
 | #6 GitHub Actions CI | [#72](https://github.com/RemonStuff/Q0T4/pull/72) |
 | #7 Stub sticky participant and installable `.vsix` | [#73](https://github.com/RemonStuff/Q0T4/pull/73) |
-| #8 Core `buildMessages`: prompt and history | PR link added during publication |
+| #8 Core `buildMessages`: prompt and history | [#74](https://github.com/RemonStuff/Q0T4/pull/74) |
 
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
@@ -102,7 +102,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 07 Stub sticky participant and `.vsix` (needs 05, 06). 🎯 **Install and try** · PR #73
 
 ### Iteration 1: Walking skeleton
-- [x] 08 `buildMessages` (needs 03, 04) · PR link added during publication
+- [x] 08 `buildMessages` (needs 03, 04) · PR #74
 - [ ] 09 Model resolution (needs 03, 04) ∥
 - [ ] 10 `chatHandler` forwarding (needs 08, 09)
 - [ ] 11 Adapters and wiring (needs 07, 10)
