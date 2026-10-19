@@ -48,6 +48,8 @@ The full design is in [docs/PLAN.md](docs/PLAN.md).
 
 Requirements: Node.js 22 or newer, and VS Code 1.104 or newer.
 
+The core includes [`buildMessages`](src/core/messages/buildMessages.ts), which prepares completed user/assistant history pairs followed by the current prompt. It preserves text exactly and leaves the supplied history unchanged. Unanswered requests, empty response pairs and orphan responses are omitted. This is tested independently; `@q0t4` still uses the stub until model forwarding is wired in [#11](https://github.com/RemonStuff/Q0T4/issues/11).
+
 ```sh
 npm install
 npm test            # unit tests (Vitest)

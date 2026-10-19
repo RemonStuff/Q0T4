@@ -7,7 +7,7 @@ Replace the stub from #07 with the real handler. Write the thin adapters:
 - `vscodeModel`: wraps `LanguageModelChat`, maps `ChatMessage` to `LanguageModelChatMessage`, takes `.text` from the response, and creates a linked `CancellationTokenSource`
 - `vscodeModelSelector`
 - `chatStreamOutput`: wraps `ChatResponseStream`
-- `historyAdapter`: turns `ChatContext.history` into `HistoryTurn[]`
+- `historyAdapter`: turns `ChatContext.history` into `HistoryTurn[]`, joining each response's markdown parts in their original order into its single `text` string without adding separators. Core `buildMessages` (#08) preserves that already combined text.
 
 Wire them in `extension.ts` and expose the handler through the test API.
 
@@ -16,6 +16,7 @@ Wire them in `extension.ts` and expose the handler through the test API.
 - *(integration)* `vscodeModel.countTokens delegates to LanguageModelChat.countTokens`
 - *(integration)* `vscodeModel cancels the underlying request when its signal fires`
 - *(integration)* `historyAdapter maps request and response turns, including markdown parts`
+- *(integration)* `historyAdapter joins multiple markdown parts of one response in order without changing their text`
 - *(integration)* `chatStreamOutput forwards markdown and progress`
 
 ## Implementation tasks
