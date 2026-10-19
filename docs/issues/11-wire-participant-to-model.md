@@ -46,7 +46,7 @@ Reuse the existing `chatStreamOutput` adapter. Wire the core handler in `extensi
 
 ## Acceptance criteria
 - [x] The listed tests pass locally and core coverage holds
-- [ ] Hosted CI is green on the published head with an installed-and-tested `.vsix` artifact
+- [x] Hosted CI is green on the published head with an installed-and-tested `.vsix` artifact
 - [x] Streaming, selected-model switching and cancellation are automated through the actual VS Code API and installed VSIX using the fake provider
 - Chat-view routing and stickiness stay normal-use checks in `docs/manual-testing.md`. They cannot run headless without real Copilot sign-in; no separate manual model test is required.
 

@@ -8,7 +8,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 
 ## Status
 
-*Updated with every PR (definition of done, item 7). Last update: 2026-10-19, #11 completion (this PR). The counts below include the work completed by this change.*
+*Updated with every PR (definition of done, item 7). Last update: 2026-10-19, PR #77. The counts below include the work completed by this change.*
 
 **Now:** iteration 0, *Test harness*, is ✅ **done**. Iteration 1, *Walking skeleton*, has model forwarding wired through [#11 adapters and wiring](issues/11-wire-participant-to-model.md). `@q0t4` streams replies from the selected model, passes conversation history and cancels the underlying request. Installed-package tests verify forwarding, model switching and cancellation. There is no metering or budget enforcement yet, and unimplemented slash commands do not call a model. **Next up:** [#12 attached references](issues/12-attached-references.md).
 
@@ -40,7 +40,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 | #8 Core `buildMessages`: prompt and history | [#74](https://github.com/RemonStuff/Q0T4/pull/74) |
 | #9 Core model resolution | [#75](https://github.com/RemonStuff/Q0T4/pull/75) |
 | #10 Core chat forwarding and streaming | [#76](https://github.com/RemonStuff/Q0T4/pull/76) |
-| #11 Selected-model adapters and participant wiring | This PR; link added after publication |
+| #11 Selected-model adapters and participant wiring | [#77](https://github.com/RemonStuff/Q0T4/pull/77) |
 
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
@@ -111,7 +111,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 08 `buildMessages` (needs 03, 04) · PR #74
 - [x] 09 Model resolution (needs 03, 04) ∥ · PR #75
 - [x] 10 `chatHandler` forwarding (needs 08, 09) · PR #76
-- [x] 11 Adapters and wiring (needs 07, 10) · this PR
+- [x] 11 Adapters and wiring (needs 07, 10) · PR #77
 - [ ] 12 Attached references (needs 08, 11). 🎯 **Install and try**
 
 ### Iteration 2: Counting and the hard stop
