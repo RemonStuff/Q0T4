@@ -101,7 +101,7 @@ describe("reference orchestration", () => {
 
   it("does not deduplicate references by their kind id", async () => {
     const { request, deps, reader, model } = fixture();
-    vi.spyOn(reader, "read").mockImplementation(async (ref) => ({
+    const read = vi.spyOn(reader, "read").mockImplementation(async (ref) => ({
       label: "text",
       text: String(ref.value),
     }));
@@ -115,7 +115,7 @@ describe("reference orchestration", () => {
       },
       deps,
     );
-    expect(reader.calls).toEqual([]);
+    expect(read).toHaveBeenCalledTimes(2);
     expect(model.calls.sendRequest[0]?.[0]?.text).toBe(
       "text\n```\nfirst\n```\n\ntext\n```\nsecond\n```",
     );

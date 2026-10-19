@@ -29,21 +29,4 @@ export default defineConfig([
     installExtensions: [`./q0t4-${q0t4Version}.vsix`],
     mocha,
   },
-  {
-    label: "reference-red",
-    files: "out/test/integration/references.red.js",
-    version,
-    extensionDevelopmentPath: [".", "test/fixtures/fake-lm-provider"],
-    launchArgs: [resolve("test/fixtures/reference-workspace")],
-    mocha,
-  },
-  {
-    label: "reference-vsix-red",
-    files: "out/test/vsix/references.red.js",
-    version,
-    extensionDevelopmentPath: ["test/fixtures/fake-lm-provider"],
-    launchArgs: [resolve("test/fixtures/reference-workspace")],
-    installExtensions: [`./q0t4-${q0t4Version}.vsix`],
-    mocha,
-  },
 ]);

@@ -50,6 +50,31 @@ describe("referenceReader", () => {
     }
   });
 
+  it("skips image file URIs instead of decoding their bytes as source text", async () => {
+    for (const suffix of [".png", ".JPG", ".gif", ".webp", ".avif", ".heic", ".tiff"]) {
+      assert.equal(
+        await referenceReader.read({
+          id: "image",
+          value: contextUri().with({ path: `${contextUri().path}${suffix}` }),
+        }),
+        undefined,
+      );
+    }
+  });
+
+  it("preserves Unicode and line endings while refusing NUL-containing binary content", async () => {
+    const uri = vscode.Uri.joinPath(contextUri(), "../temporary-reference.txt");
+    try {
+      const text = "caf\u00e9\r\n\u{1f642}\r\n";
+      await vscode.workspace.fs.writeFile(uri, new TextEncoder().encode(text));
+      assert.equal((await referenceReader.read({ id: "file", value: uri }))?.text, text);
+      const binary = await vscode.workspace.openTextDocument({ content: "A\0B" });
+      assert.equal(await referenceReader.read({ id: "binary", value: binary.uri }), undefined);
+    } finally {
+      await vscode.workspace.fs.delete(uri);
+    }
+  });
+
   it("rejects actual file read errors instead of claiming unsupported content", async () => {
     await assert.rejects(
       referenceReader.read({

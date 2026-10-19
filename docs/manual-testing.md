@@ -6,11 +6,14 @@
 |---|---|
 | Behaviour of the code | Unit tests (`npm test`) and integration tests (`npm run test:integration`), using a fake model |
 | Message/history conversion, token-count delegation, output and cancellation resource cleanup | Adapter integration tests (`npm run test:integration`), including closure before the first chunk and failure paths |
+| Attached file/string/selection content, ordering, unsupported values and safe read failures | Adapter and real-handler tests plus installed-VSIX tests inspect the actual fake-provider messages |
 | The packaged `.vsix`: installs, ships no sources, activates, contributes the participant and commands, streams replies, switches models and cancels the provider | `.vsix` smoke tests (`npm run test:vsix`, `test/vsix/`). CI runs them on every build before uploading the artifact. |
 
 Iteration 1's forwarding, selected-model switching and cancellation checks run against the fake `q0t4-test` provider in real VS Code, including the installed package. The cancellation tests wait for the provider to confirm it saw cancellation; stopping visible text alone is not proof. No automated test calls real Copilot, and no separate manual model test is required.
 
 This page lists only what **can't** be automated, and why.
+
+Assistant-run integration and installed-VSIX tests run on GitHub-hosted runners, monitored through `gh`, not in local test VS Code windows. Lint, typechecks and unit tests run locally. Expected-red hosted checks are temporary test-first evidence, not final acceptance.
 
 ## What still needs a human, and why
 
@@ -21,6 +24,6 @@ What this leaves to normal use, with your own Copilot; no separate test pass is 
 - [ ] `@q0t4 …` typed in the Chat view reaches Q0T4. The participant contribution and handler are tested; only VS Code's own routing isn't.
 - [ ] A follow-up message without `@q0t4` still goes to Q0T4 (sticky). `isSticky: true` is tested in the installed manifest; only VS Code honouring it isn't.
 
-For normal use, sign in to Copilot and choose a model in Chat. `@q0t4` forwards your prompt and history; it does not meter usage or enforce budgets yet. Attached files and slash commands are not implemented.
+For normal use, sign in to Copilot and choose a model in Chat. `@q0t4` forwards your prompt, history and explicitly attached text/files/selections; it does not meter usage or enforce budgets yet. Slash commands are not implemented.
 
 Report anything off with the bug template; the fix starts with a failing test.

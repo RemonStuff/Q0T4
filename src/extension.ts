@@ -32,6 +32,7 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
       {
         prompt: request.prompt,
         history: historyAdapter(chatContext.history),
+        references: request.references,
         model: vscodeModel(request.model),
         ...(request.command === undefined ? {} : { command: request.command }),
       },

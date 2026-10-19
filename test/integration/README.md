@@ -9,6 +9,10 @@ No test ever calls a real Copilot model. A unit test (`test/unit/tooling/integra
 
 ## Run
 
+Assistant-run tests execute on GitHub-hosted runners only. Inspect them with `gh run view <run> --repo RemonStuff/Q0T4` and `gh run view <run> --repo RemonStuff/Q0T4 --log`; do not launch a local test VS Code window on the maintainer's Mac.
+
+The runner uses:
+
 ```sh
 npm run test:integration
 ```
@@ -35,6 +39,8 @@ VS Code has no API to invoke a chat participant, so `activate()` returns test ho
 The hook and registered participant use the same real handler. Tests assert actual provider messages and cancellation, not just a matching visible reply. The installed-VSIX tests reuse the fake provider and test helpers while loading Q0T4 only from the installed package.
 
 Cancellation tests use a held response and wait for provider readback, with a bounded test-only deadline. Cleanup releases the hold even if a test fails; no timing sleeps or production timeouts are needed.
+
+Reference tests open the dedicated `test/fixtures/reference-workspace` folder. Adapter tests verify document reads, range boundaries, unsaved text, Unicode and unsupported values. Shared forwarding cases run against both the development extension and the installed package, asserting exact provider messages rather than a scripted answer. Temporary test files and unsaved fixture edits are cleaned up.
 
 ## Debugging
 
