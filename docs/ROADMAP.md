@@ -136,3 +136,5 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 4. The manual checks in the issue are done, where the issue lists any
 5. Unit-dependent behaviour is tested in every unit (`describe.each` over tokens and credits), from iteration 2 on
 6. The root `README.md` is updated: the project description and how to use what exists after this PR
+
+<!-- CI skip check (throwaway) -->
