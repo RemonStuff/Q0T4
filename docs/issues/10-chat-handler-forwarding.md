@@ -48,7 +48,7 @@ The orchestrator for a single chat request, written entirely against ports: reso
 - [x] Keep the handler a pipeline of named steps; scope model-error catches to model operations so output failures stay explicit
 
 ## Acceptance criteria
-- [ ] The listed tests pass, core coverage holds, and CI is green
+- [x] The listed tests pass, core coverage holds, and CI is green
 
 ## Depends on
 #08, #09
