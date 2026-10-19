@@ -24,7 +24,7 @@ export function referenceForwardingTests(getApi: () => Promise<Q0T4Exports>) {
       const output = recordingStream();
       try {
         const result = await api.test.handleRequest(
-          { ...chatRequest(await fakeModel(), "question"), references },
+          chatRequest(await fakeModel(), "question", undefined, references),
           {
             history: [
               {

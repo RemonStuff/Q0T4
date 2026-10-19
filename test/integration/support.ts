@@ -24,11 +24,12 @@ export function chatRequest(
   model: vscode.LanguageModelChat,
   prompt = "hi",
   command?: string,
+  references: vscode.ChatRequest["references"] = [],
 ): vscode.ChatRequest {
   return {
     prompt,
     command,
-    references: [],
+    references,
     toolReferences: [],
     model,
     get toolInvocationToken(): never {

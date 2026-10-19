@@ -8,7 +8,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 
 ## Status
 
-*Updated with every PR (definition of done, item 7). Last update: 2026-10-19, issue #12 (PR pending). The counts below include the work completed by this change.*
+*Updated with every PR (definition of done, item 7). Last update: 2026-10-19, PR #78. The counts below include the work completed by this change.*
 
 **Now:** iterations 0, *Test harness*, and 1, *Walking skeleton*, are ✅ **done**. `@q0t4` streams replies from the selected model, passes history and attached text/files/selections, and cancels the underlying request. Installed-package tests verify actual reference content, model switching and cancellation. There is no metering or budget enforcement yet, and unimplemented slash commands do not call a model. **Next up:** [#13 count input](issues/13-count-input.md), starting iteration 2.
 
@@ -41,7 +41,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 | #9 Core model resolution | [#75](https://github.com/RemonStuff/Q0T4/pull/75) |
 | #10 Core chat forwarding and streaming | [#76](https://github.com/RemonStuff/Q0T4/pull/76) |
 | #11 Selected-model adapters and participant wiring | [#77](https://github.com/RemonStuff/Q0T4/pull/77) |
-| #12 Attached references | PR pending |
+| #12 Attached references | [#78](https://github.com/RemonStuff/Q0T4/pull/78) |
 
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
@@ -114,7 +114,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 09 Model resolution (needs 03, 04) ∥ · PR #75
 - [x] 10 `chatHandler` forwarding (needs 08, 09) · PR #76
 - [x] 11 Adapters and wiring (needs 07, 10) · PR #77
-- [x] 12 Attached references (needs 08, 11) · PR pending. 🎯 **Install and try**
+- [x] 12 Attached references (needs 08, 11) · PR #78. 🎯 **Install and try**
 
 ### Iteration 2: Counting and the hard stop
 - [ ] 13 `countInput` and the `CostModel` interface (needs 10)
