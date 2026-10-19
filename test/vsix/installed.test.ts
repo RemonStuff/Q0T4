@@ -5,6 +5,15 @@ import * as assert from "node:assert/strict";
 import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import * as vscode from "vscode";
+import {
+  FAKE_PROVIDER_ID,
+  FAKE_VENDOR,
+  chatRequest,
+  fakeModel,
+  recordingStream,
+  withDeadline,
+} from "../integration/support";
+import type { ProviderState } from "../integration/support";
 
 const Q0T4_ID = "RemonStuff.q0t4";
 const repoRoot = resolve(__dirname, "../../..");
@@ -37,6 +46,13 @@ function participant(): Participant {
 }
 
 describe("installed .vsix", () => {
+  before(async () => {
+    await vscode.extensions.getExtension(FAKE_PROVIDER_ID)?.activate();
+  });
+
+  beforeEach(async () => {
+    await vscode.commands.executeCommand("q0t4-test.setScript", ["Installed ", "model reply"]);
+  });
   it("is installed from the package, not loaded from the source folder", () => {
     const path = resolve(installed().extensionPath);
     assert.notEqual(path, repoRoot);
@@ -72,20 +88,97 @@ describe("installed .vsix", () => {
       assert.ok(command.description, `/${command.name} has no description`);
   });
 
-  it("the installed participant replies with the stub message", async () => {
+  it("the installed participant streams the selected fake model reply", async () => {
     const api = await installed().activate();
-    const markdown: string[] = [];
-    const stream = {
-      markdown: (value: string | vscode.MarkdownString) =>
-        markdown.push(typeof value === "string" ? value : value.value),
-    } as unknown as vscode.ChatResponseStream;
-    await api.test.handleRequest(
-      { prompt: "hi" } as vscode.ChatRequest,
-      { history: [] },
-      stream,
-      new vscode.CancellationTokenSource().token,
-    );
-    assert.deepEqual(markdown, ["Q0T4 is installed. Budgeting isn't wired up yet."]);
-    assert.deepEqual(api.test.requests.at(-1), "hi");
+    const model = await fakeModel();
+    const { stream, markdown } = recordingStream();
+    const source = new vscode.CancellationTokenSource();
+    try {
+      const result = await api.test.handleRequest(
+        chatRequest(model),
+        { history: [] },
+        stream,
+        source.token,
+      );
+      assert.deepEqual(markdown.join(""), "Installed model reply");
+      assert.deepEqual(result, { metadata: { outcome: "completed", model: model.name } });
+      assert.deepEqual(api.test.requests.at(-1), "hi");
+    } finally {
+      source.dispose();
+    }
+  });
+
+  it("the installed participant uses the newly selected model on each request", async () => {
+    const api = await installed().activate();
+    const models = await vscode.lm.selectChatModels({ vendor: FAKE_VENDOR });
+    assert.equal(models.length, 2);
+    const source = new vscode.CancellationTokenSource();
+    try {
+      for (const model of models) {
+        const result = await api.test.handleRequest(
+          chatRequest(model),
+          { history: [] },
+          recordingStream().stream,
+          source.token,
+        );
+        assert.deepEqual(result, { metadata: { outcome: "completed", model: model.name } });
+      }
+      const state = await vscode.commands.executeCommand<ProviderState>("q0t4-test.getState");
+      assert.deepEqual(
+        state?.requests.map((request) => request.model),
+        models.map((model) => model.name),
+      );
+    } finally {
+      source.dispose();
+    }
+  });
+
+  it("the installed participant cancels the provider and stops streaming", async () => {
+    const api = await installed().activate();
+    const model = await fakeModel();
+    await vscode.commands.executeCommand("q0t4-test.hold");
+    const source = new vscode.CancellationTokenSource();
+    const { stream, markdown } = recordingStream(() => source.cancel());
+    try {
+      assert.deepEqual(
+        await withDeadline(
+          api.test.handleRequest(chatRequest(model), { history: [] }, stream, source.token),
+        ),
+        { metadata: { outcome: "cancelled", model: model.name } },
+      );
+      assert.deepEqual(markdown, ["Installed "]);
+      assert.equal(
+        await withDeadline(vscode.commands.executeCommand("q0t4-test.waitForCancellation")),
+        true,
+      );
+    } finally {
+      source.cancel();
+      await vscode.commands.executeCommand("q0t4-test.release");
+      source.dispose();
+    }
+  });
+
+  it("the installed participant does not send unimplemented commands to a model", async () => {
+    const api = await installed().activate();
+    const source = new vscode.CancellationTokenSource();
+    const { stream, markdown } = recordingStream();
+    try {
+      assert.deepEqual(
+        await api.test.handleRequest(
+          chatRequest(await fakeModel(), "", "status"),
+          { history: [] },
+          stream,
+          source.token,
+        ),
+        { metadata: { outcome: "error" } },
+      );
+      assert.deepEqual(markdown, [
+        "Slash commands aren't available yet. Send a normal message to talk to the selected model.",
+      ]);
+      const state = await vscode.commands.executeCommand<ProviderState>("q0t4-test.getState");
+      assert.deepEqual(state?.requests, []);
+    } finally {
+      source.dispose();
+    }
   });
 });

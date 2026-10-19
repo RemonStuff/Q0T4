@@ -21,12 +21,20 @@ This builds the extension, compiles `test/integration` with `tsconfig.integratio
 | --------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `q0t4-test.setScript(chunks: string[])` | The next replies stream these chunks; clears any scripted error                                           |
 | `q0t4-test.setError(code)`              | The next requests fail with `LanguageModelError[code]`, e.g. `"Blocked"`, `"NoPermissions"`, `"NotFound"` |
+| `q0t4-test.getState()`                  | Read the model names/messages received and whether the provider observed cancellation                     |
+| `q0t4-test.hold()`                      | Pause after reporting a chunk until cancellation or explicit release                                      |
+| `q0t4-test.waitForCancellation()`       | Resolve `true` when the provider sees cancellation; resolve `false` if released without that proof        |
+| `q0t4-test.release()`                   | Release held responses and pending observers during test cleanup                                          |
 
-Token counts are `ceil(chars / 4)`, matching `FakeModel` in the unit tests.
+The provider exposes two models, so tests can prove that the selected model changes between requests. `setScript` also resets observations, releases held responses and clears hold mode. Token counts are `ceil(chars / 4)`, matching `FakeModel` in the unit tests.
 
 ## Calling the participant
 
 VS Code has no API to invoke a chat participant, so `activate()` returns test hooks under `exports.test` (e.g. `handleRequest`), and tests call them with a recording response stream.
+
+The hook and registered participant use the same real handler. Tests assert actual provider messages and cancellation, not just a matching visible reply. The installed-VSIX tests reuse the fake provider and test helpers while loading Q0T4 only from the installed package.
+
+Cancellation tests use a held response and wait for provider readback, with a bounded test-only deadline. Cleanup releases the hold even if a test fails; no timing sleeps or production timeouts are needed.
 
 ## Debugging
 
