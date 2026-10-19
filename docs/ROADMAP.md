@@ -8,7 +8,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 
 ## Status
 
-*Updated with every PR (definition of done, item 7). Last update: 2026-10-19, #9 publication. The counts below include the work completed by this change.*
+*Updated with every PR (definition of done, item 7). Last update: 2026-10-19, PR #75. The counts below include the work completed by this change.*
 
 **Now:** iteration 0, *Test harness*, is ✅ **done**. Iteration 1, *Walking skeleton*, has its first two core pieces: [#8 `buildMessages`](issues/08-build-messages.md) prepares the conversation, and [#9 model resolution](issues/09-model-resolution.md) selects the requested model or a Copilot fallback without making a model request. `@q0t4` continues to reply with the installable stub (README "Today"). **Next up:** [#10 forwarding](issues/10-chat-handler-forwarding.md), then [#11 adapters and wiring](issues/11-wire-participant-to-model.md).
 
@@ -38,7 +38,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 | #6 GitHub Actions CI | [#72](https://github.com/RemonStuff/Q0T4/pull/72) |
 | #7 Stub sticky participant and installable `.vsix` | [#73](https://github.com/RemonStuff/Q0T4/pull/73) |
 | #8 Core `buildMessages`: prompt and history | [#74](https://github.com/RemonStuff/Q0T4/pull/74) |
-| #9 Core model resolution | PR link added during publication |
+| #9 Core model resolution | [#75](https://github.com/RemonStuff/Q0T4/pull/75) |
 
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
@@ -105,7 +105,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 
 ### Iteration 1: Walking skeleton
 - [x] 08 `buildMessages` (needs 03, 04) · PR #74
-- [x] 09 Model resolution (needs 03, 04) ∥ · PR link added during publication
+- [x] 09 Model resolution (needs 03, 04) ∥ · PR #75
 - [ ] 10 `chatHandler` forwarding (needs 08, 09)
 - [ ] 11 Adapters and wiring (needs 07, 10)
 - [ ] 12 Attached references (needs 08, 11). 🎯 **Install and try**
