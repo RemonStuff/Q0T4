@@ -50,6 +50,8 @@ Requirements: Node.js 22 or newer, and VS Code 1.104 or newer.
 
 The core includes [`buildMessages`](src/core/messages/buildMessages.ts), which prepares completed user/assistant history pairs followed by the current prompt. It preserves text exactly and leaves the supplied history unchanged. Unanswered requests, empty response pairs and orphan responses are omitted. This is tested independently; `@q0t4` still uses the stub until model forwarding is wired in [#11](https://github.com/RemonStuff/Q0T4/issues/11).
 
+[`resolveModel`](src/core/models/resolveModel.ts) keeps the requested model unless the caller marks it unavailable. It then queries Copilot models once, preferring the same family before the first available result, or returns a typed `noModel` result. [`formatNoModel`](src/core/format/formatNoModel.ts) supplies the sign-in guidance for that result. Resolution never probes a model or sends a prompt; handler wiring and retry-on-`NotFound` come later.
+
 ```sh
 npm install
 npm test            # unit tests (Vitest)
