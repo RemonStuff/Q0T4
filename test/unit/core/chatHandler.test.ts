@@ -21,6 +21,32 @@ function fixture(options: FakeModelOptions = {}) {
 }
 
 describe("chatHandler", () => {
+  it.each(["status", "subjects", "use", "unknown", ""])(
+    "rejects an unimplemented command without selecting, sending or counting (%s)",
+    async (command) => {
+      const { request, deps, model, output, selector } = fixture();
+      const select = vi.spyOn(selector, "select");
+      const commandRequest = { ...request, command };
+      expect(await chatHandler(commandRequest, deps)).toEqual({ metadata: { outcome: "error" } });
+      expect(output.text).toBe(
+        "Slash commands aren't available yet. Send a normal message to talk to the selected model.",
+      );
+      expect(model.calls.sendRequest).toEqual([]);
+      expect(model.calls.countTokens).toEqual([]);
+      expect(select).not.toHaveBeenCalled();
+    },
+  );
+
+  it("keeps an already-cancelled slash command silent", async () => {
+    const { request, deps, output, signal } = fixture();
+    signal.cancel();
+    const commandRequest = { ...request, command: "status" };
+    expect(await chatHandler(commandRequest, deps)).toEqual({
+      metadata: { outcome: "cancelled" },
+    });
+    expect(output.calls).toEqual([]);
+  });
+
   it("streams every chunk from FakeModel to the output in order", async () => {
     const { request, deps, output } = fixture({ chunks: ["Hello", " ", "world"] });
 

@@ -13,6 +13,7 @@ export interface ChatHandlerRequest {
   readonly prompt: string;
   readonly history: readonly HistoryTurn[];
   readonly model: ModelPort;
+  readonly command?: string;
   readonly availability?: "available" | "unavailable";
 }
 
@@ -35,6 +36,12 @@ export async function chatHandler(
 ): Promise<ChatHandlerResult> {
   const { selector, output, signal } = deps;
   if (signal.isCancellationRequested) return result("cancelled");
+  if (request.command !== undefined) {
+    output.markdown(
+      "Slash commands aren't available yet. Send a normal message to talk to the selected model.",
+    );
+    return result("error");
+  }
 
   let resolution: ModelResolution;
   try {

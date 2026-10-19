@@ -4,7 +4,9 @@
 
 **Weekly budgets for GitHub Copilot Chat, per repo.**
 
-Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Copilot Chat panel. You chat through `@q0t4` as you would with Copilot. Q0T4 forwards your prompt to the model you picked and measures what each request costs. Every repo gets its own **weekly budget**, and once a repo has used it up, chats on that repo stop until the week resets.
+Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Copilot Chat panel. You chat through `@q0t4` as you would with Copilot. It forwards your prompt and conversation history to the model you picked. Per-repo metering and weekly budget enforcement are planned, **not active yet**.
+
+**Planned budgeting features:**
 
 - **Subjects are repos.** A prompt is charged to the repo you're working in (`owner/repo` from its git remote). `/use <subject>` overrides that.
 - **Tokens or AI Credits.** Budgets can be counted in tokens, or in GitHub AI Credits (how Copilot bills since June 2026), using live per-model prices.
@@ -12,7 +14,7 @@ Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Co
 - **Hard stop.** Requests over budget are refused up front, and replies are cut off mid-stream when the budget runs out.
 - **Public API.** Other extensions can check budgets and send metered requests.
 
-> **Status: in development.** You can install a preview build. `@q0t4` exists and is sticky, but it only replies "Budgeting isn't wired up yet." Forwarding to Copilot comes next. See [the roadmap](docs/ROADMAP.md#status) for progress.
+> **Status: in development.** `@q0t4` streams replies from the selected model and supports cancellation. Requests use your Copilot allowance, but Q0T4 does not measure or limit usage yet. Attached files and slash commands are not implemented. See [the roadmap](docs/ROADMAP.md#status) for progress.
 
 ## How to use it
 
@@ -20,8 +22,9 @@ Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Co
 
 1. Download the latest build: open the [CI runs on `main`](https://github.com/RemonStuff/Q0T4/actions/workflows/ci.yml?query=branch%3Amain), pick the newest green run, and download the **`q0t4-vsix`** artifact. It's a zip containing `q0t4-<version>.vsix`. Or build it yourself with `npm run package`.
 2. In VS Code (1.104 or newer): Extensions view → `…` → **Install from VSIX…** and pick the `.vsix`.
-3. Open the Chat view and send `@q0t4 hi`. You'll get "Q0T4 is installed. Budgeting isn't wired up yet."
-4. Send another message without typing `@q0t4`: it still goes to Q0T4, because the participant is sticky. `/status`, `/subjects` and `/use` already show up as commands but don't do anything yet.
+3. Sign in to GitHub Copilot, select a model in the Chat picker, and send `@q0t4 hi`. The reply streams from that model. VS Code may ask for permission on the first request.
+4. Send another message without typing `@q0t4`: it still goes to Q0T4, because the participant is sticky. Pick a different model for the next request or use Stop to cancel an answer.
+5. `/status`, `/subjects` and `/use` appear in the UI but report that slash commands are not available yet. They do not call a model.
 
 To remove it, uninstall **Q0T4** from the Extensions view.
 
@@ -41,18 +44,22 @@ The full design is in [docs/PLAN.md](docs/PLAN.md).
 
 ## Known limits
 
-- Only chats through `@q0t4` are counted, not inline completions, agent mode or the normal Copilot chat.
-- Q0T4's counts are estimates and won't exactly match how GitHub meters Copilot.
+- There is no metering or budget enforcement yet. Planned budgeting applies only to chats through `@q0t4`, not inline completions, agent mode or normal Copilot chat.
+- Attached files and selections are not read or inlined yet ([#12](https://github.com/RemonStuff/Q0T4/issues/12)); tool references are not executed. Do not assume the model can see your files.
+- Detailed consent/quota error messages and retry-on-missing-model come in [#38](https://github.com/RemonStuff/Q0T4/issues/38). For now model failures show a generic retry message and preserve any partial reply.
+- Future token counts will be estimates and will not exactly match how GitHub meters Copilot.
 
 ## Development
 
 Requirements: Node.js 22 or newer, and VS Code 1.104 or newer.
 
-The core includes [`buildMessages`](src/core/messages/buildMessages.ts), which prepares completed user/assistant history pairs followed by the current prompt. It preserves text exactly and leaves the supplied history unchanged. Unanswered requests, empty response pairs and orphan responses are omitted. This is tested independently; `@q0t4` still uses the stub until model forwarding is wired in [#11](https://github.com/RemonStuff/Q0T4/issues/11).
+The core includes [`buildMessages`](src/core/messages/buildMessages.ts), which prepares completed user/assistant history pairs followed by the current prompt. It preserves text exactly and leaves the supplied history unchanged. Unanswered requests, empty response pairs and orphan responses are omitted.
 
-[`resolveModel`](src/core/models/resolveModel.ts) keeps the requested model unless the caller marks it unavailable. It then queries Copilot models once, preferring the same family before the first available result, or returns a typed `noModel` result. [`formatNoModel`](src/core/format/formatNoModel.ts) supplies the sign-in guidance for that result. Resolution never probes a model or sends a prompt; VS Code adapter wiring and retry-on-`NotFound` come later.
+[`resolveModel`](src/core/models/resolveModel.ts) keeps the requested model unless the caller marks it unavailable. It then queries Copilot models once, preferring the same family before the first available result, or returns a typed `noModel` result. [`formatNoModel`](src/core/format/formatNoModel.ts) supplies the sign-in guidance for that result. Resolution never probes a model or sends a prompt; retry-on-`NotFound` comes later.
 
-[`chatHandler`](src/core/chatHandler.ts) combines model resolution and message building, forwards a request through `ModelPort`, and streams each text chunk to the supplied output. It checks cancellation, closes unfinished streams, and reports model failures with a friendly message while preserving partial replies. Its JSON-safe metadata reports the outcome and the model used, without inventing token counts or costs; full usage metadata comes in [#18](https://github.com/RemonStuff/Q0T4/issues/18). This core pipeline is tested with fakes, not connected to the visible participant yet.
+[`chatHandler`](src/core/chatHandler.ts) combines model resolution and message building, forwards a request through `ModelPort`, and streams each text chunk to the supplied output. It checks cancellation, closes unfinished streams, and reports model failures with a friendly message while preserving partial replies. Its JSON-safe metadata reports the outcome and the model used, without inventing token counts or costs; full usage metadata comes in [#18](https://github.com/RemonStuff/Q0T4/issues/18).
+
+[`extension.ts`](src/extension.ts) connects that core pipeline to the real participant and the integration-test hook. The [adapters](src/adapters/) convert history and messages, use each request's selected model, and link cancellation without retaining listeners after the request ends. Integration and installed-VSIX tests use the fake `q0t4-test` provider to verify forwarding, model switching and cancellation; they never call real Copilot.
 
 ```sh
 npm install

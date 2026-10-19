@@ -1,7 +1,10 @@
 // Composition root: wires adapters to the core.
 import * as vscode from "vscode";
 import { chatStreamOutput } from "./adapters/chatStreamOutput";
-import { handleStubRequest } from "./core/stub";
+import { historyAdapter } from "./adapters/historyAdapter";
+import { vscodeModel } from "./adapters/vscodeModel";
+import { vscodeModelSelector } from "./adapters/vscodeModelSelector";
+import { chatHandler } from "./core/chatHandler";
 
 export const PARTICIPANT_ID = "q0t4.chat";
 
@@ -22,9 +25,17 @@ export interface Q0T4Exports {
 
 export function activate(context: vscode.ExtensionContext): Q0T4Exports {
   const requests: string[] = [];
-  const handleRequest: vscode.ChatRequestHandler = (request, _context, stream) => {
+  const handleRequest: vscode.ChatRequestHandler = (request, chatContext, stream, token) => {
     requests.push(request.prompt);
-    handleStubRequest(chatStreamOutput(stream));
+    return chatHandler(
+      {
+        prompt: request.prompt,
+        history: historyAdapter(chatContext.history),
+        model: vscodeModel(request.model),
+        ...(request.command === undefined ? {} : { command: request.command }),
+      },
+      { selector: vscodeModelSelector, output: chatStreamOutput(stream), signal: token },
+    );
   };
 
   const participant = vscode.chat.createChatParticipant(PARTICIPANT_ID, handleRequest);
