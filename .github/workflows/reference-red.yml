@@ -1,0 +1,43 @@
+name: Attachment TDD (expected failures)
+
+on:
+  push:
+    branches: [feat/12-attached-references]
+
+permissions:
+  contents: read
+
+jobs:
+  expected-red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build && npx tsc -p tsconfig.integration.json
+      - name: Require ten expected adapter and handler failures
+        shell: bash
+        run: |
+          set +e
+          xvfb-run -a npx vscode-test --label reference-red > "$RUNNER_TEMP/references-red.log" 2>&1
+          result=$?
+          set -e
+          cat "$RUNNER_TEMP/references-red.log"
+          test "$result" -ne 0
+          grep -Eq '  0 passing' "$RUNNER_TEMP/references-red.log"
+          grep -Eq '  10 failing' "$RUNNER_TEMP/references-red.log"
+      - run: npm run package
+      - name: Require three expected installed-package failures
+        shell: bash
+        run: |
+          set +e
+          xvfb-run -a npx vscode-test --label reference-vsix-red > "$RUNNER_TEMP/references-vsix-red.log" 2>&1
+          result=$?
+          set -e
+          cat "$RUNNER_TEMP/references-vsix-red.log"
+          test "$result" -ne 0
+          grep -Eq '  0 passing' "$RUNNER_TEMP/references-vsix-red.log"
+          grep -Eq '  3 failing' "$RUNNER_TEMP/references-vsix-red.log"

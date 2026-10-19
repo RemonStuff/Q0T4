@@ -240,6 +240,7 @@ prices/table.json                   last good price table (§9.1)
 - **Ports and adapters.** All decisions live in `src/core` and are unit tested. Adapters are thin and covered only by integration tests.
 - **Bugs.** Every bug fix starts with a failing test that reproduces it. The bug issue template requires a link to that test.
 - **No real models.** No test, unit or integration, calls a real Copilot model.
+- **No local test VS Code windows.** Assistant-run integration and installed-VSIX tests run on GitHub-hosted runners and are inspected through `gh`. Lint, typechecks and core red/green tests run locally. When adapter behavior needs a red-first check, use a temporary hosted expected-failure check, then remove it and require the ordinary suites to pass before merge. Expected-red proof is not final acceptance.
 
 ### Test doubles (`test/fakes/`, each with its own tests)
 - **`FakeModel`**: scripted streamed chunks; deterministic `countTokens = ceil(chars / 4)` (overridable per test); errors injected before the first chunk or after chunk *n*; watches the cancellation signal and stops yielding once it's cancelled; records `sendRequest` and `countTokens` calls.

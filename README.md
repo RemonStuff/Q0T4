@@ -84,6 +84,8 @@ Branches named `docs/…` skip the test jobs.
 
 Integration tests use a fake language-model provider (vendor `q0t4-test`) and never call real Copilot; see [test/integration/README.md](test/integration/README.md).
 
+Assistant-run integration and installed-VSIX tests run only on GitHub-hosted runners, monitored through the GitHub CLI (`gh`). They must not launch test VS Code windows on the maintainer's Mac. Lint, typechecks and unit tests still run locally.
+
 Press **F5** in VS Code ("Run Extension") to start an Extension Development Host.
 
 The project is strictly test-driven, with core logic kept apart from VS Code behind small interfaces (ports and adapters):

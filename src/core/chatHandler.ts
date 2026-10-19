@@ -2,6 +2,11 @@ import type { CancellationSignal } from "../ports/CancellationSignal";
 import type { ChatOutputPort } from "../ports/ChatOutputPort";
 import type { ModelPort } from "../ports/ModelPort";
 import type { ModelSelectorPort } from "../ports/ModelSelectorPort";
+import type {
+  PromptReference,
+  ReferenceReaderPort,
+  ResolvedReference,
+} from "../ports/ReferenceReaderPort";
 import { formatRequestError } from "./errors/formatRequestError";
 import { formatNoModel } from "./format/formatNoModel";
 import { buildMessages } from "./messages/buildMessages";
@@ -14,6 +19,7 @@ export interface ChatHandlerRequest {
   readonly history: readonly HistoryTurn[];
   readonly model: ModelPort;
   readonly command?: string;
+  readonly references?: readonly PromptReference[];
   readonly availability?: "available" | "unavailable";
 }
 
@@ -21,6 +27,7 @@ export interface Deps {
   readonly selector: ModelSelectorPort;
   readonly output: ChatOutputPort;
   readonly signal: CancellationSignal;
+  readonly referenceReader: ReferenceReaderPort;
 }
 
 export interface ChatHandlerResult {
@@ -57,7 +64,28 @@ export async function chatHandler(
   }
 
   const model = resolution.model;
-  const messages = buildMessages(request.prompt, request.history);
+  const references: ResolvedReference[] = [];
+  let skipped = false;
+  for (const ref of [...(request.references ?? [])].reverse()) {
+    let resolved: ResolvedReference | undefined;
+    try {
+      resolved = await deps.referenceReader.read(ref);
+    } catch {
+      if (signal.isCancellationRequested) return result("cancelled");
+      output.markdown(
+        "Q0T4 couldn't read an attached reference. Check that it is accessible and try again.",
+      );
+      return result("error");
+    }
+    if (signal.isCancellationRequested) return result("cancelled");
+    if (resolved === undefined) skipped = true;
+    else references.push(resolved);
+  }
+  if (skipped) {
+    output.progress("Some attached references could not be included (unsupported content).");
+  }
+  if (signal.isCancellationRequested) return result("cancelled");
+  const messages = buildMessages(request.prompt, request.history, references);
   let stream: AsyncIterable<string>;
   try {
     stream = await model.sendRequest(messages, signal);
