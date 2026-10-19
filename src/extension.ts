@@ -1,4 +1,9 @@
-// Composition root: wires adapters to the core. Nothing to wire yet (#7, #11).
+// Composition root: wires adapters to the core.
+import * as vscode from "vscode";
+import { chatStreamOutput } from "./adapters/chatStreamOutput";
+import { handleStubRequest } from "./core/stub";
+
+export const PARTICIPANT_ID = "q0t4.chat";
 
 /**
  * Hooks for integration tests. VS Code has no API to invoke a chat
@@ -6,19 +11,23 @@
  * API for other extensions (#63) will sit next to `test`, not inside it.
  */
 export interface Q0T4TestHooks {
-  handleRequest(): Promise<never>;
+  readonly handleRequest: vscode.ChatRequestHandler;
 }
 
 export interface Q0T4Exports {
   readonly test: Q0T4TestHooks;
 }
 
-export function activate(): Q0T4Exports {
-  return {
-    test: {
-      handleRequest: () => Promise.reject(new Error("@q0t4 isn't wired up yet (#11).")),
-    },
+export function activate(context: vscode.ExtensionContext): Q0T4Exports {
+  const handleRequest: vscode.ChatRequestHandler = (_request, _context, stream) => {
+    handleStubRequest(chatStreamOutput(stream));
   };
+
+  const participant = vscode.chat.createChatParticipant(PARTICIPANT_ID, handleRequest);
+  participant.iconPath = new vscode.ThemeIcon("pulse");
+  context.subscriptions.push(participant);
+
+  return { test: { handleRequest } };
 }
 
 export function deactivate(): void {}

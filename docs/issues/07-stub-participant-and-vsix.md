@@ -12,11 +12,11 @@ End iteration 0 with something installable. Contribute the `@q0t4` chat particip
 - *(integration)* `handleRequest writes the stub message to the response stream`
 
 ## Implementation tasks
-- [ ] `contributes.chatParticipants`: `{ id: "q0t4.chat", name: "q0t4", fullName: "Q0T4", isSticky: true, commands: [status, subjects, use] }`
-- [ ] `vscode.chat.createChatParticipant` in `extension.ts`, delegating to core
-- [ ] **No** `extensionDependencies` (decided after #5, PLAN open question 1): Copilot Chat is built into VS Code, and a fresh test profile doesn't load it.
-- [ ] Test: *(integration)* `Q0T4 activates without Copilot Chat present` and `package.json declares no extensionDependencies`
-- [ ] Placeholder participant icon
+- [x] `contributes.chatParticipants`: `{ id: "q0t4.chat", name: "q0t4", fullName: "Q0T4", isSticky: true, commands: [status, subjects, use] }`
+- [x] `vscode.chat.createChatParticipant` in `extension.ts`, delegating to core
+- [x] **No** `extensionDependencies` (decided after #5, PLAN open question 1): Copilot Chat is built into VS Code, and a fresh test profile doesn't load it.
+- [x] Test: *(integration)* `Q0T4 activates without Copilot Chat present` and `package.json declares no extensionDependencies`
+- [x] Placeholder participant icon: the built-in `pulse` codicon (`ThemeIcon`), so no image file until #41
 
 ## Acceptance criteria
 - [ ] The listed tests pass, CI is green, and CI produces a `.vsix` artifact

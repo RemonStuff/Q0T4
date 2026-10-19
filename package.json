@@ -18,7 +18,31 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [],
-  "contributes": {},
+  "contributes": {
+    "chatParticipants": [
+      {
+        "id": "q0t4.chat",
+        "name": "q0t4",
+        "fullName": "Q0T4",
+        "description": "Copilot Chat with a weekly budget per repo",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "status",
+            "description": "Show this week's usage for every repo"
+          },
+          {
+            "name": "subjects",
+            "description": "List known subjects and their budgets"
+          },
+          {
+            "name": "use",
+            "description": "Charge a question to another subject: /use <subject> <question>"
+          }
+        ]
+      }
+    ]
+  },
   "scripts": {
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
