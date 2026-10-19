@@ -17,8 +17,8 @@ There's no public API to invoke a chat participant, so `activate()` returns a sm
 
 ## Implementation tasks
 - [ ] Add `@vscode/test-cli`, `@vscode/test-electron`, `@types/mocha`
-- [ ] `.vscode-test.mjs`: VS Code version pinned to one the current `github.copilot-chat` supports, both extension development paths (`.` and `test/fixtures/fake-lm-provider`), and `installExtensions: ["github.copilot-chat"]`. Q0T4 keeps `extensionDependencies` on it (decided), so it must be present for activation, but tests never sign in or use its models.
-- [ ] Test: `github.copilot-chat is installed in the test instance`
+- [x] `.vscode-test.mjs`: VS Code pinned to 1.142.0, both extension development paths (`.` and `test/fixtures/fake-lm-provider`). **Changed:** no `installExtensions: ["github.copilot-chat"]`. Copilot Chat is built into VS Code since 1.14x and a fresh test profile doesn't load it, so installing it has no effect (see `test/integration/README.md`, PLAN open question 1).
+- [x] ~~Test: `github.copilot-chat is installed in the test instance`~~ dropped: it can't pass in a fresh test profile (finding above). The "no `vendor: "copilot"`" rule is now an automated unit test instead.
 - [ ] `test/fixtures/fake-lm-provider/`: package.json with a `languageModelChatProviders` contribution, plus `extension.js` implementing `provideLanguageModelChatInformation`, `provideLanguageModelChatResponse` (scripted chunks, honours cancellation) and `provideTokenCount`
 - [ ] Fixture commands: `q0t4-test.setScript(chunks)`, `q0t4-test.setError(code)`
 - [ ] `src/extension.ts` returns a test API stub
