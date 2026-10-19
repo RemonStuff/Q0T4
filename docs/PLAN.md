@@ -262,7 +262,8 @@ Behaviour that depends on the budget unit (pre-check, cut-off, recording, format
 |---|---|---|---|
 | Unit | Vitest | `src/core/**` and the fakes | < 5 s total |
 | Integration | `@vscode/test-cli` + `@vscode/test-electron` | Activation, participant and command registration, adapters, end-to-end handler through the fake `q0t4-test` provider, ledger files in `globalStorageUri`, public API contract via a fake consumer extension | < 2 min |
-| Manual | Install the `.vsix` | One checklist per iteration in its last issue | |
+| Packaged smoke | `@vscode/test-cli` label `vsix` | The real `.vsix` installed into a clean VS Code: installs, ships no sources, activates, contributes the participant, replies. CI runs it before uploading the artifact (`npm run test:vsix`). | < 1 min |
+| Manual | Normal use with a signed-in Copilot | Only what can't run headless: VS Code routing typed chat input to `@q0t4`, and stickiness ([manual-testing.md](manual-testing.md)). Every other check is automated (decided in #7). | |
 
 ### Coverage
 At least 90% line **and** branch coverage on `src/core/**`, **per file** (Vitest v8 `thresholds` with `perFile: true`, decided in #6, so one untested module can't hide behind a high total). The run fails below that, locally and in CI.

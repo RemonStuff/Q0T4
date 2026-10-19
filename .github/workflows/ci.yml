@@ -76,7 +76,7 @@ jobs:
       - run: xvfb-run -a npm run test:integration
 
   package:
-    name: Package .vsix
+    name: Package .vsix + install smoke tests
     if: ${{ !startsWith(github.head_ref, 'docs/') }}
     needs: [check, unit, integration]
     runs-on: ubuntu-latest
@@ -87,7 +87,13 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
-      - run: npm run package
+      - uses: actions/cache@v4
+        with:
+          path: .vscode-test
+          key: vscode-test-${{ runner.os }}-${{ hashFiles('.vscode-test.mjs') }}
+      # Packages the .vsix, installs it into a clean VS Code and tests it there,
+      # so every uploaded artifact has been installed and tried.
+      - run: xvfb-run -a npm run test:vsix
       - uses: actions/upload-artifact@v4
         with:
           name: q0t4-vsix

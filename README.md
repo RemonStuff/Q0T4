@@ -12,14 +12,18 @@ Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Co
 - **Hard stop.** Requests over budget are refused up front, and replies are cut off mid-stream when the budget runs out.
 - **Public API.** Other extensions can check budgets and send metered requests.
 
-> **Status: in development. Nothing to install yet.**
-> The first installable build (a stub `@q0t4` that replies "not wired yet") arrives with [#7](https://github.com/RemonStuff/Q0T4/issues/7). See [the roadmap](docs/ROADMAP.md) for progress.
+> **Status: in development.** You can install a preview build. `@q0t4` exists and is sticky, but it only replies "Budgeting isn't wired up yet." Forwarding to Copilot comes next. See [the roadmap](docs/ROADMAP.md#status) for progress.
 
 ## How to use it
 
-### Today
+### Today: install the preview build
 
-There's no extension to install yet. What works today is the development setup: the project builds, and the test suite runs (see [Development](#development)).
+1. Download the latest build: open the [CI runs on `main`](https://github.com/RemonStuff/Q0T4/actions/workflows/ci.yml?query=branch%3Amain), pick the newest green run, and download the **`q0t4-vsix`** artifact. It's a zip containing `q0t4-<version>.vsix`. Or build it yourself with `npm run package`.
+2. In VS Code (1.104 or newer): Extensions view → `…` → **Install from VSIX…** and pick the `.vsix`.
+3. Open the Chat view and send `@q0t4 hi`. You'll get "Q0T4 is installed. Budgeting isn't wired up yet."
+4. Send another message without typing `@q0t4`: it still goes to Q0T4, because the participant is sticky. `/status`, `/subjects` and `/use` already show up as commands but don't do anything yet.
+
+To remove it, uninstall **Q0T4** from the Extensions view.
 
 ### Once released (planned)
 
@@ -53,6 +57,7 @@ npm run typecheck   # TypeScript, strict
 npm run build       # bundle to dist/extension.js
 npm run test:integration  # integration tests in a real VS Code (downloads it on first run)
 npm run package     # build q0t4-<version>.vsix
+npm run test:vsix   # package, install the .vsix into a clean VS Code, and smoke-test it
 ```
 
 CI (GitHub Actions) runs on every push and pull request:
@@ -60,7 +65,7 @@ CI (GitHub Actions) runs on every push and pull request:
 - lint, format check and typecheck
 - unit tests with the coverage gate, on Ubuntu and Windows
 - integration tests under `xvfb`
-- packaging; every run uploads the `.vsix` as an artifact
+- packaging, then installing the `.vsix` into a clean VS Code and smoke-testing it; every run uploads the tested `.vsix` as an artifact
 
 Branches named `docs/…` skip the test jobs.
 
