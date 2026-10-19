@@ -265,7 +265,7 @@ Behaviour that depends on the budget unit (pre-check, cut-off, recording, format
 | Manual | Install the `.vsix` | One checklist per iteration in its last issue | |
 
 ### Coverage
-At least 90% line **and** branch coverage on `src/core/**` (Vitest v8 `thresholds`). The run fails below that, locally and in CI.
+At least 90% line **and** branch coverage on `src/core/**`, **per file** (Vitest v8 `thresholds` with `perFile: true`, decided in #6, so one untested module can't hide behind a high total). The run fails below that, locally and in CI.
 
 ### CI (`.github/workflows/ci.yml`), on every push and pull request
 1. `npm ci`

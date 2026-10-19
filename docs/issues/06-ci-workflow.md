@@ -10,7 +10,7 @@ All work happens on its own branch and reaches `main` through a pull request (se
 ## Tests to write first
 CI configuration can't be unit tested in any useful way. Instead, prove each gate goes red, on a throwaway branch:
 - `CI fails on a lint error`
-- `CI fails when core coverage drops below 90%`
+- `CI fails when core coverage drops below 90%`: first attempt stayed green because the gate measured the total; fixed with a per-file threshold and a tooling test, then seen red on Ubuntu and Windows
 - `CI fails when an integration test fails`
 - `CI passes on main`
 - `CI does not run tests for a push to a docs/ branch`

@@ -70,7 +70,7 @@ Press **F5** in VS Code ("Run Extension") to start an Extension Development Host
 
 The project is strictly test-driven, with core logic kept apart from VS Code behind small interfaces (ports and adapters):
 
-- `src/core/`: all decisions, no `vscode` import, at least 90% line and branch coverage
+- `src/core/`: all decisions, no `vscode` import, at least 90% line and branch coverage per file
 - `src/ports/`: the interfaces core uses to reach VS Code
 - `src/adapters/`: thin VS Code implementations of the ports
 - `test/fakes/`: tested test doubles for every port, so core tests never need VS Code or a real model:
