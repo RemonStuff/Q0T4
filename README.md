@@ -1,5 +1,7 @@
 # Q0T4
 
+[![CI](https://github.com/RemonStuff/Q0T4/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/RemonStuff/Q0T4/actions/workflows/ci.yml)
+
 **Weekly budgets for GitHub Copilot Chat, per repo.**
 
 Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Copilot Chat panel. You chat through `@q0t4` as you would with Copilot. Q0T4 forwards your prompt to the model you picked and measures what each request costs. Every repo gets its own **weekly budget**, and once a repo has used it up, chats on that repo stop until the week resets.
@@ -50,7 +52,17 @@ npm run lint        # ESLint, including the rule that keeps src/core free of vsc
 npm run typecheck   # TypeScript, strict
 npm run build       # bundle to dist/extension.js
 npm run test:integration  # integration tests in a real VS Code (downloads it on first run)
+npm run package     # build q0t4-<version>.vsix
 ```
+
+CI (GitHub Actions) runs on every push and pull request:
+
+- lint, format check and typecheck
+- unit tests with the coverage gate, on Ubuntu and Windows
+- integration tests under `xvfb`
+- packaging; every run uploads the `.vsix` as an artifact
+
+Branches named `docs/…` skip the test jobs.
 
 Integration tests use a fake language-model provider (vendor `q0t4-test`) and never call real Copilot; see [test/integration/README.md](test/integration/README.md).
 
