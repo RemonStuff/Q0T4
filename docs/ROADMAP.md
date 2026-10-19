@@ -8,14 +8,14 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 
 ## Status
 
-*Updated with every PR (definition of done, item 7). Last update: 2026-10-19, PR #73.*
+*Updated with every PR (definition of done, item 7). Last update: 2026-10-19, #8 publication. The counts below include the work completed by this change.*
 
-**Now:** iteration 0, *Test harness*, is ✅ **done**. The first installable build is out, and CI installs and smoke-tests every build: `@q0t4` replies with a stub (README "Today"). **Next up:** iteration 1, *Walking skeleton*, starting with [#8 `buildMessages`](issues/08-build-messages.md) (and [#9 model resolution](issues/09-model-resolution.md) in parallel).
+**Now:** iteration 0, *Test harness*, is ✅ **done**. Iteration 1, *Walking skeleton*, has its first core piece: [#8 `buildMessages`](issues/08-build-messages.md) prepares completed history pairs followed by the current prompt. `@q0t4` continues to reply with the installable stub (README "Today"). **Next up:** [#9 model resolution](issues/09-model-resolution.md), then [#10 forwarding](issues/10-chat-handler-forwarding.md).
 
 | Iteration | Done | State |
 |---|---|---|
 | 0 Test harness | 7 / 7 | ✅ done |
-| 1 Walking skeleton | 0 / 5 | 🟡 next |
+| 1 Walking skeleton | 1 / 5 | 🟡 in progress |
 | 2 Counting and the hard stop | 0 / 7 | ⚪ not started |
 | 3 Weekly storage | 0 / 6 | ⚪ not started |
 | 4 Repo subjects | 0 / 8 | ⚪ not started |
@@ -24,7 +24,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **7 / 59** | 52 to build |
+| **Total** | **8 / 59** | 51 to build |
 
 **Done:**
 
@@ -37,6 +37,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 | #5 Integration runner and fake LM provider | [#70](https://github.com/RemonStuff/Q0T4/pull/70) |
 | #6 GitHub Actions CI | [#72](https://github.com/RemonStuff/Q0T4/pull/72) |
 | #7 Stub sticky participant and installable `.vsix` | [#73](https://github.com/RemonStuff/Q0T4/pull/73) |
+| #8 Core `buildMessages`: prompt and history | PR link added during publication |
 
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
@@ -45,6 +46,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 - **#6:** the coverage gate applies per file.
 - **#7:** the participant icon is a built-in codicon (`pulse`) until the final icon arrives in #41.
 - **#7:** manual install checks are automated. CI installs the packaged `.vsix` into a clean VS Code and smoke-tests it (`test/vsix/`). Typed chat input can't be driven headless without a signed-in Copilot, so only that stays manual ([manual-testing.md](manual-testing.md)).
+- **#8:** core keeps only completed request/response pairs and preserves their text exactly. Empty response pairs and orphan responses are omitted. `HistoryTurn` already holds response text as one string; joining VS Code markdown parts stays in #11's history adapter.
 
 Both are in PLAN §6–§7.
 
@@ -53,7 +55,7 @@ Both are in PLAN §6–§7.
 | # | Iteration | What you can try at the end | Issues |
 |---|---|---|---|
 | 0 | Test harness | `@q0t4` installs, is sticky, and replies "not wired yet" | [01](issues/01-project-scaffold.md) ✅, [02](issues/02-vitest-and-coverage.md) ✅, [03](issues/03-ports-and-domain-types.md) ✅, [04](issues/04-test-doubles.md) ✅, [05](issues/05-integration-runner-and-fake-provider.md) ✅, [06](issues/06-ci-workflow.md) ✅, [07](issues/07-stub-participant-and-vsix.md) ✅ |
-| 1 | Walking skeleton | `@q0t4` answers through the model chosen in the picker, with attached files | [08](issues/08-build-messages.md), [09](issues/09-model-resolution.md), [10](issues/10-chat-handler-forwarding.md), [11](issues/11-wire-participant-to-model.md), [12](issues/12-attached-references.md) |
+| 1 | Walking skeleton | `@q0t4` answers through the model chosen in the picker, with attached files | [08](issues/08-build-messages.md) ✅, [09](issues/09-model-resolution.md), [10](issues/10-chat-handler-forwarding.md), [11](issues/11-wire-participant-to-model.md), [12](issues/12-attached-references.md) |
 | 2 | Counting and the hard stop | Footer with usage, a pre-check refusal, and the ⛔ cut-off mid-stream (single subject, running total, tokens) | [13](issues/13-count-input.md), [14](issues/14-pre-check-refusal.md), [15](issues/15-stream-guard.md), [16](issues/16-recording-policy.md), [17](issues/17-format-footer-and-warnings.md), [18](issues/18-history-footer-strip-and-metadata.md), [19](issues/19-wire-budget-enforcement.md) |
 | 3 | Weekly storage | Usage in an append-only ledger, safe across windows; weekly reset on `resetDay`; daily pace warning | [20](issues/20-budget-calendar-week.md), [21](issues/21-next-reset.md), [22](issues/22-ledger.md), [23](issues/23-ledger-resilience.md), [24](issues/24-daily-pace-warning.md), [25](issues/25-wire-ledger.md) |
 | 4 | Repo subjects | Each repo gets its own weekly budget automatically (`owner/repo` from the git remote), per-repo limits in settings, sticky thread subject, `/use` override | [26](issues/26-settings-schema-and-config.md), [27](issues/27-repo-identifier.md), [28](issues/28-thread-subject.md), [29](issues/29-use-command-parsing.md), [30](issues/30-workspace-repo-adapter.md), [31](issues/31-resolve-subject-pipeline.md), [32](issues/32-same-subject-history.md), [33](issues/33-wire-subjects.md) |
@@ -100,7 +102,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 07 Stub sticky participant and `.vsix` (needs 05, 06). 🎯 **Install and try** · PR #73
 
 ### Iteration 1: Walking skeleton
-- [ ] 08 `buildMessages` (needs 03, 04)
+- [x] 08 `buildMessages` (needs 03, 04) · PR link added during publication
 - [ ] 09 Model resolution (needs 03, 04) ∥
 - [ ] 10 `chatHandler` forwarding (needs 08, 09)
 - [ ] 11 Adapters and wiring (needs 07, 10)
