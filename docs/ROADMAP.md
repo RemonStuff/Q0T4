@@ -6,11 +6,50 @@ Every iteration ends with **CI green** and a **`.vsix` you can install** (downlo
 
 Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7–9 generalise it to **GitHub AI Credits, a monthly pool with a reserve, and a public API**, released as **v1.0** ([PLAN §9](PLAN.md#9-credits-cycles-pools-and-the-public-api)). From iteration 2 on, budget logic is unit-generic (tokens or credits) and usage is stored in an append-only ledger, so the later iterations add to it rather than rework it.
 
+## Status
+
+*Updated with every PR (definition of done, item 7). Last update: 2026-10-19, PR #72.*
+
+**Now:** iteration 0, *Test harness*, with 6 of 7 issues done. **Next up:** [#7 Stub sticky participant and installable `.vsix`](issues/07-stub-participant-and-vsix.md), which ends iteration 0 with the first build you can install.
+
+| Iteration | Done | State |
+|---|---|---|
+| 0 Test harness | 6 / 7 | 🟡 in progress |
+| 1 Walking skeleton | 0 / 5 | ⚪ not started |
+| 2 Counting and the hard stop | 0 / 7 | ⚪ not started |
+| 3 Weekly storage | 0 / 6 | ⚪ not started |
+| 4 Repo subjects | 0 / 8 | ⚪ not started |
+| 5 Visibility | 0 / 4 | ⚪ not started |
+| 6 Hardening and release (v0.1) | 0 / 4 | ⚪ not started |
+| 7 Live pricing | 0 / 6 | ⚪ not started |
+| 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
+| 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
+| **Total** | **6 / 59** | 53 to build |
+
+**Done:**
+
+| Issue | Pull request |
+|---|---|
+| #1 Project scaffold | [#46](https://github.com/RemonStuff/Q0T4/pull/46) |
+| #2 Vitest and enforced core coverage | [#47](https://github.com/RemonStuff/Q0T4/pull/47) |
+| #3 Port interfaces and domain types | [#68](https://github.com/RemonStuff/Q0T4/pull/68) |
+| #4 Test doubles | [#69](https://github.com/RemonStuff/Q0T4/pull/69) |
+| #5 Integration runner and fake LM provider | [#70](https://github.com/RemonStuff/Q0T4/pull/70) |
+| #6 GitHub Actions CI | [#72](https://github.com/RemonStuff/Q0T4/pull/72) |
+
+**Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
+
+**Decisions along the way:**
+- **#5:** no `extensionDependencies`, because Copilot Chat is built into VS Code now.
+- **#6:** the coverage gate applies per file.
+
+Both are in PLAN §6–§7.
+
 ## Iterations
 
 | # | Iteration | What you can try at the end | Issues |
 |---|---|---|---|
-| 0 | Test harness | `@q0t4` installs, is sticky, and replies "not wired yet" | [01](issues/01-project-scaffold.md) ✅, [02](issues/02-vitest-and-coverage.md) ✅, [03](issues/03-ports-and-domain-types.md) ✅, [04](issues/04-test-doubles.md) ✅, [05](issues/05-integration-runner-and-fake-provider.md) ✅, [06](issues/06-ci-workflow.md), [07](issues/07-stub-participant-and-vsix.md) |
+| 0 | Test harness | `@q0t4` installs, is sticky, and replies "not wired yet" | [01](issues/01-project-scaffold.md) ✅, [02](issues/02-vitest-and-coverage.md) ✅, [03](issues/03-ports-and-domain-types.md) ✅, [04](issues/04-test-doubles.md) ✅, [05](issues/05-integration-runner-and-fake-provider.md) ✅, [06](issues/06-ci-workflow.md) ✅, [07](issues/07-stub-participant-and-vsix.md) |
 | 1 | Walking skeleton | `@q0t4` answers through the model chosen in the picker, with attached files | [08](issues/08-build-messages.md), [09](issues/09-model-resolution.md), [10](issues/10-chat-handler-forwarding.md), [11](issues/11-wire-participant-to-model.md), [12](issues/12-attached-references.md) |
 | 2 | Counting and the hard stop | Footer with usage, a pre-check refusal, and the ⛔ cut-off mid-stream (single subject, running total, tokens) | [13](issues/13-count-input.md), [14](issues/14-pre-check-refusal.md), [15](issues/15-stream-guard.md), [16](issues/16-recording-policy.md), [17](issues/17-format-footer-and-warnings.md), [18](issues/18-history-footer-strip-and-metadata.md), [19](issues/19-wire-budget-enforcement.md) |
 | 3 | Weekly storage | Usage in an append-only ledger, safe across windows; weekly reset on `resetDay`; daily pace warning | [20](issues/20-budget-calendar-week.md), [21](issues/21-next-reset.md), [22](issues/22-ledger.md), [23](issues/23-ledger-resilience.md), [24](issues/24-daily-pace-warning.md), [25](issues/25-wire-ledger.md) |
@@ -21,7 +60,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 | 8 | Pool, reserve and sync | A 35k-credit monthly pool split across repos, rolling weekly budgets, reserve borrowing, pace warnings, `/sync` with GitHub's figure | [54](issues/54-budget-calendar-cycle.md), [55](issues/55-rolling-weekly-budget.md), [56](issues/56-pool-settings.md), [57](issues/57-reserve-borrowing.md), [58](issues/58-monthly-pace-warning.md), [59](issues/59-sync-command.md), ~~[60](issues/60-auto-sync-usage-api.md)~~ *(not planned)*, [61](issues/61-pool-footer-status.md), [62](issues/62-wire-pool-mode.md) |
 | 9 | Public API | Another extension can check budgets and send metered requests; **v1.0 release** | [63](issues/63-public-api-facade.md), [64](issues/64-api-send-request.md), [65](issues/65-api-contract-tests.md), [66](issues/66-readme-and-release-v1.md) |
 
-**Totals:** 60 issues (41 + 19 new): 26 S and 34 M, none L. 5 done (#1–#5). #60 is not planned (enterprise allowance), so 57 issues remain to build. Numbers 42–47 were used by pull requests.
+**Totals:** 60 issues (41 + 19 new): 26 S and 34 M, none L. #60 is not planned (enterprise allowance), so 59 are to be built; progress is in [Status](#status). Issue numbers 42–47 and 67–72 went to pull requests, which share GitHub's numbering.
 
 ## Dependency graph (by iteration)
 
@@ -49,12 +88,12 @@ Some later-iteration issues have no dependency on the iterations just before the
 Each issue depends only on issues with lower numbers, so working top to bottom is always valid. Issues marked ∥ can be done in parallel with the one above.
 
 ### Iteration 0: Test harness
-- [x] 01 Project scaffold
-- [x] 02 Vitest and enforced core coverage (needs 01)
-- [x] 03 Port interfaces and domain types (needs 01) ∥
-- [x] 04 Test doubles (needs 02, 03)
-- [x] 05 Integration runner and fake LM provider (needs 01) ∥
-- [ ] 06 GitHub Actions CI (needs 02, 05)
+- [x] 01 Project scaffold · PR #46
+- [x] 02 Vitest and enforced core coverage (needs 01) · PR #47
+- [x] 03 Port interfaces and domain types (needs 01) ∥ · PR #68
+- [x] 04 Test doubles (needs 02, 03) · PR #69
+- [x] 05 Integration runner and fake LM provider (needs 01) ∥ · PR #70
+- [x] 06 GitHub Actions CI (needs 02, 05) · PR #72
 - [ ] 07 Stub sticky participant and `.vsix` (needs 05, 06). 🎯 **Install and try**
 
 ### Iteration 1: Walking skeleton
@@ -136,3 +175,4 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 4. The manual checks in the issue are done, where the issue lists any
 5. Unit-dependent behaviour is tested in every unit (`describe.each` over tokens and credits), from iteration 2 on
 6. The root `README.md` is updated: the project description and how to use what exists after this PR
+7. This ROADMAP is updated: the [Status](#status) section (progress, done table with the PR, next up) and the checklist tick with the PR number

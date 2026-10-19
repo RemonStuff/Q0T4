@@ -1,0 +1,95 @@
+name: CI
+
+# Every push and pull request, except documentation branches (docs/**), which
+# never contain code (docs/PLAN.md §8).
+on:
+  push:
+    branches-ignore: ["docs/**"]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: 22
+
+jobs:
+  check:
+    name: Lint, format, typecheck
+    # pull_request can't filter on the head branch, so every job repeats this guard.
+    if: ${{ !startsWith(github.head_ref, 'docs/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+
+  unit:
+    name: Unit tests + core coverage (${{ matrix.os }})
+    if: ${{ !startsWith(github.head_ref, 'docs/') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run coverage
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' }}
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
+
+  integration:
+    name: Integration tests (VS Code under xvfb)
+    if: ${{ !startsWith(github.head_ref, 'docs/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - uses: actions/cache@v4
+        with:
+          path: .vscode-test
+          # The pinned VS Code version lives in .vscode-test.mjs.
+          key: vscode-test-${{ runner.os }}-${{ hashFiles('.vscode-test.mjs') }}
+      - run: xvfb-run -a npm run test:integration
+
+  package:
+    name: Package .vsix
+    if: ${{ !startsWith(github.head_ref, 'docs/') }}
+    needs: [check, unit, integration]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: q0t4-vsix
+          path: q0t4-*.vsix
+          if-no-files-found: error
