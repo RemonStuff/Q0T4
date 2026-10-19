@@ -14,7 +14,8 @@ export const unitTest = {
     provider: "v8",
     include: ["src/core/**/*.ts"],
     reporter: ["text", "html", "lcov"],
-    thresholds: { lines: 90, branches: 90 },
+    // Per file, so one untested core module can't hide behind a high total.
+    thresholds: { lines: 90, branches: 90, perFile: true },
   },
 } satisfies TestOptions;
 

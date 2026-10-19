@@ -28,6 +28,17 @@ describe("vitest setup", () => {
     );
   }, 60_000);
 
+  it("coverage run fails when one untested core file is below 90%, even with the total above it", () => {
+    const { status, output } = vitestCli([
+      "run",
+      "--coverage",
+      "--config",
+      "test/fixtures/coverage-per-file/vitest.config.ts",
+    ]);
+    expect(status).not.toBe(0);
+    expect(output).toMatch(/does not meet (global )?threshold \(90%\) for .*untested\.ts/);
+  }, 60_000);
+
   it("importing vscode from a core test fails fast", async () => {
     await expect(import("vscode")).rejects.toThrow(/must not import vscode/);
   });
