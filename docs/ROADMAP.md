@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-20, PR #79. Counts include merged work only; #14 work is not
+2026-10-20, PR #80. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, and 1, *Walking skeleton*, are ✅ **done**.
@@ -21,19 +21,23 @@ Iteration 2 has started: [#13 count input](issues/13-count-input.md) and
 participant. Hosted checks also verify that the existing installed chat flow
 still works. There is no active metering or budget enforcement, and
 unimplemented slash commands do not call a model.
-**Current work:** [#14 pre-check](issues/14-pre-check-refusal.md) is implemented
-with a pure decision, refusal formatting and an optional core-handler gate.
-All 305 unit tests pass with 100% core coverage. The installed participant
-does not supply budget state, so enforcement is still inactive. Exact-source
-hosted results are recorded in the pull request; merge needs separate approval.
-**Next:** finish delivery of #14, then
-[#15 stream guard](issues/15-stream-guard.md).
+[#14 pre-check](issues/14-pre-check-refusal.md) is merged in
+[PR #80](https://github.com/RemonStuff/Q0T4/pull/80). Its exact-main CI passed
+305 unit tests on each OS, 57 integration tests and 12 installed-VSIX tests.
+The installed participant does not supply budget state, so enforcement is
+still inactive.
+**Current work:** [#15 stream guard](issues/15-stream-guard.md) adds adaptive
+output recounting and cut-off behind that optional core gate. All 399 local
+unit tests pass with 100% core coverage. Exact-source hosted results are
+recorded in the pull request; merge needs separate approval.
+**Next:** finish delivery of #15, then
+[#16 recording policy](issues/16-recording-policy.md).
 
 | Iteration | Done | State |
 |---|---|---|
 | 0 Test harness | 7 / 7 | ✅ done |
 | 1 Walking skeleton | 5 / 5 | ✅ done |
-| 2 Counting and the hard stop | 1 / 7 | in progress |
+| 2 Counting and the hard stop | 2 / 7 | in progress |
 | 3 Weekly storage | 0 / 6 | ⚪ not started |
 | 4 Repo subjects | 0 / 8 | ⚪ not started |
 | 5 Visibility | 0 / 4 | ⚪ not started |
@@ -41,7 +45,7 @@ hosted results are recorded in the pull request; merge needs separate approval.
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **13 / 59** | 46 to build |
+| **Total** | **14 / 59** | 45 to build |
 
 **Done:**
 
@@ -60,6 +64,7 @@ hosted results are recorded in the pull request; merge needs separate approval.
 | #11 Selected-model adapters and participant wiring | [#77](https://github.com/RemonStuff/Q0T4/pull/77) |
 | #12 Attached references | [#78](https://github.com/RemonStuff/Q0T4/pull/78) |
 | #13 Input counting and token costing | [#79](https://github.com/RemonStuff/Q0T4/pull/79) |
+| #14 Budget pre-check and refusal | [#80](https://github.com/RemonStuff/Q0T4/pull/80) |
 
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
@@ -77,11 +82,17 @@ hosted results are recorded in the pull request; merge needs separate approval.
   messages concurrently, forward cancellation and return typed failures.
   Core token costing omits credits and rates. Participant wiring remains later;
   installed behavior still has no active metering or budget enforcement.
-- **#14 (in progress):** the optional core gate takes explicit budget state.
+- **#14:** the optional core gate takes explicit budget state.
   A positive effective budget allows equality; zero always refuses. Extra
   allowance can cover an existing overshoot. Invalid costs fail explicitly.
   Refusal metadata records only the refusal and pre-check stop, not invented
   usage. Reset calculation remains in #21 and installed activation in #19.
+- **#15 (in progress):** adaptive recounting uses the active output rate and a real
+  final count. Show the already-received limit-reaching chunk, then cancel the
+  model without cancelling the chat, and never forward another chunk.
+  The stop has explicit metadata, not invented usage. A recount interval plus
+  an arriving chunk bounds detection for the test tokenizer, not real billing.
+  Recording on every exit remains in #16 and installed activation in #19.
 
 Both are in PLAN §6–§7.
 

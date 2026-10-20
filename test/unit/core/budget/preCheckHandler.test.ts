@@ -56,18 +56,18 @@ describe.each(["tokens", "credits"] as const)("handler budget gate (%s)", (unit)
     expect(output.text).toContain("`/use <subject>`");
   });
 
-  it("counts and costs input before allowing an exact-budget request", async () => {
+  it("admits an exact input fit before the stream guard stops its output", async () => {
     const { request, deps, model, output, costModel, cost } = fixture(unit);
     const price = vi.spyOn(costModel, "cost");
     const budget = { ...deps.budget, used: cost(2), budget: cost(7) };
 
     expect(await chatHandler(request, { ...deps, budget })).toEqual({
-      metadata: { outcome: "completed", model: model.name },
+      metadata: { outcome: "stopped", stopped: "budget", model: model.name },
     });
-    expect(price).toHaveBeenCalledExactlyOnceWith(model, { input: 5, output: 0 });
-    expect(model.calls.countTokens).toEqual([{ role: "user", text: "hello" }]);
+    expect(price).toHaveBeenNthCalledWith(1, model, { input: 5, output: 0 });
+    expect(model.calls.countTokens).toEqual([{ role: "user", text: "hello" }, "reply"]);
     expect(model.calls.sendRequest).toEqual([[{ role: "user", text: "hello" }]]);
-    expect(output.text).toBe("reply");
+    expect(output.text).toBe("reply\n\n⛔ Stopped: org/repo weekly budget reached.");
   });
 
   it("passes extra allowance to the decision", async () => {
@@ -80,7 +80,7 @@ describe.each(["tokens", "credits"] as const)("handler budget gate (%s)", (unit)
     };
 
     expect(await chatHandler(request, { ...deps, budget })).toMatchObject({
-      metadata: { outcome: "completed" },
+      metadata: { outcome: "stopped", stopped: "budget" },
     });
     expect(model.calls.sendRequest).toHaveLength(1);
   });

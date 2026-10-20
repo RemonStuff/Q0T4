@@ -30,8 +30,7 @@ The decision takes an optional `extraAllowance` (default 0), which is the reserv
 
 ## Implementation and verification
 
-Implemented on `feat/14-pre-check-refusal`. The pull request records
-exact-source hosted results when available; merge needs separate approval.
+Merged in [PR #80](https://github.com/RemonStuff/Q0T4/pull/80) as `f50609d`.
 This does not activate installed budget enforcement.
 
 - `preCheck` compares only the active unit. Effective budget is base budget
@@ -83,9 +82,20 @@ integration and installed-VSIX tests run only on GitHub-hosted runners after
 publication, not on the work Mac. Their results protect the unchanged installed
 flow, not active installed enforcement.
 
+Exact-main [CI 39400529159](https://github.com/RemonStuff/Q0T4/actions/runs/39400529159)
+passed all five hosted jobs: lint/format/types, 305 unit tests on each Ubuntu
+and Windows job, 57 integration tests and 12 installed-VSIX tests. Actual logs,
+executed steps, matching PR/main whole trees and the non-expired tested VSIX
+artifact were read back. [Completion evidence](https://github.com/RemonStuff/Q0T4/issues/14#issuecomment-6287845367)
+records the result.
+
+Issue #15 extends the optional metered path: a request that exactly fits its
+input budget is still admitted, then its first output chunk triggers the
+stream cut-off. This does not change the pure pre-check's equality rule.
+
 ## Acceptance criteria
 - [x] Local unit tests pass and core coverage holds
-- [ ] The listed tests pass, core coverage holds, and CI is green
+- [x] The listed tests pass, core coverage holds, and CI is green
 
 ## Depends on
 #13

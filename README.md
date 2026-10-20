@@ -103,14 +103,45 @@ effective budget, remaining amount and supplied reset label, with `/status`
 and `/use` hints. Amounts are not rounded; dynamic labels are escaped for
 Markdown. The formatter does not calculate dates.
 
-This gate is implemented and unit-tested locally for
-[#14](https://github.com/RemonStuff/Q0T4/issues/14). The pull request records
-exact-source hosted check results when available. The installed participant
-does not supply a budget context, so it
-still neither counts nor enforces budgets. Storage and activation remain in
+The pre-check shipped in [PR #80](https://github.com/RemonStuff/Q0T4/pull/80).
+Its exact-main CI passed unit, integration and installed-package checks.
+The installed participant does not supply a budget context, so it still
+neither counts nor enforces budgets. Storage and activation remain in
 [#19](https://github.com/RemonStuff/Q0T4/issues/19), and real reset labels in
 [#21](https://github.com/RemonStuff/Q0T4/issues/21). The command hints do not
 activate the unimplemented slash commands.
+
+[`StreamGuard`](src/core/budget/streamGuard.ts) is implemented and unit-tested
+locally for [#15](https://github.com/RemonStuff/Q0T4/issues/15). It uses the same
+optional handler budget context, so installed behavior is still unchanged.
+Between real output recounts, it estimates extra tokens as extra characters
+divided by four, anchored to the last real count. Far from the limit, it
+recounts the entire accumulated output after 400 characters. Once estimated
+remaining cost falls below 10% of the effective budget or twice the last
+chunk's estimated cost, it recounts every chunk.
+
+At or above the effective budget, the handler preserves the already-received
+chunk, cancels the model's separate signal and forwards no later chunks. It
+writes one `⛔ Stopped: <subject> weekly budget reached.` note and returns
+`{ outcome: "stopped", stopped: "budget", model }` metadata without invented
+usage totals. User cancellation remains distinct and adds no stop note.
+`finalCount()` uses the real tokenizer, reusing an unchanged exact count.
+An over-budget final recount reports a budget stop, not normal completion.
+Counting or pricing failures cancel the producer and use the existing safe
+error path; output-write failures still propagate unchanged.
+
+The guard limits the delay before a real recount, not GitHub's bill. A chunk
+can itself exceed 400 characters, token density varies, and the provider may
+generate more tokens before cancellation takes effect. Tests measure the
+character interval plus the arriving chunk with deterministic tokenizers;
+they do not prove a universal token or credit overshoot cap.
+
+All 399 local unit tests pass with 100% core coverage. The pull request for #15
+records exact-source hosted results when available; no automated VS Code
+tests were run on the Mac.
+Usage recording on every exit remains
+[#16](https://github.com/RemonStuff/Q0T4/issues/16); full usage metadata remains
+[#18](https://github.com/RemonStuff/Q0T4/issues/18).
 
 ```sh
 npm install

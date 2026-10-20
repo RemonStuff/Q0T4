@@ -15,7 +15,7 @@ The project is test-driven throughout. This document covers the architecture, th
 | Use `request.model` | `ChatRequest.model: LanguageModelChat` is **non-optional**. It's the model picked in the chat UI and shouldn't be held after the request ends. | Use it. Fall back to `vscode.lm.selectChatModels({ vendor: "copilot" })` only when sending fails with `LanguageModelError.NotFound`. |
 | Subject = the repo being worked on *(decided, replaces the spec's keywords and classifier)* | `vscode.workspace.workspaceFolders` and `workspace.getWorkspaceFolder(uri)` identify the open folder. The built-in Git extension (`vscode.extensions.getExtension("vscode.git").exports.getAPI(1)`) lists each repository's remotes. | `WorkspacePort.currentRepo()` returns the folder name and its remotes. Pure core normalises the `origin` URL to `owner/repo`, falling back to the first remote and then the folder name. With no folder open, the subject is `fallbackSubject`. |
 | Count tokens with `countTokens()` | `countTokens(text: string \| LanguageModelChatMessage, token?)` returns `Thenable<number>`. **Responses don't report usage**, so there are no prompt or completion token counts. | Input = the sum of `countTokens(message)` over every message we send. Output = `countTokens(accumulatedText)`. Message-framing overhead isn't visible to us. That's documented as one reason our numbers differ from GitHub's. |
-| Cancel the stream when the budget is reached | There is no portable max-output-tokens option (`modelOptions` depends on the vendor). We cancel by cancelling the token passed to `sendRequest` or by breaking out of `for await`. | Give the model its own `CancellationTokenSource`, linked to the chat's token, and cancel it from the `StreamGuard`. Tokens that arrive before cancellation still count. The overshoot is limited to one recount interval (see §5). |
+| Cancel the stream when the budget is reached | There is no portable max-output-tokens option (`modelOptions` depends on the vendor). We cancel by cancelling the token passed to `sendRequest` or by breaking out of `for await`. | Give the model its own linked cancellation source and cancel it from `StreamGuard`. Show and count the chunk that reaches the limit, then stop forwarding. Recounts limit detection delay, not the provider's billed overshoot (see §5). |
 | Reuse the subject for each thread | **There's no thread or session ID.** `ChatContext.history` contains only *this participant's* turns, and `ChatResponseTurn.result.metadata` comes back exactly as we returned it. | Thread = the history we're given. The thread's subject is `metadata.subject` from the newest `ChatResponseTurn`. Metadata must be JSON-serialisable. |
 | Send same-subject history | `ChatResponseTurn.response` holds the markdown parts we streamed, **including our footer and warnings**. | Emit the footer and warnings after a sentinel (`<!-- q0t4:footer -->`). The pure history builder strips everything from the sentinel on. |
 | Messages sent to the model | `LanguageModelChatMessageRole` has only `User` and `Assistant`, with **no System role**. | Send any instructions as a leading `User` message. v1 needs none. |
@@ -84,6 +84,7 @@ test/
 This is the target flow. Issue #13 adds independently tested core helpers for
 input counting and token costing, but does not connect them to the participant.
 Issue #14 adds an optional core-handler gate using caller-supplied budget state.
+Issue #15 adds adaptive output counting and cut-off behind that same gate.
 The installed participant supplies none; storage and activation remain in #19.
 
 1. **Parse the command.** `/status` and `/subjects` render and return. `/use` is parsed in pure core.
@@ -91,7 +92,7 @@ The installed participant supplies none; storage and activation remain in #19.
 3. **Build the messages:** same-subject history when `includeHistory` is on (footers stripped), then attached references, then the prompt. Trim to fit `maxInputTokens`.
 4. **Count input** with `countTokens` per message, then turn it into a cost with the active `CostModel` (tokens: cost = tokens; credits: §9.1).
 5. **Pre-check:** refuse if the effective budget is zero or `usedThisWeek + estimatedInputCost > weeklyBudget + extraAllowance`. A positive effective budget allows equality. In pool mode, the reserve may cover the gap (§9.3). The refusal shows used, effective budget, remaining and reset date, in the active unit.
-6. **Stream** chunks to the output through `StreamGuard`, which recounts output at adaptive intervals, converts it to cost, and cancels with a "⛔ Stopped" note once the weekly budget (plus any allowed reserve) is reached.
+6. **Stream** chunks to the output through `StreamGuard`, which recounts output at adaptive intervals, converts it to cost, and cancels with a "⛔ Stopped" note once the weekly budget (plus any allowed reserve) is reached. The already-received limit-reaching chunk is shown and counted; no later chunks are forwarded.
 7. **`finally`** (always, including on cancel and error): append a ledger entry (raw tokens, model, rates snapshot, cost, source), then write the sentinel, the footer `*RemonStuff/Q0T4: 112k / 150k this week · resets Mon · GPT-5*` (the last part is the name of the model that answered; the credits/pool form is in §9.7) and any ⚠️ warnings (`warnAtPercent`, daily pace, monthly pace, stale prices).
 8. **Return** `{ metadata: { v: 1, subject, model, unit, inputTokens, outputTokens, cost, stopped } }`, where `model` is the answering model's name.
 
@@ -170,6 +171,63 @@ error result. Cancellation remains silent and prevents sending. Output-write
 failures propagate unchanged. Without a budget context, the handler does not
 count tokens and preserves the existing flow. Issue #14 supplies no extension
 wiring, storage, default budget, settings, recording or stream cut-off.
+
+### Stream guard contract
+
+`StreamGuard` takes a model, `CostModel`, used cost, input cost, budget, optional
+allowance, the chat cancellation signal and a model-cancel callback. Budget
+validation and effective-budget calculation are shared with `preCheck`.
+Calls are sequential: await each `onChunk(text)` before supplying another
+chunk or calling `finalCount()`.
+
+The guard accumulates exact received text. Between recounts, it estimates
+output tokens as the last real count plus uncounted `text.length / 4`.
+Characters here mean JavaScript UTF-16 code units, not model tokens.
+It converts output with `{ input: 0, output: outputTokens }`, so credits use
+the output rate, not the input rate.
+
+- `RECOUNT_CHARS = 400`: while far from the limit, recount after at least this
+  many new characters. Recount the whole output, never each chunk separately.
+- `NEAR_LIMIT_RATIO = 0.1`: enter every-chunk recounting when estimated
+  remaining cost is strictly below this share of the effective budget, or
+  strictly below twice the last chunk's estimated cost. Once entered, stay in
+  that mode for the rest of the reply.
+- `onChunk(text)` returns `"continue"` or `"stop"`. Only a real count reaching
+  `used + input + output >= budget + allowance` stops a nonempty reply;
+  an estimate alone never cuts it off. Zero remaining stops on the first
+  chunk, even an empty one. The cancel callback is called once.
+- `finalCount()` returns a real output count, reusing a cached count only when
+  no new text has arrived. An empty reply needs no tokenizer call. A limit
+  first discovered at the final recount also stops the model.
+
+The handler shows the current chunk before invoking the guard, as approved
+for #15. A budget stop cancels a separate model signal, not the chat signal,
+closes the iterator without reading another chunk, and writes one escaped
+`⛔ Stopped: <subject> weekly budget reached.` note. Metadata is
+`{ outcome: "stopped", stopped: "budget", model }`, without placeholder usage.
+An exact input fit remains allowed by the pre-check; with no output headroom,
+the first received output chunk triggers the stream stop.
+
+Input and output counts share cancellation/error handling. Output tokenizer
+errors use `CountError` with an output-specific safe message. Invalid numeric
+counts, missing active credits and invalid output costs fail explicitly.
+Counting or pricing failures cancel and close the producer and use the
+existing friendly error result. Output-write failures still propagate.
+The linked model subscription is released on success, failure and budget or
+user cancellation. User cancellation stays silent, with no budget-stop note.
+
+The handler finalizes output counting on normal completion and budget stops.
+Issue #16 owns recording and real recounts on every exit, including cancel and
+error; no usage sink, ledger entry or footer is added here. The guard's count
+operations respect the chat signal, so accounting after user cancellation
+will need its own cancellation policy in #16.
+
+The 400-character interval is not a universal token or credit cap. A chunk
+can cross the interval in one step; detection may include the previous
+uncounted interval plus that arriving chunk. Tests bound this visible-text
+overshoot with deterministic tokenizers over several chunk sizes. Arbitrary
+token density, hidden reasoning and provider-side generation after
+cancellation prevent a model-independent billing bound.
 
 ## 3. Settings (`q0t4.*`)
 
@@ -255,7 +313,7 @@ prices/table.json                   last good price table (§9.1)
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| **The cut-off happens in the extension.** The model keeps generating until our cancellation takes effect. | A small overshoot past the limit. | StreamGuard recounts every ~400 characters while far from the limit and on **every chunk** once the estimated remaining budget is below 10% (or under 2× the last chunk). Overshoot is bounded by one interval, recorded honestly, and documented. |
+| **The cut-off happens in the extension.** The model keeps generating until cancellation takes effect. | Usage can exceed the limit; no universal billing cap. | Recount every ~400 characters, then every chunk near the limit. Detection can include an uncounted interval plus the arriving chunk. Chunk size, token density and provider-side generation prevent a strict token cap. Show received text and record real usage (#16). |
 | **`countTokens` latency.** It may be async, IPC-backed and slow on long texts. | Slower streaming. | Adaptive recounting with a cheap `chars/4` estimate between recounts. Recount only the accumulated text, never per chunk while far from the limit. Covered by FakeModel call-count tests. |
 | **Our counts ≠ GitHub's metering.** Copilot bills AI Credits from its own token counts, which include framing, hidden system prompts, cache reads and writes, and **reasoning tokens we never see**. | Credits are usually **under**-estimated, most of all for reasoning models. | README "Known limits". `/sync` books the difference as `untracked`. An optional calibration factor is proposed in §9.6. Q0T4 makes no model calls of its own beyond the user's request. |
 | **Prices change** (several times a month in `github/docs` history: new models, promotions, deprecations). | Wrong costs. | Daily refresh with ETag, a stale warning, per-entry rate snapshots, and manual overrides (§9.1). |

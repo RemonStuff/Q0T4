@@ -13,6 +13,12 @@ storage-backed state and composition-root activation in `extension.ts`, not a
 second pre-check implementation. Refusal metadata from #14 reports no charged
 usage or answering model; full usage metadata is defined by #18.
 
+Issue #15 adds `StreamGuard` behind the same optional context, including a
+separate linked model signal and explicit budget-stop metadata. This issue
+must supply real state to that existing path rather than creating a second
+cut-off loop. Installed enforcement stays inactive until this wiring lands.
+Issue #16 adds recording on every exit before that activation.
+
 ## Tests to write first
 *(unit)*
 - `TotalsStore adds usage to the subject total`

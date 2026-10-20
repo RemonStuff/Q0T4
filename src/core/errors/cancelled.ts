@@ -1,6 +1,6 @@
 export class Cancelled extends Error {
-  constructor() {
-    super("Input token counting was cancelled.");
+  constructor(kind: "input" | "output" = "input") {
+    super(`${kind === "input" ? "Input" : "Output"} token counting was cancelled.`);
     this.name = "Cancelled";
   }
 }

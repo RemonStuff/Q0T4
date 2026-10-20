@@ -19,23 +19,11 @@ export interface PreCheckRefusal {
 export type PreCheckResult = { readonly allowed: true } | PreCheckRefusal;
 
 export function preCheck(input: PreCheckInput): PreCheckResult {
-  const { unit, used, budget, extraAllowance } = input;
+  const { unit, used } = input;
   validateCost(used, unit);
   validateCost(input.input, unit);
-  validateCost(budget, unit);
-  if (extraAllowance !== undefined) validateCost(extraAllowance, unit);
-
-  const effectiveBudget: Cost =
-    extraAllowance === undefined
-      ? budget
-      : {
-          tokens: budget.tokens + extraAllowance.tokens,
-          ...(budget.credits === undefined || extraAllowance.credits === undefined
-            ? {}
-            : { credits: budget.credits + extraAllowance.credits }),
-        };
-  validateCost(effectiveBudget, unit);
-  const limit = costAmount(effectiveBudget, unit);
+  const budget = effectiveBudget(input);
+  const limit = costAmount(budget, unit);
   if (limit > 0 && costAmount(used, unit) + costAmount(input.input, unit) <= limit) {
     return { allowed: true };
   }
@@ -43,14 +31,31 @@ export function preCheck(input: PreCheckInput): PreCheckResult {
   return {
     allowed: false,
     used,
-    budget: effectiveBudget,
+    budget,
     remaining: {
-      tokens: Math.max(0, effectiveBudget.tokens - used.tokens),
-      ...(effectiveBudget.credits === undefined || used.credits === undefined
+      tokens: Math.max(0, budget.tokens - used.tokens),
+      ...(budget.credits === undefined || used.credits === undefined
         ? {}
-        : { credits: Math.max(0, effectiveBudget.credits - used.credits) }),
+        : { credits: Math.max(0, budget.credits - used.credits) }),
     },
   };
+}
+
+export function effectiveBudget(
+  input: Pick<PreCheckInput, "unit" | "budget" | "extraAllowance">,
+): Cost {
+  const { unit, budget, extraAllowance } = input;
+  validateCost(budget, unit);
+  if (extraAllowance === undefined) return budget;
+  validateCost(extraAllowance, unit);
+  const total: Cost = {
+    tokens: budget.tokens + extraAllowance.tokens,
+    ...(budget.credits === undefined || extraAllowance.credits === undefined
+      ? {}
+      : { credits: budget.credits + extraAllowance.credits }),
+  };
+  validateCost(total, unit);
+  return total;
 }
 
 function validateCost(cost: Cost, unit: BudgetUnit): void {

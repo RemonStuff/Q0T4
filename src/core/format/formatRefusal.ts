@@ -1,6 +1,7 @@
 import type { PreCheckRefusal } from "../budget/preCheck";
 import { costAmount } from "../cost/costAmount";
 import type { BudgetUnit, SubjectName } from "../types";
+import { markdownLiteral } from "./markdownLiteral";
 
 export interface RefusalContext {
   readonly decision: PreCheckRefusal;
@@ -12,15 +13,11 @@ export interface RefusalContext {
 export function formatRefusal(context: RefusalContext): string {
   const { decision, unit, subject, resetLabel } = context;
   return (
-    `This request doesn't fit the budget for ${literal(subject)}.\n\n` +
+    `This request doesn't fit the budget for ${markdownLiteral(subject)}.\n\n` +
     `Used: ${costAmount(decision.used, unit)} ${unit}. ` +
     `Budget: ${costAmount(decision.budget, unit)} ${unit}. ` +
     `Remaining: ${costAmount(decision.remaining, unit)} ${unit}.\n` +
-    `Resets: ${literal(resetLabel)}.\n\n` +
+    `Resets: ${markdownLiteral(resetLabel)}.\n\n` +
     "Check `/status` or use `/use <subject>` to choose another subject."
   );
-}
-
-function literal(text: string): string {
-  return text.replace(/[\r\n]+/g, " ").replace(/[\\`*_{}[\]()#+\-.!|<>~&]/g, "\\$&");
 }
