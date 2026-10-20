@@ -8,7 +8,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 
 ## Status
 
-*Updated with every PR (definition of done, item 7). Last update: 2026-10-19, PR #78. The counts below include the work completed by this change.*
+*Updated with every PR (definition of done, item 7). Last update: 2026-10-20, PR #78. The counts below include the work completed by this change.*
 
 **Now:** iterations 0, *Test harness*, and 1, *Walking skeleton*, are ✅ **done**. `@q0t4` streams replies from the selected model, passes history and attached text/files/selections, and cancels the underlying request. Installed-package tests verify actual reference content, model switching and cancellation. There is no metering or budget enforcement yet, and unimplemented slash commands do not call a model. **Next up:** [#13 count input](issues/13-count-input.md), starting iteration 2.
 

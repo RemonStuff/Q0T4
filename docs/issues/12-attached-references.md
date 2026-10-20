@@ -34,12 +34,23 @@ Include the user's attached context (`#file`, selections and so on) in the messa
 - A genuine read failure reports a safe attachment-specific error and makes no model request. Cancellation suppresses further reads/output and model sending; pending document opens have no cancellation API.
 - Core red: 15 expected failures and five passing tests before implementation. Core green: 175 unit tests, with 100% core line and branch coverage.
 - Initial hosted red: run [39276985647](https://github.com/RemonStuff/Q0T4/actions/runs/39276985647), source `5beb3e9`, confirmed seven actual adapter failures before implementation. Its three handler and three installed-package failures were later found to come from a request-copying bug in the test harness, so they are not forwarding red evidence.
-- The request factory now accepts references directly, without evaluating the guard-only tool-token getter. A temporary hosted check reruns the corrected forwarding cases against the preserved pre-wiring producer. It must observe three actual assertion failures in each profile, not setup/getter errors. This temporary check is removed before final acceptance; ordinary CI must pass on the actual wired source.
+- The request factory accepts references directly, without evaluating the guard-only tool-token getter.
+- Corrected hosted red: run [39381703657](https://github.com/RemonStuff/Q0T4/actions/runs/39381703657),
+  source `b65e5e2`, restored only the preserved pre-wiring producer in a
+  disposable checkout. Both integration and installed-package profiles reported
+  three actual assertion failures, with no setup/getter errors. The temporary
+  expected-red workflow has been removed.
+- Hosted green on the actual wired source `b65e5e2`:
+  [PR CI 39381709163](https://github.com/RemonStuff/Q0T4/actions/runs/39381709163)
+  and [push CI 39381703689](https://github.com/RemonStuff/Q0T4/actions/runs/39381703689)
+  passed. Each ran 57 integration and 12 installed-VSIX tests, plus unit coverage
+  on Ubuntu and Windows, and uploaded the tested package. Final-head ordinary CI
+  remains required before merge.
 - Integration and installed-VSIX tests inspect actual fake-provider messages for full files, selections, literal strings, ordering, repeated IDs, skipped references and read failures. A scripted answer alone is not proof.
 - Assistant-run VS Code tests execute only on GitHub-hosted runners, inspected through `gh`. No automated test calls real Copilot.
 
 ## Acceptance criteria
-- [ ] The listed tests pass, core coverage holds, and CI is green
+- [x] The listed tests pass, core coverage holds, and CI is green
 - [x] The former manual attachment check is automated by verifying the exact context delivered to the model, including the installed package. Only typed Chat-view routing and stickiness remain normal-use checks, as agreed in #07/#11.
 
 ## Depends on
