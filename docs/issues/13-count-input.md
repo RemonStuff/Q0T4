@@ -26,10 +26,11 @@ in #48.
 - [x] `src/core/cost/tokenCostModel.ts` (the `CostModel` interface already exists in `costModel.ts`, added in #4 for the fixed-rate test double)
 - [x] Add `Cancelled` / `CountError` to `core/errors`
 
-## Implemented behavior and local proof
+## Implemented behavior and verification
 
-This is core-only work, implemented locally and not published. The participant
-does not call these helpers yet; budget enforcement wiring remains in #19.
+This is core-only work in [PR #79](https://github.com/RemonStuff/Q0T4/pull/79).
+The participant does not call these helpers yet; budget enforcement wiring
+remains in #19.
 
 - Count every complete message once, forwarding the same cancellation signal.
   Counts start in parallel, but their total does not depend on completion order.
@@ -60,12 +61,20 @@ characterization brings the focused suite to 26 tests.
 
 The full local `npm run coverage` passes all 201 unit tests, with 100% core line
 and branch coverage. Tests use fakes and deferred promises, not real models or
-timing-based sleeps. Hosted integration and installed-VSIX checks remain pending
-an approved publication; assistant-run VS Code tests do not run on the Mac.
+timing-based sleeps.
+
+On source `3ef2944`, [PR CI 39393978112](https://github.com/RemonStuff/Q0T4/actions/runs/39393978112)
+and [push CI 39393972313](https://github.com/RemonStuff/Q0T4/actions/runs/39393972313)
+passed. Each ran 201 unit tests on both Ubuntu and Windows, 57 existing
+integration tests and 12 existing installed-VSIX tests, and uploaded the tested
+package. These integration checks protect the unchanged participant; the new
+helpers are verified by core unit tests, not active installed metering.
+Final-head ordinary CI remains required before merge. Assistant-run VS Code
+tests do not run on the Mac, and no automated test calls real Copilot.
 
 ## Acceptance criteria
 - [x] Local unit tests pass and core coverage holds
-- [ ] The listed tests pass, core coverage holds, and CI is green
+- [x] The listed tests pass, core coverage holds, and CI is green
 
 ## Depends on
 #10

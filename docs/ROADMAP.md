@@ -9,24 +9,24 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last update: 2026-10-20,
-issue #13 local implementation; PR pending. Counts below track merged work.*
+PR #79. Counts below include the work completed by this change.*
 
 **Now:** iterations 0, *Test harness*, and 1, *Walking skeleton*, are ✅ **done**.
 `@q0t4` streams replies from the selected model, passes history and attached
 text/files/selections, and cancels the underlying request. Installed-package
 tests verify actual reference content, model switching and cancellation.
 Iteration 2 has started: [#13 count input](issues/13-count-input.md) and
-`TokenCostModel` are implemented and unit-tested locally, but not published or
-wired into the participant. There is still no active metering or budget
-enforcement, and unimplemented slash commands do not call a model.
-**Next:** finish #13's hosted checks and PR, then
-[#14 pre-check](issues/14-pre-check-refusal.md).
+`TokenCostModel` are implemented and tested, but are not wired into the
+participant. Hosted checks also verify that the existing installed chat flow
+still works. There is no active metering or budget enforcement, and
+unimplemented slash commands do not call a model.
+**Next:** [#14 pre-check](issues/14-pre-check-refusal.md).
 
 | Iteration | Done | State |
 |---|---|---|
 | 0 Test harness | 7 / 7 | ✅ done |
 | 1 Walking skeleton | 5 / 5 | ✅ done |
-| 2 Counting and the hard stop | 0 / 7 | in progress (#13 local) |
+| 2 Counting and the hard stop | 1 / 7 | in progress |
 | 3 Weekly storage | 0 / 6 | ⚪ not started |
 | 4 Repo subjects | 0 / 8 | ⚪ not started |
 | 5 Visibility | 0 / 4 | ⚪ not started |
@@ -34,7 +34,7 @@ enforcement, and unimplemented slash commands do not call a model.
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **12 / 59** | 47 to build |
+| **Total** | **13 / 59** | 46 to build |
 
 **Done:**
 
@@ -52,6 +52,7 @@ enforcement, and unimplemented slash commands do not call a model.
 | #10 Core chat forwarding and streaming | [#76](https://github.com/RemonStuff/Q0T4/pull/76) |
 | #11 Selected-model adapters and participant wiring | [#77](https://github.com/RemonStuff/Q0T4/pull/77) |
 | #12 Attached references | [#78](https://github.com/RemonStuff/Q0T4/pull/78) |
+| #13 Input counting and token costing | [#79](https://github.com/RemonStuff/Q0T4/pull/79) |
 
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
@@ -65,10 +66,10 @@ enforcement, and unimplemented slash commands do not call a model.
 - **#10:** initial handler metadata reports an explicit outcome and the model used. Full versioned usage metadata stays in #18, without placeholder token counts or costs now. Model failures get friendly messages; failures to write output propagate. Cancellation stops further output and closes unfinished streams.
 - **#11:** the registered participant and test hook share the same real handler. Each request uses its selected model, with no cached selection. Linked cancellation is released on completion, failure or early stream closure, including closure before the first chunk. Unimplemented slash commands report that they are unavailable without calling a model. Model switching, cancellation and installed-package forwarding are automated with the fake provider; no separate manual model test is required.
 - **#12:** references become one labelled, safely fenced user message between history and prompt. File and selection reads use current document text, including unsaved edits. Unsupported references produce one progress note; unreadable files stop before model sending. Attachment checks are automated, including the installed package. Assistant-run VS Code tests run only on GitHub-hosted runners through `gh`; local checks do not open VS Code.
-- **#13 (local):** reuse the existing `CostModel` interface. Count complete
+- **#13:** reuse the existing `CostModel` interface. Count complete
   messages concurrently, forward cancellation and return typed failures.
   Core token costing omits credits and rates. Participant wiring remains later;
-  hosted checks and publication are pending.
+  installed behavior still has no active metering or budget enforcement.
 
 Both are in PLAN §6–§7.
 
@@ -131,7 +132,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 12 Attached references (needs 08, 11) · PR #78. 🎯 **Install and try**
 
 ### Iteration 2: Counting and the hard stop
-- [ ] 13 `countInput` and `TokenCostModel`, reusing `CostModel` (needs 10) · implemented locally; hosted CI and PR pending
+- [x] 13 `countInput` and `TokenCostModel`, reusing `CostModel` (needs 10) · PR #79
 - [ ] 14 `preCheck` and refusal (needs 13)
 - [ ] 15 `StreamGuard` (needs 13) ∥
 - [ ] 16 Recording policy (needs 15)
