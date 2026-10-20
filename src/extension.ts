@@ -2,6 +2,7 @@
 import * as vscode from "vscode";
 import { chatStreamOutput } from "./adapters/chatStreamOutput";
 import { historyAdapter } from "./adapters/historyAdapter";
+import { referenceReader } from "./adapters/referenceReader";
 import { vscodeModel } from "./adapters/vscodeModel";
 import { vscodeModelSelector } from "./adapters/vscodeModelSelector";
 import { chatHandler } from "./core/chatHandler";
@@ -31,10 +32,16 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
       {
         prompt: request.prompt,
         history: historyAdapter(chatContext.history),
+        references: request.references,
         model: vscodeModel(request.model),
         ...(request.command === undefined ? {} : { command: request.command }),
       },
-      { selector: vscodeModelSelector, output: chatStreamOutput(stream), signal: token },
+      {
+        selector: vscodeModelSelector,
+        output: chatStreamOutput(stream),
+        signal: token,
+        referenceReader,
+      },
     );
   };
 

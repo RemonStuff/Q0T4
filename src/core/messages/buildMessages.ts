@@ -1,6 +1,11 @@
 import type { ChatMessage, HistoryTurn } from "../types";
+import type { ResolvedReference } from "../../ports/ReferenceReaderPort";
 
-export function buildMessages(prompt: string, history: readonly HistoryTurn[]): ChatMessage[] {
+export function buildMessages(
+  prompt: string,
+  history: readonly HistoryTurn[],
+  references: readonly ResolvedReference[] = [],
+): ChatMessage[] {
   const messages: ChatMessage[] = [];
   let pendingPrompt: string | undefined;
 
@@ -18,6 +23,17 @@ export function buildMessages(prompt: string, history: readonly HistoryTurn[]): 
     }
   }
 
+  if (references.length > 0) {
+    messages.push({ role: "user", text: references.map(referenceBlock).join("\n\n") });
+  }
   messages.push({ role: "user", text: prompt });
   return messages;
+}
+
+function referenceBlock({ label, text }: ResolvedReference): string {
+  let fence = "```";
+  for (const run of text.matchAll(/`+/g)) {
+    if (run[0].length >= fence.length) fence = "`".repeat(run[0].length + 1);
+  }
+  return `${label}\n${fence}\n${text}\n${fence}`;
 }

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { defineConfig } from "@vscode/test-cli";
 
 // Pinned so runs are reproducible.
@@ -15,6 +16,7 @@ export default defineConfig([
     files: "out/test/integration/**/*.test.js",
     version,
     extensionDevelopmentPath: [".", "test/fixtures/fake-lm-provider"],
+    launchArgs: [resolve("test/fixtures/reference-workspace")],
     mocha,
   },
   {
@@ -23,6 +25,7 @@ export default defineConfig([
     files: "out/test/vsix/**/*.test.js",
     version,
     extensionDevelopmentPath: ["test/fixtures/fake-lm-provider"],
+    launchArgs: [resolve("test/fixtures/reference-workspace")],
     installExtensions: [`./q0t4-${q0t4Version}.vsix`],
     mocha,
   },

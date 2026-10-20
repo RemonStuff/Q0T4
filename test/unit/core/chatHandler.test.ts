@@ -3,7 +3,13 @@ import { chatHandler } from "../../../src/core/chatHandler";
 import type { ChatHandlerRequest, Deps } from "../../../src/core/chatHandler";
 import { buildMessages } from "../../../src/core/messages/buildMessages";
 import type { HistoryTurn } from "../../../src/core/types";
-import { FakeCancellation, FakeModel, FakeModelSelector, RecordingOutput } from "../../fakes";
+import {
+  FakeCancellation,
+  FakeModel,
+  FakeModelSelector,
+  FakeReferenceReader,
+  RecordingOutput,
+} from "../../fakes";
 import type { FakeModelOptions } from "../../fakes";
 
 const ERROR_MESSAGE = "Q0T4 couldn't complete this request. Please try again.";
@@ -16,7 +22,7 @@ function fixture(options: FakeModelOptions = {}) {
   const output = new RecordingOutput();
   const signal = new FakeCancellation();
   const request: ChatHandlerRequest = { prompt: "Hello", history: [], model };
-  const deps: Deps = { selector, output, signal };
+  const deps: Deps = { selector, output, signal, referenceReader: new FakeReferenceReader() };
   return { model, selector, output, signal, request, deps };
 }
 

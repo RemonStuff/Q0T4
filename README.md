@@ -14,7 +14,7 @@ Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Co
 - **Hard stop.** Requests over budget are refused up front, and replies are cut off mid-stream when the budget runs out.
 - **Public API.** Other extensions can check budgets and send metered requests.
 
-> **Status: in development.** `@q0t4` streams replies from the selected model and supports cancellation. Requests use your Copilot allowance, but Q0T4 does not measure or limit usage yet. Attached files and slash commands are not implemented. See [the roadmap](docs/ROADMAP.md#status) for progress.
+> **Status: in development.** `@q0t4` streams replies from the selected model, includes attached text/files/selections and supports cancellation. Requests use your Copilot allowance, but Q0T4 does not measure or limit usage yet. Slash commands are not implemented. See [the roadmap](docs/ROADMAP.md#status) for progress.
 
 ## How to use it
 
@@ -25,6 +25,7 @@ Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Co
 3. Sign in to GitHub Copilot, select a model in the Chat picker, and send `@q0t4 hi`. The reply streams from that model. VS Code may ask for permission on the first request.
 4. Send another message without typing `@q0t4`: it still goes to Q0T4, because the participant is sticky. Pick a different model for the next request or use Stop to cancel an answer.
 5. `/status`, `/subjects` and `/use` appear in the UI but report that slash commands are not available yet. They do not call a model.
+6. Attach a file with `#file` or a text selection to include its content. File references use the current editor text, including unsaved edits; selections include only their range. Unsupported attachments produce one progress note. An unreadable attached file stops the request before calling a model.
 
 To remove it, uninstall **Q0T4** from the Extensions view.
 
@@ -45,7 +46,7 @@ The full design is in [docs/PLAN.md](docs/PLAN.md).
 ## Known limits
 
 - There is no metering or budget enforcement yet. Planned budgeting applies only to chats through `@q0t4`, not inline completions, agent mode or normal Copilot chat.
-- Attached files and selections are not read or inlined yet ([#12](https://github.com/RemonStuff/Q0T4/issues/12)); tool references are not executed. Do not assume the model can see your files.
+- Only explicitly attached text, files and selections are included. Q0T4 does not search the workspace or execute tool references. Image data, common binary image files and NUL-containing document text are unsupported; they are skipped with one progress note.
 - Detailed consent/quota error messages and retry-on-missing-model come in [#38](https://github.com/RemonStuff/Q0T4/issues/38). For now model failures show a generic retry message and preserve any partial reply.
 - Future token counts will be estimates and will not exactly match how GitHub meters Copilot.
 
@@ -53,13 +54,15 @@ The full design is in [docs/PLAN.md](docs/PLAN.md).
 
 Requirements: Node.js 22 or newer, and VS Code 1.104 or newer.
 
-The core includes [`buildMessages`](src/core/messages/buildMessages.ts), which prepares completed user/assistant history pairs followed by the current prompt. It preserves text exactly and leaves the supplied history unchanged. Unanswered requests, empty response pairs and orphan responses are omitted.
+The core includes [`buildMessages`](src/core/messages/buildMessages.ts), which prepares completed user/assistant history pairs, one user message containing attached reference blocks, then the current prompt. It preserves text exactly and leaves supplied inputs unchanged. Reference labels identify files and selection ranges; fences are longer than any backtick sequence in their content. Unanswered requests, empty response pairs and orphan responses are omitted.
 
 [`resolveModel`](src/core/models/resolveModel.ts) keeps the requested model unless the caller marks it unavailable. It then queries Copilot models once, preferring the same family before the first available result, or returns a typed `noModel` result. [`formatNoModel`](src/core/format/formatNoModel.ts) supplies the sign-in guidance for that result. Resolution never probes a model or sends a prompt; retry-on-`NotFound` comes later.
 
 [`chatHandler`](src/core/chatHandler.ts) combines model resolution and message building, forwards a request through `ModelPort`, and streams each text chunk to the supplied output. It checks cancellation, closes unfinished streams, and reports model failures with a friendly message while preserving partial replies. Its JSON-safe metadata reports the outcome and the model used, without inventing token counts or costs; full usage metadata comes in [#18](https://github.com/RemonStuff/Q0T4/issues/18).
 
 [`extension.ts`](src/extension.ts) connects that core pipeline to the real participant and the integration-test hook. The [adapters](src/adapters/) convert history and messages, use each request's selected model, and link cancellation without retaining listeners after the request ends. Integration and installed-VSIX tests use the fake `q0t4-test` provider to verify forwarding, model switching and cancellation; they never call real Copilot.
+
+[`referenceReader`](src/adapters/referenceReader.ts) resolves attached strings, file URIs and Location selections through VS Code's document APIs. The handler restores prompt order from VS Code's reversed reference list without deduplicating references by their kind ID. Unsupported values are reported once, read failures stop before sending, and cancellation prevents further reads or model calls.
 
 ```sh
 npm install
@@ -83,6 +86,8 @@ CI (GitHub Actions) runs on every push and pull request:
 Branches named `docs/…` skip the test jobs.
 
 Integration tests use a fake language-model provider (vendor `q0t4-test`) and never call real Copilot; see [test/integration/README.md](test/integration/README.md).
+
+Assistant-run integration and installed-VSIX tests run only on GitHub-hosted runners, monitored through the GitHub CLI (`gh`). They must not launch test VS Code windows on the maintainer's Mac. Lint, typechecks and unit tests still run locally.
 
 Press **F5** in VS Code ("Run Extension") to start an Extension Development Host.
 
