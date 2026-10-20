@@ -58,7 +58,13 @@ The core includes [`buildMessages`](src/core/messages/buildMessages.ts), which p
 
 [`resolveModel`](src/core/models/resolveModel.ts) keeps the requested model unless the caller marks it unavailable. It then queries Copilot models once, preferring the same family before the first available result, or returns a typed `noModel` result. [`formatNoModel`](src/core/format/formatNoModel.ts) supplies the sign-in guidance for that result. Resolution never probes a model or sends a prompt; retry-on-`NotFound` comes later.
 
-[`chatHandler`](src/core/chatHandler.ts) combines model resolution and message building, forwards a request through `ModelPort`, and streams each text chunk to the supplied output. It checks cancellation, closes unfinished streams, and reports model failures with a friendly message while preserving partial replies. Its JSON-safe metadata reports the outcome and the model used, without inventing token counts or costs; full usage metadata comes in [#18](https://github.com/RemonStuff/Q0T4/issues/18).
+[`chatHandler`](src/core/chatHandler.ts) combines model resolution and message
+building, forwards a request through `ModelPort`, and streams each text chunk
+to the supplied output. It checks cancellation, closes unfinished streams, and
+reports model failures with a friendly message while preserving partial
+replies. Its JSON-safe metadata reports the outcome and, for generated replies,
+the model used, without inventing token counts or costs; full usage metadata
+comes in [#18](https://github.com/RemonStuff/Q0T4/issues/18).
 
 [`extension.ts`](src/extension.ts) connects that core pipeline to the real participant and the integration-test hook. The [adapters](src/adapters/) convert history and messages, use each request's selected model, and link cancellation without retaining listeners after the request ends. Integration and installed-VSIX tests use the fake `q0t4-test` provider to verify forwarding, model switching and cancellation; they never call real Copilot.
 
@@ -76,6 +82,35 @@ released. A tokenizer that ignores cancellation may keep running internally.
 no credits or rate snapshot. Neither helper sends a model request. They are not
 wired into the participant yet, so installed chats still have no metering or
 budget enforcement.
+
+[`preCheck`](src/core/budget/preCheck.ts) is a pure budget decision in tokens or
+credits. It compares used cost plus estimated input against the budget plus any
+explicit extra allowance. A positive effective budget allows an exact fit;
+a zero effective budget always refuses. Remaining amounts never go below zero.
+Missing active credits, negative or nonfinite values, and an overflowing
+effective budget fail explicitly rather than allowing an unmetered request.
+
+The handler accepts an optional `BudgetContext` with the subject, `CostModel`,
+used cost, budget, optional allowance and reset label. When supplied, it counts
+the selected model's complete messages and converts input tokens to cost before
+the decision. A refusal never calls `sendRequest` and returns only
+`{ outcome: "refused", stopped: "precheck" }` in metadata, without claiming an
+answering model or charged usage. Counting and policy failures use the existing
+safe error message; cancellation stays silent.
+
+[`formatRefusal`](src/core/format/formatRefusal.ts) shows the subject, used cost,
+effective budget, remaining amount and supplied reset label, with `/status`
+and `/use` hints. Amounts are not rounded; dynamic labels are escaped for
+Markdown. The formatter does not calculate dates.
+
+This gate is implemented and unit-tested locally for
+[#14](https://github.com/RemonStuff/Q0T4/issues/14). The pull request records
+exact-source hosted check results when available. The installed participant
+does not supply a budget context, so it
+still neither counts nor enforces budgets. Storage and activation remain in
+[#19](https://github.com/RemonStuff/Q0T4/issues/19), and real reset labels in
+[#21](https://github.com/RemonStuff/Q0T4/issues/21). The command hints do not
+activate the unimplemented slash commands.
 
 ```sh
 npm install

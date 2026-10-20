@@ -5,6 +5,14 @@
 ## Description
 Make iteration 2 installable. Add the `globalStateStorage` adapter (`StoragePort` over `ExtensionContext.globalState`) and a simple `TotalsStore` (one running total per subject, **not weekly yet**, replaced in #25). Wire counting, the pre-check, StreamGuard, the recording policy and the footer into the participant. For now every prompt goes to a single subject, `general`, with a 200k default limit (from a `DEFAULT_SUBJECTS` constant in core). Settings arrive in #26.
 
+Issue #14 adds an optional core-handler `BudgetContext` for the subject, active
+`CostModel`, used cost, budget, optional allowance and reset label. That gate
+counts complete messages and pre-checks only when context is supplied. The
+installed participant still supplies none. This issue owns the real
+storage-backed state and composition-root activation in `extension.ts`, not a
+second pre-check implementation. Refusal metadata from #14 reports no charged
+usage or answering model; full usage metadata is defined by #18.
+
 ## Tests to write first
 *(unit)*
 - `TotalsStore adds usage to the subject total`

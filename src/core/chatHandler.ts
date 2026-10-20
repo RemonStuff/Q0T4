@@ -7,12 +7,17 @@ import type {
   ReferenceReaderPort,
   ResolvedReference,
 } from "../ports/ReferenceReaderPort";
+import { countInput } from "./budget/countInput";
+import { preCheck } from "./budget/preCheck";
+import type { PreCheckResult } from "./budget/preCheck";
+import type { CostModel } from "./cost/costModel";
 import { formatRequestError } from "./errors/formatRequestError";
 import { formatNoModel } from "./format/formatNoModel";
+import { formatRefusal } from "./format/formatRefusal";
 import { buildMessages } from "./messages/buildMessages";
 import { resolveModel } from "./models/resolveModel";
 import type { ModelResolution } from "./models/resolveModel";
-import type { HistoryTurn } from "./types";
+import type { Cost, HistoryTurn, SubjectName } from "./types";
 
 export interface ChatHandlerRequest {
   readonly prompt: string;
@@ -28,13 +33,28 @@ export interface Deps {
   readonly output: ChatOutputPort;
   readonly signal: CancellationSignal;
   readonly referenceReader: ReferenceReaderPort;
+  readonly budget?: BudgetContext;
+}
+
+export interface BudgetContext {
+  readonly subject: SubjectName;
+  readonly costModel: CostModel;
+  readonly used: Cost;
+  readonly budget: Cost;
+  readonly resetLabel: string;
+  readonly extraAllowance?: Cost;
 }
 
 export interface ChatHandlerResult {
-  readonly metadata: {
-    readonly outcome: "completed" | "cancelled" | "noModel" | "error";
-    readonly model?: string;
-  };
+  readonly metadata:
+    | {
+        readonly outcome: "completed" | "cancelled" | "noModel" | "error";
+        readonly model?: string;
+      }
+    | {
+        readonly outcome: "refused";
+        readonly stopped: "precheck";
+      };
 }
 
 export async function chatHandler(
@@ -86,6 +106,35 @@ export async function chatHandler(
   }
   if (signal.isCancellationRequested) return result("cancelled");
   const messages = buildMessages(request.prompt, request.history, references);
+  const budget = deps.budget;
+  if (budget !== undefined) {
+    let decision: PreCheckResult;
+    try {
+      const inputTokens = await countInput(model, messages, signal);
+      const { cost } = budget.costModel.cost(model, { input: inputTokens, output: 0 });
+      decision = preCheck({
+        unit: budget.costModel.unit,
+        used: budget.used,
+        input: cost,
+        budget: budget.budget,
+        ...(budget.extraAllowance === undefined ? {} : { extraAllowance: budget.extraAllowance }),
+      });
+    } catch {
+      return reportFailure(deps);
+    }
+    if (signal.isCancellationRequested) return result("cancelled");
+    if (!decision.allowed) {
+      output.markdown(
+        formatRefusal({
+          decision,
+          unit: budget.costModel.unit,
+          subject: budget.subject,
+          resetLabel: budget.resetLabel,
+        }),
+      );
+      return { metadata: { outcome: "refused", stopped: "precheck" } };
+    }
+  }
   let stream: AsyncIterable<string>;
   try {
     stream = await model.sendRequest(messages, signal);
@@ -100,7 +149,7 @@ export async function chatHandler(
 }
 
 function result(
-  outcome: ChatHandlerResult["metadata"]["outcome"],
+  outcome: Exclude<ChatHandlerResult["metadata"]["outcome"], "refused">,
   model?: ModelPort,
 ): ChatHandlerResult {
   return { metadata: model === undefined ? { outcome } : { outcome, model: model.name } };
