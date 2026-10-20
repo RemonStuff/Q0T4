@@ -24,11 +24,67 @@ The decision takes an optional `extraAllowance` (default 0), which is the reserv
 - `handler returns metadata with stopped "precheck" when refused`
 
 ## Implementation tasks
-- [ ] `src/core/budget/preCheck.ts` returning `{ allowed: true } | { allowed: false; used; budget; remaining }` (all `Cost`)
-- [ ] `formatRefusal` in `core/format`. Takes the reset date and unit as inputs; the reset date is a placeholder now, real once #21 lands.
-- [ ] Call it in `chatHandler` after `countInput`
+- [x] `src/core/budget/preCheck.ts` returning `{ allowed: true } | { allowed: false; used; budget; remaining }` (all `Cost`)
+- [x] `formatRefusal` in `core/format`. Takes the reset label and unit as inputs; the label is caller-supplied now, calculated once #21 lands.
+- [x] Call it in `chatHandler` after `countInput`, when an optional budget context is supplied
+
+## Implementation and verification
+
+Implemented on `feat/14-pre-check-refusal`. The pull request records
+exact-source hosted results when available; merge needs separate approval.
+This does not activate installed budget enforcement.
+
+- `preCheck` compares only the active unit. Effective budget is base budget
+  plus optional allowance. Equality fits a positive effective budget; zero
+  always refuses, including zero-cost requests. Allowance can cover an existing
+  overshoot. Remaining amounts are clamped before this request, not after it.
+- Supplied costs must be finite and nonnegative. Missing active credits throw
+  `TypeError`; invalid amounts and an overflowing effective budget throw
+  `RangeError`. Known inactive costs are preserved; unknown credits stay absent.
+  No rounding or tolerance changes the boundary.
+- `formatRefusal` shows exact values in the active unit and the supplied reset
+  label, escapes Markdown and normalizes line breaks in labels. It includes
+  `/status` and `/use` hints without implementing commands or calendar logic.
+- The optional handler `BudgetContext` supplies all state. The handler counts
+  the resolved model's complete messages, converts input with zero output cost,
+  and refuses before `sendRequest`. Refusal metadata is exactly
+  `{ outcome: "refused", stopped: "precheck" }`, without an answering model or
+  invented usage. Full usage metadata stays in #18.
+- Counting, cost and policy failures use the safe generic error path without
+  sending; cancellation is silent. Output-write failures still propagate.
+  Without a budget context, the existing flow does not count tokens.
+- `extension.ts` remains unchanged. Storage, default totals and participant
+  activation remain in [#19](19-wire-budget-enforcement.md). No settings,
+  recording or stream cut-off were added.
+
+Red-first and focused green command:
+
+```sh
+npm test -- \
+  test/unit/core/budget/preCheck.test.ts \
+  test/unit/core/budget/preCheckHandler.test.ts \
+  test/unit/core/format/formatRefusal.test.ts \
+  test/unit/core/cost/costAmount.test.ts
+```
+
+Against inert helper scaffolds and the unchanged handler, 88 assertions failed
+for expected behavioral reasons and 15 cases passed. One additional
+fallback-model case had a fixture vendor mismatch, excluded from red proof;
+the corrected fixture matches the resolver's Copilot lookup. Initial
+missing-module failures are also excluded. No unhandled errors occurred.
+After implementation and the fixture correction, all 104 focused tests pass.
+
+`npm run coverage` passes all 305 unit tests with 100% core statements, branches,
+functions and lines. Tests cover both units, exact and fractional boundaries,
+zero budget, overshoot, extra allowance, invalid state, safe formatting,
+complete-message counting, cancellation, error paths and unchanged unmetered
+behavior. They use fakes; no test calls real Copilot. Automated VS Code
+integration and installed-VSIX tests run only on GitHub-hosted runners after
+publication, not on the work Mac. Their results protect the unchanged installed
+flow, not active installed enforcement.
 
 ## Acceptance criteria
+- [x] Local unit tests pass and core coverage holds
 - [ ] The listed tests pass, core coverage holds, and CI is green
 
 ## Depends on

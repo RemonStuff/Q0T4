@@ -83,13 +83,14 @@ test/
 
 This is the target flow. Issue #13 adds independently tested core helpers for
 input counting and token costing, but does not connect them to the participant.
-Budget enforcement wiring is completed in #19.
+Issue #14 adds an optional core-handler gate using caller-supplied budget state.
+The installed participant supplies none; storage and activation remain in #19.
 
 1. **Parse the command.** `/status` and `/subjects` render and return. `/use` is parsed in pure core.
 2. **Resolve the subject**, in this order: `/use` argument → thread subject (history metadata) → current repo (`owner/repo` from the git remote, or the folder name) → `fallbackSubject` (no folder open). Resolving costs no tokens.
 3. **Build the messages:** same-subject history when `includeHistory` is on (footers stripped), then attached references, then the prompt. Trim to fit `maxInputTokens`.
 4. **Count input** with `countTokens` per message, then turn it into a cost with the active `CostModel` (tokens: cost = tokens; credits: §9.1).
-5. **Pre-check:** refuse if `usedThisWeek + estimatedInputCost > weeklyBudget`. In pool mode, the reserve may cover the gap (§9.3). The refusal shows used, budget, remaining and reset date, in the active unit.
+5. **Pre-check:** refuse if the effective budget is zero or `usedThisWeek + estimatedInputCost > weeklyBudget + extraAllowance`. A positive effective budget allows equality. In pool mode, the reserve may cover the gap (§9.3). The refusal shows used, effective budget, remaining and reset date, in the active unit.
 6. **Stream** chunks to the output through `StreamGuard`, which recounts output at adaptive intervals, converts it to cost, and cancels with a "⛔ Stopped" note once the weekly budget (plus any allowed reserve) is reached.
 7. **`finally`** (always, including on cancel and error): append a ledger entry (raw tokens, model, rates snapshot, cost, source), then write the sentinel, the footer `*RemonStuff/Q0T4: 112k / 150k this week · resets Mon · GPT-5*` (the last part is the name of the model that answered; the credits/pool form is in §9.7) and any ⚠️ warnings (`warnAtPercent`, daily pace, monthly pace, stale prices).
 8. **Return** `{ metadata: { v: 1, subject, model, unit, inputTokens, outputTokens, cost, stopped } }`, where `model` is the answering model's name.
@@ -130,6 +131,45 @@ internally after cancellation.
 `{ cost: { tokens: input + output } }`, with unit `"tokens"` and no credits or
 rate snapshot. It performs no provider calls. These helpers do not add active
 metering, a budget pre-check, storage or a footer on their own.
+
+### Pre-check contract
+
+`preCheck({ unit, used, input, budget, extraAllowance? })` is pure and takes
+`Cost` values, not raw token counts. The allowance defaults to zero. Only the
+active unit decides whether the request fits; token and credit thresholds are
+never mixed or rounded. A positive effective budget allows equality. Zero
+always refuses, even for zero input cost. An explicit allowance can cover an
+existing overshoot or make a zero base budget usable.
+
+The result is `{ allowed: true }` or
+`{ allowed: false, used, budget, remaining }`. On refusal, `budget` is the base
+plus allowance, and `remaining` is the amount available before this request,
+clamped to zero. Known amounts in both units are preserved. Unknown inactive
+credits stay absent, never invented as zero.
+
+All supplied cost fields must be finite and nonnegative. Missing active
+credits throw `TypeError`; negative or nonfinite fields and an overflowing
+effective budget throw `RangeError`. The shared `costAmount(cost, unit)` reader
+selects and validates one amount, without conversion or rounding.
+
+`formatRefusal({ decision, unit, subject, resetLabel })` shows exact amounts,
+escapes Markdown labels and keeps dynamic labels on one line. It includes
+`/status` and `/use` hints but does not implement those commands. The caller
+supplies the reset label; calendar calculation follows in #21.
+
+An optional `BudgetContext` dependency on `chatHandler` supplies the subject,
+`CostModel`, used cost, budget, optional allowance and reset label. After model
+resolution and message building, the handler counts the resolved model's exact
+messages, converts `{ input: inputTokens, output: 0 }` to cost, and pre-checks.
+A refusal writes the formatted message without sending a request and returns
+`{ metadata: { outcome: "refused", stopped: "precheck" } }`. It makes no claim
+about charged usage or an answering model; full usage metadata stays in #18.
+
+Counting, cost conversion and invalid policy failures use the existing safe
+error result. Cancellation remains silent and prevents sending. Output-write
+failures propagate unchanged. Without a budget context, the handler does not
+count tokens and preserves the existing flow. Issue #14 supplies no extension
+wiring, storage, default budget, settings, recording or stream cut-off.
 
 ## 3. Settings (`q0t4.*`)
 

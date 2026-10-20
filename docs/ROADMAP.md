@@ -8,8 +8,9 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 
 ## Status
 
-*Updated with every PR (definition of done, item 7). Last update: 2026-10-20,
-PR #79. Counts below include the work completed by this change.*
+*Updated with every PR (definition of done, item 7). Last verified delivery:
+2026-10-20, PR #79. Counts include merged work only; #14 work is not
+counted as done.*
 
 **Now:** iterations 0, *Test harness*, and 1, *Walking skeleton*, are ✅ **done**.
 `@q0t4` streams replies from the selected model, passes history and attached
@@ -20,7 +21,13 @@ Iteration 2 has started: [#13 count input](issues/13-count-input.md) and
 participant. Hosted checks also verify that the existing installed chat flow
 still works. There is no active metering or budget enforcement, and
 unimplemented slash commands do not call a model.
-**Next:** [#14 pre-check](issues/14-pre-check-refusal.md).
+**Current work:** [#14 pre-check](issues/14-pre-check-refusal.md) is implemented
+with a pure decision, refusal formatting and an optional core-handler gate.
+All 305 unit tests pass with 100% core coverage. The installed participant
+does not supply budget state, so enforcement is still inactive. Exact-source
+hosted results are recorded in the pull request; merge needs separate approval.
+**Next:** finish delivery of #14, then
+[#15 stream guard](issues/15-stream-guard.md).
 
 | Iteration | Done | State |
 |---|---|---|
@@ -70,6 +77,11 @@ unimplemented slash commands do not call a model.
   messages concurrently, forward cancellation and return typed failures.
   Core token costing omits credits and rates. Participant wiring remains later;
   installed behavior still has no active metering or budget enforcement.
+- **#14 (in progress):** the optional core gate takes explicit budget state.
+  A positive effective budget allows equality; zero always refuses. Extra
+  allowance can cover an existing overshoot. Invalid costs fail explicitly.
+  Refusal metadata records only the refusal and pre-check stop, not invented
+  usage. Reset calculation remains in #21 and installed activation in #19.
 
 Both are in PLAN §6–§7.
 
