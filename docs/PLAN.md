@@ -38,7 +38,7 @@ Q0T4 uses ports and adapters. All logic lives in `src/core/`, which never import
 ```
 src/
   core/
-    budget/      preCheck, StreamGuard (adaptive recount + cut-off), recordingPolicy,
+    budget/      countInput, preCheck, StreamGuard (adaptive recount + cut-off), recordingPolicy,
                  weeklyBudget (fixed limit or rolling share of the pool), reserve borrowing
     cost/        CostModel: TokenCostModel and CreditCostModel (tiers, rate snapshots, unknown models)
     pricing/     price-table parsers (YAML subset, Markdown tables), validation, PriceRefresher
@@ -49,11 +49,11 @@ src/
     subjects/    parseConfig, repoIdentifier (normalise remotes), threadSubject, parseUse, resolveSubject
     messages/    buildMessages (history filter, footer strip, references, prompt), trimToWindow
     format/      tokens (112k / 1.2M), footer, warnings, refusal, statusTable, subjectList, statusBarText
-    errors/      ModelErrorKind → user-facing message
+    errors/      Cancelled, CountError, ModelErrorKind → user-facing message
     chatHandler.ts   orchestrates one request through the ports
     types.ts     domain types (Subject, SubjectConfig, Usage, ChatTurn, ResultMetadata…)
   ports/
-    ModelPort            sendRequest(messages, signal) → AsyncIterable<string>; countTokens(text|msg); id, name, family, vendor, maxInputTokens
+    ModelPort            sendRequest(messages, signal) → AsyncIterable<string>; countTokens(text|msg, signal?); id, name, family, vendor, maxInputTokens
     ModelSelectorPort    select({ vendor?, family? }) → ModelPort[]
     StoragePort          get<T>(key), set(key, value), keys()   (small UI state only)
     LedgerPort           append(entry), read({ from, to }) → entries   (append-only, see §4)
@@ -81,6 +81,10 @@ test/
 
 ### Request flow (`chatHandler`)
 
+This is the target flow. Issue #13 adds independently tested core helpers for
+input counting and token costing, but does not connect them to the participant.
+Budget enforcement wiring is completed in #19.
+
 1. **Parse the command.** `/status` and `/subjects` render and return. `/use` is parsed in pure core.
 2. **Resolve the subject**, in this order: `/use` argument → thread subject (history metadata) → current repo (`owner/repo` from the git remote, or the folder name) → `fallbackSubject` (no folder open). Resolving costs no tokens.
 3. **Build the messages:** same-subject history when `includeHistory` is on (footers stripped), then attached references, then the prompt. Trim to fit `maxInputTokens`.
@@ -98,7 +102,7 @@ test/
 | `core/ledger` | yes (through LedgerPort) | Building entries, weekly/daily/cycle totals for a subject or the reserve, reset markers, skipping corrupt lines. |
 | `core/cost` | yes | `CostModel`: tokens → cost in the active unit, picking the price tier and snapshotting the rates used. |
 | `core/pricing` | yes | Parsing and validating price tables, applying overrides, refresh timing, staleness. |
-| `core/budget` | yes | Weekly budget (fixed or rolling pool share), reserve borrowing, the pre-check decision, StreamGuard scheduling and cut-off, the rules for what gets recorded when. |
+| `core/budget` | yes, through ModelPort for counting | Concurrent full-message input counting, weekly budget (fixed or rolling pool share), reserve borrowing, the pre-check decision, StreamGuard scheduling and cut-off, the rules for what gets recorded when. |
 | `core/api` | yes | The public API façade, built on the same pipeline as the participant. |
 | `core/subjects` | yes | Validating config, limit lookup (configured or default), normalising git remotes to `owner/repo`, thread subject, `/use`, the resolution pipeline. |
 | `core/messages` | yes | Building the message list, filtering history, stripping footers, reference blocks, trimming to the context window. |
@@ -106,6 +110,26 @@ test/
 | `adapters/*` | no | Thin wrappers that turn VS Code objects into port types. Each one is covered by an integration test and contains no logic. |
 
 ---
+
+### Input counting contract
+
+`countInput(model, messages, signal)` counts the complete messages built for
+sending, including roles, history and fenced reference text. Counts start in
+parallel and are summed in message order. An empty list returns zero without
+calling the model; an already-cancelled signal rejects even for an empty list.
+It never sends a model request or changes the supplied messages.
+
+Cancellation rejects promptly with `Cancelled`, even if a tokenizer ignores its
+signal. Other counting failures reject with `CountError`, keeping the original
+cause but not including it in the public error message. The cancellation
+subscription is disposed on success, failure and cancellation. In-flight counts
+remain observed so late rejections are handled; their provider may still finish
+internally after cancellation.
+
+`TokenCostModel` reuses `CostModel` and returns
+`{ cost: { tokens: input + output } }`, with unit `"tokens"` and no credits or
+rate snapshot. It performs no provider calls. These helpers do not add active
+metering, a budget pre-check, storage or a footer on their own.
 
 ## 3. Settings (`q0t4.*`)
 

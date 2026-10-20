@@ -64,6 +64,19 @@ The core includes [`buildMessages`](src/core/messages/buildMessages.ts), which p
 
 [`referenceReader`](src/adapters/referenceReader.ts) resolves attached strings, file URIs and Location selections through VS Code's document APIs. The handler restores prompt order from VS Code's reversed reference list without deduplicating references by their kind ID. Unsupported values are reported once, read failures stop before sending, and cancellation prevents further reads or model calls.
 
+[`countInput`](src/core/budget/countInput.ts) is core-only groundwork: it counts
+every complete message through the supplied model, concurrently, including
+history and formatted references. It forwards the cancellation signal, stops
+waiting with typed `Cancelled`, and wraps tokenizer failures in `CountError`
+with a safe message and the original cause. Its cancellation listener is always
+released. A tokenizer that ignores cancellation may keep running internally.
+
+[`TokenCostModel`](src/core/cost/tokenCostModel.ts) implements the existing
+[`CostModel`](src/core/cost/costModel.ts): cost is input plus output tokens, with
+no credits or rate snapshot. Neither helper sends a model request. They are not
+wired into the participant yet, so installed chats still have no metering or
+budget enforcement.
+
 ```sh
 npm install
 npm test            # unit tests (Vitest)
