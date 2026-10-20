@@ -10,10 +10,13 @@ import type {
 import { countInput } from "./budget/countInput";
 import { preCheck } from "./budget/preCheck";
 import type { PreCheckResult } from "./budget/preCheck";
+import { StreamGuard } from "./budget/streamGuard";
+import { createCancellation } from "./cancellation/createCancellation";
 import type { CostModel } from "./cost/costModel";
 import { formatRequestError } from "./errors/formatRequestError";
 import { formatNoModel } from "./format/formatNoModel";
 import { formatRefusal } from "./format/formatRefusal";
+import { formatStopped } from "./format/formatStopped";
 import { buildMessages } from "./messages/buildMessages";
 import { resolveModel } from "./models/resolveModel";
 import type { ModelResolution } from "./models/resolveModel";
@@ -54,6 +57,11 @@ export interface ChatHandlerResult {
     | {
         readonly outcome: "refused";
         readonly stopped: "precheck";
+      }
+    | {
+        readonly outcome: "stopped";
+        readonly stopped: "budget";
+        readonly model: string;
       };
 }
 
@@ -107,11 +115,15 @@ export async function chatHandler(
   if (signal.isCancellationRequested) return result("cancelled");
   const messages = buildMessages(request.prompt, request.history, references);
   const budget = deps.budget;
+  let cancellation: ReturnType<typeof createCancellation> | undefined;
+  let guard: StreamGuard | undefined;
   if (budget !== undefined) {
     let decision: PreCheckResult;
+    let inputCost: Cost;
     try {
       const inputTokens = await countInput(model, messages, signal);
       const { cost } = budget.costModel.cost(model, { input: inputTokens, output: 0 });
+      inputCost = cost;
       decision = preCheck({
         unit: budget.costModel.unit,
         used: budget.used,
@@ -134,22 +146,44 @@ export async function chatHandler(
       );
       return { metadata: { outcome: "refused", stopped: "precheck" } };
     }
+    cancellation = createCancellation(signal);
+    try {
+      guard = new StreamGuard({
+        ...budget,
+        input: inputCost,
+        model,
+        signal,
+        cancel: cancellation.cancel,
+      });
+    } catch {
+      cancellation.dispose();
+      return reportFailure(deps);
+    }
   }
-  let stream: AsyncIterable<string>;
   try {
-    stream = await model.sendRequest(messages, signal);
-  } catch {
-    return reportFailure(deps, model);
-  }
+    let stream: AsyncIterable<string>;
+    try {
+      stream = await model.sendRequest(messages, cancellation?.signal ?? signal);
+    } catch {
+      cancellation?.cancel();
+      return reportFailure(deps, model);
+    }
 
-  const streamed = await forwardStream(stream, output, signal);
-  if (signal.isCancellationRequested) return result("cancelled", model);
-  if (streamed.failed) return reportFailure(deps, model, streamed.hasOutput);
-  return result("completed", model);
+    const streamed = await forwardStream(stream, output, signal, guard, cancellation?.cancel);
+    if (signal.isCancellationRequested) return result("cancelled", model);
+    if (streamed.failed) return reportFailure(deps, model, streamed.hasOutput);
+    if (guard?.stopped && budget !== undefined) {
+      output.markdown(`${streamed.hasOutput ? "\n\n" : ""}${formatStopped(budget.subject)}`);
+      return { metadata: { outcome: "stopped", stopped: "budget", model: model.name } };
+    }
+    return result("completed", model);
+  } finally {
+    cancellation?.dispose();
+  }
 }
 
 function result(
-  outcome: Exclude<ChatHandlerResult["metadata"]["outcome"], "refused">,
+  outcome: Exclude<ChatHandlerResult["metadata"]["outcome"], "refused" | "stopped">,
   model?: ModelPort,
 ): ChatHandlerResult {
   return { metadata: model === undefined ? { outcome } : { outcome, model: model.name } };
@@ -165,11 +199,14 @@ async function forwardStream(
   stream: AsyncIterable<string>,
   output: ChatOutputPort,
   signal: CancellationSignal,
+  guard?: StreamGuard,
+  cancel?: () => void,
 ): Promise<{ readonly failed: boolean; readonly hasOutput: boolean }> {
   let iterator: AsyncIterator<string, unknown>;
   try {
     iterator = stream[Symbol.asyncIterator]();
   } catch {
+    cancel?.();
     return { failed: true, hasOutput: false };
   }
 
@@ -193,8 +230,25 @@ async function forwardStream(
       if (signal.isCancellationRequested) break;
       output.markdown(next.value);
       hasOutput ||= next.value.length > 0;
+      if (signal.isCancellationRequested) break;
+      if (guard !== undefined) {
+        try {
+          if ((await guard.onChunk(next.value)) === "stop") break;
+        } catch {
+          failed = true;
+          break;
+        }
+      }
+    }
+    if (!failed && !signal.isCancellationRequested && guard !== undefined) {
+      try {
+        await guard.finalCount();
+      } catch {
+        failed = true;
+      }
     }
   } finally {
+    if (failed || !done) cancel?.();
     if (!done) {
       try {
         await iterator.return?.();
