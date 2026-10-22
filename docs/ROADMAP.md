@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-22, PR #107. Counts include merged work only; #15 work is not
+2026-10-22, PR #108. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, 2, *Counting and the hard
@@ -24,8 +24,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands still do not call a model, and there is one
 subject, `general`, with fixed settings.
-**Current work:** [#25 wire the ledger](issues/25-wire-ledger.md) replaces the iteration-2 `TotalsStore` with the `Ledger` over a new `fileLedger` adapter (JSON Lines files per window, `ledger/<YYYY-MM>/<sessionId>.jsonl`), so usage is weekly, survives a reload and is shared by all windows. The footer says `resets Mon`, a refusal `Mon 19 Oct`, and the pace warning is live. Activation drops the old totals key and prunes old months; an unreadable ledger stops the request instead of guessing. 653 local unit tests pass with 100% core coverage. Iteration 3 is complete with this PR; it still needs your manual look (two windows).
-**Next:** iteration 4, *Repo subjects*, starting with [#26 settings schema and config](issues/26-settings-schema-and-config.md).
+**Current work:** [#26A](https://github.com/RemonStuff/Q0T4/issues/84) adds the pure `parseConfig` for the `q0t4.*` settings and `weeklyLimitFor`: broken values fall back to defaults with a warning, subjects match case-insensitively, a limit of 0 disables a subject. Nothing reads it yet; [#26B](https://github.com/RemonStuff/Q0T4/issues/85) adds the VS Code settings and the adapter and replaces the fixed defaults. 677 local unit tests pass with 100% core coverage.
+**Next:** [#26B](https://github.com/RemonStuff/Q0T4/issues/85), then the subject detection pieces [#27](issues/27-repo-identifier.md) to [#33](issues/33-wire-subjects.md).
 
 | Iteration | Done | State |
 |---|---|---|
@@ -71,6 +71,7 @@ subject, `general`, with fixed settings.
 | #23 `Ledger` resilience: corrupt lines, retention, settings changes | [#106](https://github.com/RemonStuff/Q0T4/pull/106) |
 | #24 Daily pace tracking and warning | [#107](https://github.com/RemonStuff/Q0T4/pull/107) |
 | #25 Wire the ledger: file adapter and system clock | [#108](https://github.com/RemonStuff/Q0T4/pull/108) |
+| #26A Core `parseConfig` and `weeklyLimitFor` | [#109](https://github.com/RemonStuff/Q0T4/pull/109) |
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
 **Decisions along the way:**
@@ -180,6 +181,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 
 ### Iteration 4: Repo subjects
 - [ ] 26 Settings schema, `parseConfig` and limits (needs 25)
+  - [x] 26A Core `parseConfig` and `weeklyLimitFor` · PR #109
 - [ ] 27 Repo identifier from git remotes (needs 26)
 - [ ] 28 Thread subject (needs 18, 26) ∥
 - [ ] 29 `/use` parsing (needs 26) ∥
