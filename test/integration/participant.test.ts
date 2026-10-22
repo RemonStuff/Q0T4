@@ -1,6 +1,9 @@
 import * as assert from "node:assert/strict";
 import * as vscode from "vscode";
-import { createRequestHandler } from "../../src/extension";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { fileLedger } from "../../src/adapters/fileLedger";
+import { LEGACY_TOTALS_KEY, createRequestHandler, housekeeping } from "../../src/extension";
 import {
   FAKE_PROVIDER_ID,
   FAKE_VENDOR,
@@ -275,6 +278,9 @@ describe("@q0t4 participant", () => {
   describe("@q0t4 budget enforcement", () => {
     type Usage = { inputTokens: number; outputTokens: number; stopped: unknown };
 
+    const weekTokens = async () =>
+      (await (await participantApi()).test.ledger.usedThisWeek("general")).tokens;
+
     async function request(prompt = "hi") {
       const api = await participantApi();
       const source = new vscode.CancellationTokenSource();
@@ -299,6 +305,9 @@ describe("@q0t4 participant", () => {
 
     before(async () => {
       await vscode.extensions.getExtension(FAKE_PROVIDER_ID)?.activate();
+      await (
+        await participantApi()
+      ).test.ready;
     });
 
     beforeEach(async () => {
@@ -310,24 +319,26 @@ describe("@q0t4 participant", () => {
     });
 
     it("handleRequest appends a footer with the usage this request", async () => {
-      const api = await participantApi();
-      const before = api.test.store.get("general").tokens;
+      const before = await weekTokens();
       const { text, metadata } = await request();
       assert.ok(text.startsWith("Hello world\n\n<!-- q0t4:footer -->\n\n*general: "), text);
-      assert.match(text, / \/ 200k this week · resets date unavailable · /);
+      assert.match(text, / \/ 200k this week · resets (Mon) · /);
       assert.equal(metadata.stopped, false);
       assert.ok(metadata.inputTokens > 0 && metadata.outputTokens > 0);
-      assert.equal(
-        api.test.store.get("general").tokens,
-        before + metadata.inputTokens + metadata.outputTokens,
-      );
+      assert.equal(await weekTokens(), before + metadata.inputTokens + metadata.outputTokens);
+    });
+
+    it("the footer shows the weekday of the next reset", async () => {
+      const { text } = await request();
+      // The default week resets on Monday.
+      assert.match(text, /this week · resets Mon · /);
     });
 
     it("handleRequest stops a long fake reply with ⛔ when the budget is tiny", async () => {
       const api = await participantApi();
       const chunk = "x".repeat(40);
       await vscode.commands.executeCommand("q0t4-test.setScript", Array(10).fill(chunk));
-      api.test.setLimit(api.test.store.get("general").tokens + 15);
+      api.test.setLimit((await weekTokens()) + 15);
       const { text, metadata } = await request();
       assert.ok(text.includes("⛔ Stopped: general weekly budget reached."), text);
       assert.equal(metadata.stopped, "budget");
@@ -337,23 +348,123 @@ describe("@q0t4 participant", () => {
 
     it("handleRequest refuses before calling the model when the total is already at the limit", async () => {
       const api = await participantApi();
-      api.test.setLimit(api.test.store.get("general").tokens);
+      api.test.setLimit(await weekTokens());
       const { text, metadata } = await request();
       assert.ok(text.includes("This request doesn't fit the budget for general."), text);
+      assert.match(text, /Resets: Mon \d{1,2} [A-Z][a-z]{2}\./);
       assert.equal(metadata.stopped, "precheck");
       assert.equal(metadata.inputTokens, 0);
       const state = await vscode.commands.executeCommand<ProviderState>("q0t4-test.getState");
       assert.deepEqual(state?.requests, []);
     });
 
+    it("handleRequest records a usage entry in the current month's file", async () => {
+      const api = await participantApi();
+      const { metadata } = await request();
+      const file = `${api.test.sessionId.replace(/[^A-Za-z0-9._-]/g, "_")}.jsonl`;
+      const months = (await readdir(join(api.test.ledgerRoot, "ledger"))).sort();
+      const month = months.at(-1) ?? "";
+      assert.match(month, /^\d{4}-\d{2}$/);
+      const lines = (await readFile(join(api.test.ledgerRoot, "ledger", month, file), "utf8"))
+        .trim()
+        .split("\n");
+      const last = JSON.parse(lines.at(-1) ?? "{}") as {
+        kind: string;
+        subject: string;
+        day: string;
+        source: string;
+        tokens: { input: number; output: number };
+      };
+      assert.equal(last.kind, "usage");
+      assert.equal(last.subject, "general");
+      assert.equal(last.source, "q0t4");
+      assert.ok(last.day.startsWith(month));
+      assert.deepEqual(last.tokens, { input: metadata.inputTokens, output: metadata.outputTokens });
+    });
+
     it("usage persists across a deactivate/activate cycle", async () => {
       const api = await participantApi();
       const { metadata } = await request();
-      const reactivated = createRequestHandler(api.test.storage);
-      assert.equal(reactivated.store.get("general").tokens, api.test.store.get("general").tokens);
-      assert.ok(
-        reactivated.store.get("general").tokens >= metadata.inputTokens + metadata.outputTokens,
-      );
+      // A second activation reads the same files through its own writer.
+      const reactivated = createRequestHandler({
+        ledgerPort: fileLedger(api.test.ledgerRoot, "after-reload"),
+      });
+      const total = (await reactivated.ledger.usedThisWeek("general")).tokens;
+      assert.equal(total, await weekTokens());
+      assert.ok(total >= metadata.inputTokens + metadata.outputTokens);
+    });
+
+    it("two windows on the same storage both see each other's usage", async () => {
+      const api = await participantApi();
+      const other = createRequestHandler({
+        ledgerPort: fileLedger(api.test.ledgerRoot, "window-b"),
+      });
+      const before = await weekTokens();
+      const source = new vscode.CancellationTokenSource();
+      try {
+        const result = (await other.handleRequest(
+          chatRequest(await fakeModel(), "from window b"),
+          { history: [] },
+          recordingStream().stream,
+          source.token,
+        )) as { metadata: Usage };
+        const used = result.metadata.inputTokens + result.metadata.outputTokens;
+        assert.ok(used > 0);
+        assert.equal(await weekTokens(), before + used);
+        assert.equal((await other.ledger.usedThisWeek("general")).tokens, before + used);
+      } finally {
+        source.dispose();
+      }
+    });
+
+    it("activation removes the iteration 2 totals key", async () => {
+      const api = await participantApi();
+      await api.test.storage.set(LEGACY_TOTALS_KEY, { general: { tokens: 123 } });
+      assert.ok(api.test.storage.keys().includes(LEGACY_TOTALS_KEY));
+      await housekeeping(api.test.ledger, api.test.storage);
+      assert.ok(!api.test.storage.keys().includes(LEGACY_TOTALS_KEY));
+    });
+
+    it("activation prunes month folders older than 13 months", async () => {
+      const api = await participantApi();
+      const old = join(api.test.ledgerRoot, "ledger", "2020-01");
+      await mkdir(old, { recursive: true });
+      await writeFile(join(old, "old-window.jsonl"), "");
+      await housekeeping(api.test.ledger, api.test.storage);
+      const months = await readdir(join(api.test.ledgerRoot, "ledger"));
+      assert.ok(!months.includes("2020-01"), months.join(", "));
+      assert.ok(months.length > 0, "the current month must stay");
+    });
+
+    it("does not send the request when the ledger can't be read", async () => {
+      const unreadable = createRequestHandler({
+        ledgerPort: {
+          append: async () => undefined,
+          read: async () => {
+            throw new Error("EACCES: private path");
+          },
+          months: async () => [],
+          removeMonth: async () => undefined,
+        },
+      });
+      const source = new vscode.CancellationTokenSource();
+      const { stream, markdown } = recordingStream();
+      try {
+        const result = await unreadable.handleRequest(
+          chatRequest(await fakeModel()),
+          { history: [] },
+          stream,
+          source.token,
+        );
+        assert.deepEqual(result, { metadata: { outcome: "error" } });
+        assert.equal(markdown.length, 1);
+        assert.ok(markdown[0]?.includes("did not send your request"));
+        assert.ok(!markdown[0]?.includes("EACCES"));
+        const state = await vscode.commands.executeCommand<ProviderState>("q0t4-test.getState");
+        assert.deepEqual(state?.requests, []);
+      } finally {
+        source.dispose();
+      }
     });
   });
 });

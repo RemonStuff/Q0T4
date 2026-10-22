@@ -78,7 +78,10 @@ export interface BudgetContext {
   readonly costModel: CostModel;
   readonly used: Cost;
   readonly budget: Cost;
+  /** Short label for the footer, e.g. `Mon`. */
   readonly resetLabel: string;
+  /** Longer label for the refusal, e.g. `Mon 19 Oct`; falls back to `resetLabel`. */
+  readonly resetLabelLong?: string;
   readonly extraAllowance?: Cost;
   /** What the subject used today before this request; enables the daily pace warning. */
   readonly usedToday?: Cost;
@@ -217,7 +220,7 @@ async function handle(
           decision,
           unit: budget.costModel.unit,
           subject: budget.subject,
-          resetLabel: budget.resetLabel,
+          resetLabel: budget.resetLabelLong ?? budget.resetLabel,
         }),
       );
       return { metadata: { outcome: "refused", stopped: "precheck" } };

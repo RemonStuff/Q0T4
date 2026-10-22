@@ -4,7 +4,7 @@
 
 **Weekly budgets for GitHub Copilot Chat, per repo.**
 
-Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Copilot Chat panel. You chat through `@q0t4` as you would with Copilot. It forwards your prompt and conversation history to the model you picked. Metering and a hard stop are **active for one shared subject**, `general`, with a 200,000-token limit that does not reset yet. Per-repo subjects, weekly resets, settings and slash commands are still planned.
+Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Copilot Chat panel. You chat through `@q0t4` as you would with Copilot. It forwards your prompt and conversation history to the model you picked. Metering and a hard stop are **active for one shared subject**, `general`, with a 200,000-token budget per week (the week resets on Monday). Per-repo subjects, settings and slash commands are still planned.
 
 **Planned budgeting features:**
 
@@ -14,7 +14,7 @@ Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Co
 - **Hard stop.** Requests over budget are refused up front, and replies are cut off mid-stream when the budget runs out.
 - **Public API.** Other extensions can check budgets and send metered requests.
 
-> **Status: in development.** `@q0t4` streams replies from the selected model, includes attached text/files/selections and supports cancellation. Q0T4 counts the tokens of each `@q0t4` request, adds a usage footer to the reply, refuses a request that does not fit the budget and cuts a reply off when the budget runs out. For now every request counts against one subject, `general` (200,000 tokens, no weekly reset). Slash commands are not implemented. See [the roadmap](docs/ROADMAP.md#status) for progress.
+> **Status: in development.** `@q0t4` streams replies from the selected model, includes attached text/files/selections and supports cancellation. Q0T4 counts the tokens of each `@q0t4` request, adds a usage footer to the reply, refuses a request that does not fit the budget and cuts a reply off when the budget runs out. For now every request counts against one subject, `general` (200,000 tokens a week, resetting on Monday). Usage is kept in an append-only ledger on disk, so it survives a reload and is shared by all your VS Code windows. Slash commands are not implemented. See [the roadmap](docs/ROADMAP.md#status) for progress.
 
 ## How to use it
 
@@ -22,8 +22,8 @@ Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Co
 
 1. Download the latest build: open the [CI runs on `main`](https://github.com/RemonStuff/Q0T4/actions/workflows/ci.yml?query=branch%3Amain), pick the newest green run, and download the **`q0t4-vsix`** artifact. It's a zip containing `q0t4-<version>.vsix`. Or build it yourself with `npm run package`.
 2. In VS Code (1.104 or newer): Extensions view → `…` → **Install from VSIX…** and pick the `.vsix`.
-3. Sign in to GitHub Copilot, select a model in the Chat picker, and send `@q0t4 hi`. The reply streams from that model, followed by a footer such as `*general: 1.2k / 200k this week · resets date unavailable · GPT-5*`. VS Code may ask for permission on the first request.
-   - The footer shows the running total for the shared subject `general`, including this request, and the model that answered. From 80% a `⚠️` line follows it.
+3. Sign in to GitHub Copilot, select a model in the Chat picker, and send `@q0t4 hi`. The reply streams from that model, followed by a footer such as `*general: 1.2k / 200k this week · resets Mon · GPT-5*`. VS Code may ask for permission on the first request.
+   - The footer shows the week's total for the shared subject `general`, including this request, and the model that answered. From 80% a `⚠️` line follows it.
    - A request that does not fit the remaining budget is refused before any model is called. A reply that reaches the limit is cut off with `⛔ Stopped: general weekly budget reached.`
    - The footer is hidden from the model: it is stripped from the history that is sent back.
 4. Send another message without typing `@q0t4`: it still goes to Q0T4, because the participant is sticky. Pick a different model for the next request or use Stop to cancel an answer.
@@ -48,7 +48,7 @@ The full design is in [docs/PLAN.md](docs/PLAN.md).
 
 ## Known limits
 
-- Metering and the hard stop use one subject, `general`, with a fixed 200,000-token limit that never resets. To start again, clear Q0T4's global state. Budgeting applies only to chats through `@q0t4`, not inline completions, agent mode or normal Copilot chat.
+- Metering and the hard stop use one subject, `general`, with a fixed 200,000-token weekly budget that resets on Monday at local midnight, a warning from 80% of the week and a pace warning at 30% of the week in one day. The usage ledger is kept under the extension's global storage folder; month folders older than 13 months are pruned when VS Code starts, and the totals from the iteration-2 preview are dropped. Budgeting applies only to chats through `@q0t4`, not inline completions, agent mode or normal Copilot chat.
 - Only explicitly attached text, files and selections are included. Q0T4 does not search the workspace or execute tool references. Image data, common binary image files and NUL-containing document text are unsupported; they are skipped with one progress note.
 - Detailed consent/quota error messages and retry-on-missing-model come in [#38](https://github.com/RemonStuff/Q0T4/issues/38). For now model failures show a generic retry message and preserve any partial reply.
 - Future token counts will be estimates and will not exactly match how GitHub meters Copilot.
@@ -108,9 +108,9 @@ Markdown. The formatter does not calculate dates.
 The pre-check shipped in [PR #80](https://github.com/RemonStuff/Q0T4/pull/80).
 Its exact-main CI passed unit, integration and installed-package checks.
 The installed participant supplies a budget context since
-[#19B](https://github.com/RemonStuff/Q0T4/issues/83), with the reset label
-`date unavailable` until real reset labels arrive in
-[#21](https://github.com/RemonStuff/Q0T4/issues/21). The command hints do not
+[#19B](https://github.com/RemonStuff/Q0T4/issues/83), with the real reset labels
+(`Mon`, and `Mon 19 Oct` in a refusal) since
+[#25](https://github.com/RemonStuff/Q0T4/issues/25). The command hints do not
 activate the unimplemented slash commands.
 
 [`StreamGuard`](src/core/budget/streamGuard.ts) is implemented and unit-tested
@@ -176,16 +176,10 @@ the reply. That recount waits at most one second, so a tokenizer that ignores
 cancellation cannot hold up a cancelled chat; it then keeps the last exact count.
 Without a budget context the metadata is unchanged.
 
-[`TotalsStore`](src/core/storage/totalsStore.ts) ([#19A](https://github.com/RemonStuff/Q0T4/issues/82)) keeps one
-running total per subject through `StoragePort`, and is a `UsageSink`, so the chat
-handler can record into it. It never resets; weekly totals from the ledger replace
-it in [#25](https://github.com/RemonStuff/Q0T4/issues/25). The totals are loaded once and kept in memory, with every change written
-through, because VS Code's `globalState` can replace a newer pending value with a stale
-echo of an earlier write. Writes are queued so requests that finish together lose no
-increment, and damaged stored data is ignored.
-The [`globalStateStorage`](src/adapters/globalStateStorage.ts) adapter puts it on
-VS Code's `globalState`. The installed participant uses both since
-[#19B](https://github.com/RemonStuff/Q0T4/issues/83).
+The [`globalStateStorage`](src/adapters/globalStateStorage.ts) adapter puts `StoragePort` on VS
+Code's `globalState`. It holds small settings-like state only; usage lives in the ledger. (The
+iteration-2 `TotalsStore` kept running totals there and is gone: VS Code's `globalState` can
+replace a newer pending value with a stale echo of an earlier write, and it is per window.)
 
 [`BudgetCalendar`](src/core/time/budgetCalendar.ts) ([#20](https://github.com/RemonStuff/Q0T4/issues/20))
 is the pure calendar for the enforced week. `dayKey(instant)` is the local calendar day
@@ -199,9 +193,8 @@ uses it yet; the ledger totals (#22) and the next-reset labels (#21) are built o
 ([#21](https://github.com/RemonStuff/Q0T4/issues/21)) say when the current week ends. The reset is at
 local midnight, so `msUntilReset` stays correct across a DST change, and
 `BudgetCalendar.startOfDay` also handles a day whose midnight a DST change skipped. Labels use
-fixed English abbreviations: `Mon` for the footer and `Mon 19 Oct` for the refusal. The footer
-and refusal still receive their label from the caller; the installed participant keeps saying
-`date unavailable` until the ledger is wired in
+fixed English abbreviations: `Mon` for the footer and `Mon 19 Oct` for the refusal. The installed
+participant passes them to the footer and the refusal since
 [#25](https://github.com/RemonStuff/Q0T4/issues/25).
 
 [`Ledger`](src/core/ledger/ledger.ts) ([#22](https://github.com/RemonStuff/Q0T4/issues/22)) keeps usage as an
@@ -210,9 +203,8 @@ rewrites an old one; `markReset` appends a reset marker. `usedInRange` sums a su
 days, `usedThisWeek` over the current budget week (after the subject's latest reset marker) and `usedToday`
 over today's local day, so a changed `resetDay` needs no migration. Subjects match case-insensitively,
 entries from several writers are merged, and totals are in tokens, plus credits when entries carry them.
-`subjectsSeen` lists every subject in the stored months. The installed participant still uses the
-iteration-2 `TotalsStore` until the file adapter lands in
-[#25](https://github.com/RemonStuff/Q0T4/issues/25).
+`subjectsSeen` lists every subject in the stored months. The installed participant uses it
+through the file adapter since [#25](https://github.com/RemonStuff/Q0T4/issues/25).
 
 The ledger never crashes on what is stored ([#23](https://github.com/RemonStuff/Q0T4/issues/23)). A
 line that is not valid JSON, fails validation or has an unknown schema version is skipped, never
@@ -228,9 +220,17 @@ one local day, in whichever unit is active. It is computed from today's usage, s
 by itself. The handler writes `⚠️ Daily pace: 62k used today, at least 30% of the weekly budget (60k).`
 after the weekly warning when it is given today's usage (`budget.usedToday`) and the setting
 (`footer.dailyPaceWarning`); the figures count the request just answered. The installed participant
-supplies today's usage from the ledger in [#25](https://github.com/RemonStuff/Q0T4/issues/25).
+supplies today's usage from the ledger since [#25](https://github.com/RemonStuff/Q0T4/issues/25).
 
-All 645 local unit tests pass with 100% core coverage. The pull request for #24
+[`fileLedger`](src/adapters/fileLedger.ts) ([#25](https://github.com/RemonStuff/Q0T4/issues/25)) stores the
+ledger as JSON Lines files, `ledger/<YYYY-MM>/<sessionId>.jsonl` under VS Code's global storage folder. Each
+window appends only to its own file, so no lock is needed and two windows never lose an entry; reads merge every
+file of the months in range, with a cache keyed on file size and modification time. A line another window is still
+writing is ignored, and unreadable lines are skipped and counted ([#23](https://github.com/RemonStuff/Q0T4/issues/23)).
+At activation Q0T4 prunes old months and removes the iteration-2 totals key. If the ledger cannot be read, the request is
+not sent and the chat says so, because the budget is unknown. `systemClock` supplies the time and the user's IANA time zone.
+
+All 653 local unit tests pass with 100% core coverage. The pull request for #25
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).

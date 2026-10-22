@@ -111,7 +111,7 @@ describe("installed .vsix", () => {
 
   it("the installed participant appends the usage footer and records the usage", async () => {
     const api = await installed().activate();
-    const before = api.test.store.get("general").tokens;
+    const before = (await api.test.ledger.usedThisWeek("general")).tokens;
     const { stream, markdown } = recordingStream();
     const source = new vscode.CancellationTokenSource();
     try {
@@ -123,12 +123,12 @@ describe("installed .vsix", () => {
       );
       const text = markdown.join("");
       assert.ok(text.includes("<!-- q0t4:footer -->"), "no footer sentinel");
-      assert.match(text, /\*general: [^/]+ \/ 200k this week · resets date unavailable · /);
+      assert.match(text, /\*general: [^/]+ \/ 200k this week · resets Mon · /);
       const metadata = (result as { metadata: { inputTokens: number; outputTokens: number } })
         .metadata;
       assert.ok(metadata.inputTokens > 0 && metadata.outputTokens > 0);
       assert.equal(
-        api.test.store.get("general").tokens,
+        (await api.test.ledger.usedThisWeek("general")).tokens,
         before + metadata.inputTokens + metadata.outputTokens,
       );
     } finally {

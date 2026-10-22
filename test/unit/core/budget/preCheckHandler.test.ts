@@ -56,6 +56,14 @@ describe.each(["tokens", "credits"] as const)("handler budget gate (%s)", (unit)
     expect(output.text).toContain("`/use <subject>`");
   });
 
+  it("uses the long reset label in the refusal when one is given, and the short one in the footer", async () => {
+    const { request, deps, output } = fixture(unit);
+    const budget = { ...deps.budget, resetLabel: "Mon", resetLabelLong: "Mon 19 Oct" };
+    await chatHandler(request, { ...deps, budget, footer: { warnAtPercent: 80 } });
+    expect(output.text).toContain("Resets: Mon 19 Oct.");
+    expect(output.text).toContain("this week · resets Mon*");
+  });
+
   it("admits an exact input fit before the stream guard stops its output", async () => {
     const { request, deps, model, output, costModel, cost } = fixture(unit);
     const price = vi.spyOn(costModel, "cost");
