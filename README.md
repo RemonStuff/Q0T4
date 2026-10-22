@@ -149,7 +149,20 @@ generate more tokens before cancellation takes effect. Tests measure the
 character interval plus the arriving chunk with deterministic tokenizers;
 they do not prove a universal token or credit overshoot cap.
 
-All 442 local unit tests pass with 100% core coverage. The pull request for #16
+[`core/format`](src/core/format/) now also holds the usage strings from
+[#17](https://github.com/RemonStuff/Q0T4/issues/17), still unused by the installed
+participant. `formatTokens` shows `950`, `112k` or `1.25M`; `formatCredits` shows
+`2,100`, and one decimal below 10 (`7.4`). Both round down by default.
+`formatFooter` writes the hidden `<!-- q0t4:footer -->` sentinel, a blank line, and
+`*owner/repo: 112k / 150k this week · resets Mon · GPT-5*` (with `credits` after
+the budget in credits mode and no model part when no model answered). It rounds
+used up and the budget down, so it never overstates what is left, and escapes the
+subject, reset label and model name as literal Markdown. `formatWarning` returns
+`⚠️ 85% of the weekly budget used.` from `warnAtPercent`, `⛔ Weekly budget reached.`
+at 100%, or nothing below the threshold. Pool parts of the footer arrive in
+[#61](https://github.com/RemonStuff/Q0T4/issues/61).
+
+All 489 local unit tests pass with 100% core coverage. The pull request for #17
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).
