@@ -81,6 +81,38 @@ describe("InMemoryLedger", () => {
     expect(result.corrupt).toBe(2);
   });
 
+  it("months lists the months that have entries, sorted and once", async () => {
+    const ledger = new InMemoryLedger("window-a");
+    const other = ledger.writer("window-b");
+    await ledger.append(entry("1", "2026-10-14", "2026-10-14T09:00:00Z"));
+    await other.append(entry("2", "2026-09-30", "2026-09-30T09:00:00Z"));
+    await other.append(entry("3", "2026-10-02", "2026-10-02T09:00:00Z"));
+    expect(await ledger.months()).toEqual(["2026-09", "2026-10"]);
+    expect(await new InMemoryLedger().months()).toEqual([]);
+  });
+
+  it("removeMonth drops that month's entries from every writer and keeps the rest", async () => {
+    const ledger = new InMemoryLedger("window-a");
+    const other = ledger.writer("window-b");
+    await ledger.append(entry("1", "2026-10-14", "2026-10-14T09:00:00Z"));
+    await other.append(entry("2", "2026-09-30", "2026-09-30T09:00:00Z"));
+    await ledger.append(entry("3", "2026-09-01", "2026-09-01T09:00:00Z"));
+    await ledger.removeMonth("2026-09");
+    const { entries } = await ledger.read({ from: "2026-01-01", to: "2027-01-01" });
+    expect(entries.map((e) => e.id)).toEqual(["1"]);
+    expect(await ledger.months()).toEqual(["2026-10"]);
+    await ledger.removeMonth("2025-01"); // absent: nothing happens
+    expect(await ledger.months()).toEqual(["2026-10"]);
+  });
+
+  it("removeMonth rejects when a failure is injected", async () => {
+    const ledger = new InMemoryLedger();
+    await ledger.append(entry("1", "2026-09-14", "2026-09-14T09:00:00Z"));
+    ledger.failRemovals = true;
+    await expect(ledger.removeMonth("2026-09")).rejects.toThrow(/removal failure/);
+    expect(await ledger.months()).toEqual(["2026-09"]);
+  });
+
   it("append rejects when a write failure is injected", async () => {
     const ledger = new InMemoryLedger();
     ledger.failAppends = true;

@@ -14,4 +14,8 @@ export interface LedgerPort {
   append(entry: LedgerEntry): Promise<void>;
   /** Entries whose `day` is in `[from, to)`, merged across all writers. */
   read(range: { readonly from: DayKey; readonly to: DayKey }): Promise<LedgerReadResult>;
+  /** The months (`YYYY-MM`) that have stored entries, in any order. */
+  months(): Promise<readonly string[]>;
+  /** Deletes a whole month for every writer; a month that doesn't exist is not an error. */
+  removeMonth(month: string): Promise<void>;
 }

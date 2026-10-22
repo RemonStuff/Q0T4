@@ -11,6 +11,19 @@ type UsageEntry = Extract<LedgerEntry, { kind: "usage" }>;
 // The widest range the port accepts: every stored month.
 const EVERYTHING = { from: "0000-01-01", to: "9999-12-31" } as const;
 
+/** Months of usage kept besides the current one; older month folders are pruned (PLAN §4). */
+const RETENTION_MONTHS = 13;
+
+export interface LedgerOptions {
+  /** Called once per session with the first count of lines skipped as unreadable. */
+  readonly onCorrupt?: (count: number) => void;
+}
+
+export interface PruneResult {
+  readonly removed: readonly string[];
+  readonly failed: readonly string[];
+}
+
 const same = (a: SubjectName, b: SubjectName) => a.toLowerCase() === b.toLowerCase();
 
 /**
@@ -23,12 +36,42 @@ const same = (a: SubjectName, b: SubjectName) => a.toLowerCase() === b.toLowerCa
  * the credits were really spent.
  */
 export class Ledger implements UsageSink {
+  private reported = false;
+  private corrupt = 0;
+
   constructor(
     private readonly port: LedgerPort,
     private readonly clock: ClockPort,
     private readonly calendar: BudgetCalendar,
     private readonly newId: () => string,
+    private readonly options: LedgerOptions = {},
   ) {}
+
+  /** The most unreadable lines (bad JSON, failed validation, unknown schema version) seen in one read. */
+  get corruptSkipped(): number {
+    return this.corrupt;
+  }
+
+  /**
+   * Deletes month folders older than the retention window, never the current
+   * month. Meant for activation; one month that can't be removed doesn't stop the rest.
+   */
+  async prune(): Promise<PruneResult> {
+    const current = this.calendar.dayKey(this.clock.now()).slice(0, 7);
+    const cutoff = monthsBefore(current, RETENTION_MONTHS);
+    const removed: string[] = [];
+    const failed: string[] = [];
+    for (const month of [...(await this.port.months())].sort()) {
+      if (month >= cutoff) continue;
+      try {
+        await this.port.removeMonth(month);
+        removed.push(month);
+      } catch {
+        failed.push(month);
+      }
+    }
+    return { removed, failed };
+  }
 
   /** Appends an entry. Existing entries are never rewritten. */
   async record(entry: LedgerEntry): Promise<void> {
@@ -52,7 +95,7 @@ export class Ledger implements UsageSink {
 
   /** Usage of a subject on the days in `[from, to)`, ignoring reset markers. */
   async usedInRange(subject: SubjectName, from: DayKey, to: DayKey): Promise<Cost> {
-    const { entries } = await this.port.read({ from, to });
+    const { entries } = await this.read({ from, to });
     return sum(
       entries.filter((e): e is UsageEntry => e.kind === "usage" && same(e.subject, subject)),
     );
@@ -61,7 +104,7 @@ export class Ledger implements UsageSink {
   /** Usage of a subject in the current budget week, after its latest reset marker. */
   async usedThisWeek(subject: SubjectName): Promise<Cost> {
     const { start, end } = this.calendar.weekWindow(this.clock.now());
-    const { entries } = await this.port.read({ from: start, to: end });
+    const { entries } = await this.read({ from: start, to: end });
     const mine = entries.filter((e) => same(e.subject, subject));
     const lastReset = mine.filter((e) => e.kind === "reset").at(-1);
     return sum(
@@ -78,13 +121,35 @@ export class Ledger implements UsageSink {
     return this.usedInRange(subject, today, addDays(today, 1));
   }
 
+  /** Reads a range and notes unreadable lines, reporting them once per session. */
+  private async read(range: { readonly from: DayKey; readonly to: DayKey }) {
+    const result = await this.port.read(range);
+    this.corrupt = Math.max(this.corrupt, result.corrupt);
+    if (result.corrupt > 0 && !this.reported) {
+      this.reported = true;
+      try {
+        this.options.onCorrupt?.(result.corrupt);
+      } catch {
+        // A failing report hook must not break a read.
+      }
+    }
+    return result;
+  }
+
   /** Every subject with entries in the stored months, once, in the spelling used last. */
   async subjectsSeen(): Promise<readonly SubjectName[]> {
-    const { entries } = await this.port.read(EVERYTHING);
+    const { entries } = await this.read(EVERYTHING);
     const latest = new Map<string, SubjectName>();
     for (const entry of entries) latest.set(entry.subject.toLowerCase(), entry.subject);
     return [...latest.keys()].sort().map((key) => latest.get(key) as SubjectName);
   }
+}
+
+/** `YYYY-MM` minus a number of months. */
+function monthsBefore(month: string, count: number): string {
+  const [year, number] = month.split("-").map(Number) as [number, number];
+  const index = year * 12 + (number - 1) - count;
+  return `${String(Math.floor(index / 12)).padStart(4, "0")}-${String((index % 12) + 1).padStart(2, "0")}`;
 }
 
 /** Tokens always; credits only once some entry carries them. */
