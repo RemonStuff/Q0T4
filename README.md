@@ -244,7 +244,9 @@ The `q0t4.*` settings ([#26B](https://github.com/RemonStuff/Q0T4/issues/85)) are
 
 [`resolveSubject`](src/core/subjects/resolveSubject.ts) ([#31](https://github.com/RemonStuff/Q0T4/issues/31)) picks the subject for a request and stops at the first source that answers: `/use <subject> ...`, then the conversation's subject ([`threadSubject`](src/core/subjects/threadSubject.ts)), then the current repo ([`repoSubject`](src/core/subjects/repoIdentifier.ts)), then the fallback subject when no folder is open. The result also says which source answered, shown as a short note such as `Subject: RemonStuff/Q0T4 (repo)` ([`formatSubjectNote`](src/core/format/formatSubjectNote.ts)). `/use <subject>` alone returns `setOnly`, an unknown subject returns the error text, and a `/use` question replaces the prompt. Resolving never calls a model and costs no tokens. The participant does not use it yet; that is [#33](https://github.com/RemonStuff/Q0T4/issues/33).
 
-All 785 local unit tests pass with 100% core coverage. The pull request for #31
+[`filterHistoryBySubject`](src/core/messages/filterHistory.ts) ([#32](https://github.com/RemonStuff/Q0T4/issues/32)) keeps only the request/response pairs charged to the current subject: a request goes with the response that follows it, and that response's Q0T4 metadata names the subject (compared case-insensitively). Pairs from other subjects or without Q0T4 metadata are dropped and the order is kept. `buildMessages` takes `{ subject, includeHistory }`: with a subject it sends only that subject's history, with `includeHistory: false` it sends none, and references and the prompt are always sent. Without options it behaves as before. The participant does not pass them yet; that is [#33](https://github.com/RemonStuff/Q0T4/issues/33).
+
+All 798 local unit tests pass with 100% core coverage. The pull request for #32
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).

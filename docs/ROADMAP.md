@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-22, PR #115. Counts include merged work only; #15 work is not
+2026-10-22, PR #116. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, 2, *Counting and the hard
@@ -24,8 +24,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands still do not call a model, and there is one
 subject, `general`, with fixed settings.
-**Current work:** [#31 resolveSubject](issues/31-resolve-subject-pipeline.md) adds the pure `resolveSubject` (`/use`, then the conversation's subject, then the current repo, then the fallback subject) and the progress note text `Subject: <name> (<source>)`. The handler does not call it yet; that is [#33](issues/33-wire-subjects.md).
-**Next:** [#32 same-subject history](issues/32-same-subject-history.md), then [#33 wiring](issues/33-wire-subjects.md).
+**Current work:** [#32 same-subject history](issues/32-same-subject-history.md) adds `filterHistoryBySubject` and the `subject` and `includeHistory` options of `buildMessages`. The handler does not pass them yet; that is [#33](issues/33-wire-subjects.md).
+**Next:** [#33 wiring](issues/33-wire-subjects.md): `/use`, the workspace adapter, the resolver and the history filter in the participant.
 
 | Iteration | Done | State |
 |---|---|---|
@@ -33,13 +33,13 @@ subject, `general`, with fixed settings.
 | 1 Walking skeleton | 5 / 5 | ✅ done |
 | 2 Counting and the hard stop | 7 / 7 | ✅ done |
 | 3 Weekly storage | 6 / 6 | ✅ done |
-| 4 Repo subjects | 6 / 8 | in progress |
+| 4 Repo subjects | 7 / 8 | in progress |
 | 5 Visibility | 0 / 4 | ⚪ not started |
 | 6 Hardening and release (v0.1) | 0 / 4 | ⚪ not started |
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **31 / 59** | 28 to build |
+| **Total** | **32 / 59** | 27 to build |
 
 **Done:**
 
@@ -76,6 +76,7 @@ subject, `general`, with fixed settings.
 | #29 Core `/use` parsing | [#114](https://github.com/RemonStuff/Q0T4/pull/114) |
 | #30 `WorkspacePort` and the git workspace adapter | [#115](https://github.com/RemonStuff/Q0T4/pull/115) |
 | #31 Core `resolveSubject` pipeline | [#116](https://github.com/RemonStuff/Q0T4/pull/116) |
+| #32 Same-subject history filter and `includeHistory` | [#117](https://github.com/RemonStuff/Q0T4/pull/117) |
 | #26B Settings schema and the VS Code config adapter | [#110](https://github.com/RemonStuff/Q0T4/pull/110) |
 | #26A Core `parseConfig` and `weeklyLimitFor` | [#109](https://github.com/RemonStuff/Q0T4/pull/109) |
 **Infrastructure PRs:** CI retries a VS Code test run that never started its tests (runner startup flake), see `.github/scripts/run-vscode-tests.sh`.
@@ -196,7 +197,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 29 `/use` parsing (needs 26) ∥ · PR #114
 - [x] 30 WorkspacePort and git workspace adapter (needs 27) · PR #115
 - [x] 31 `resolveSubject` pipeline (needs 27, 28, 29, 30) · PR #116
-- [ ] 32 Same-subject history (needs 28) ∥
+- [x] 32 Same-subject history (needs 28) ∥ · PR #117
 - [ ] 33 Wire repo subjects (needs 31, 32). 🎯 **Install and try**
 
 ### Iteration 5: Visibility
