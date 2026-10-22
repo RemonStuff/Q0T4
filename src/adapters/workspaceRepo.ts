@@ -1,3 +1,4 @@
+import { execFile } from "node:child_process";
 import * as vscode from "vscode";
 import { pickFolder } from "../core/subjects/pickFolder";
 import type { RepoInfo, WorkspacePort } from "../ports/WorkspacePort";
@@ -39,6 +40,11 @@ export function workspaceRepo(env: WorkspaceEnv = defaultEnv): WorkspacePort {
 }
 
 async function remotesOf(env: WorkspaceEnv, folder: vscode.Uri): Promise<RepoInfo["remotes"]> {
+  const fromApi = await remotesFromApi(env, folder);
+  return fromApi.length > 0 || folder.scheme !== "file" ? fromApi : remotesFromCli(folder.fsPath);
+}
+
+async function remotesFromApi(env: WorkspaceEnv, folder: vscode.Uri): Promise<RepoInfo["remotes"]> {
   try {
     const api = await env.git();
     if (api === undefined) return [];
@@ -51,6 +57,27 @@ async function remotesOf(env: WorkspaceEnv, folder: vscode.Uri): Promise<RepoInf
   } catch {
     return [];
   }
+}
+
+/** Fallback when the Git extension is off or has not found the repo: ask git itself. */
+function remotesFromCli(cwd: string): Promise<RepoInfo["remotes"]> {
+  return new Promise((resolve) => {
+    execFile(
+      "git",
+      ["remote", "-v"],
+      { cwd, timeout: 3000, windowsHide: true },
+      (error, stdout) => {
+        if (error) return resolve([]);
+        const seen = new Map<string, string>();
+        for (const line of stdout.split(/\r?\n/)) {
+          const match = /^(\S+)\s+(\S+)\s+\(fetch\)$/.exec(line);
+          if (match && !seen.has(match[1] as string))
+            seen.set(match[1] as string, match[2] as string);
+        }
+        resolve([...seen].map(([name, url]) => ({ name, url })));
+      },
+    );
+  });
 }
 
 export async function loadGitApi(): Promise<API | undefined> {
