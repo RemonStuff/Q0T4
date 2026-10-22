@@ -1,11 +1,13 @@
 // Composition root: wires adapters to the core.
 import * as vscode from "vscode";
 import { chatStreamOutput } from "./adapters/chatStreamOutput";
+import { globalStateStorage } from "./adapters/globalStateStorage";
 import { historyAdapter } from "./adapters/historyAdapter";
 import { referenceReader } from "./adapters/referenceReader";
 import { vscodeModel } from "./adapters/vscodeModel";
 import { vscodeModelSelector } from "./adapters/vscodeModelSelector";
 import { chatHandler } from "./core/chatHandler";
+import type { StoragePort } from "./ports/StoragePort";
 
 export const PARTICIPANT_ID = "q0t4.chat";
 
@@ -18,6 +20,8 @@ export interface Q0T4TestHooks {
   readonly handleRequest: vscode.ChatRequestHandler;
   /** Prompts the participant has handled, in order, so UI-driven tests can see them. */
   readonly requests: readonly string[];
+  /** The real `globalState` adapter, so tests can check it against VS Code. */
+  readonly storage: StoragePort;
 }
 
 export interface Q0T4Exports {
@@ -49,7 +53,7 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
   participant.iconPath = new vscode.ThemeIcon("pulse");
   context.subscriptions.push(participant);
 
-  return { test: { handleRequest, requests } };
+  return { test: { handleRequest, requests, storage: globalStateStorage(context.globalState) } };
 }
 
 export function deactivate(): void {}

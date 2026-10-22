@@ -6,7 +6,14 @@ import { vscodeModel } from "../../src/adapters/vscodeModel";
 import { vscodeModelSelector } from "../../src/adapters/vscodeModelSelector";
 import type { ChatMessage } from "../../src/core/types";
 import { FakeCancellation } from "../fakes/FakeCancellation";
-import { FAKE_PROVIDER_ID, FAKE_VENDOR, fakeModel, recordingStream, withDeadline } from "./support";
+import {
+  FAKE_PROVIDER_ID,
+  FAKE_VENDOR,
+  fakeModel,
+  participantApi,
+  recordingStream,
+  withDeadline,
+} from "./support";
 
 class TrackedSignal extends FakeCancellation {
   active = 0;
@@ -479,5 +486,22 @@ describe("VS Code adapters", () => {
         { kind: "response", text: "" },
       ],
     );
+  });
+});
+
+describe("globalStateStorage adapter", () => {
+  it("get/set/keys round-trip through ExtensionContext.globalState", async () => {
+    const { storage } = (await participantApi()).test;
+    const key = "q0t4.test.roundtrip";
+    try {
+      assert.equal(storage.get(key), undefined);
+      await storage.set(key, { total: 5, nested: { ok: true } });
+      assert.deepEqual(storage.get(key), { total: 5, nested: { ok: true } });
+      assert.ok(storage.keys().includes(key));
+    } finally {
+      await storage.set(key, undefined);
+    }
+    assert.equal(storage.get(key), undefined);
+    assert.ok(!storage.keys().includes(key));
   });
 });
