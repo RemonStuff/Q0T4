@@ -4,7 +4,7 @@
 
 **Weekly budgets for GitHub Copilot Chat, per repo.**
 
-Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Copilot Chat panel. You chat through `@q0t4` as you would with Copilot. It forwards your prompt and conversation history to the model you picked. Per-repo metering and weekly budget enforcement are planned, **not active yet**.
+Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Copilot Chat panel. You chat through `@q0t4` as you would with Copilot. It forwards your prompt and conversation history to the model you picked. Metering and a hard stop are **active for one shared subject**, `general`, with a 200,000-token limit that does not reset yet. Per-repo subjects, weekly resets, settings and slash commands are still planned.
 
 **Planned budgeting features:**
 
@@ -14,7 +14,7 @@ Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Co
 - **Hard stop.** Requests over budget are refused up front, and replies are cut off mid-stream when the budget runs out.
 - **Public API.** Other extensions can check budgets and send metered requests.
 
-> **Status: in development.** `@q0t4` streams replies from the selected model, includes attached text/files/selections and supports cancellation. Requests use your Copilot allowance, but Q0T4 does not measure or limit usage yet. Slash commands are not implemented. See [the roadmap](docs/ROADMAP.md#status) for progress.
+> **Status: in development.** `@q0t4` streams replies from the selected model, includes attached text/files/selections and supports cancellation. Q0T4 counts the tokens of each `@q0t4` request, adds a usage footer to the reply, refuses a request that does not fit the budget and cuts a reply off when the budget runs out. For now every request counts against one subject, `general` (200,000 tokens, no weekly reset). Slash commands are not implemented. See [the roadmap](docs/ROADMAP.md#status) for progress.
 
 ## How to use it
 
@@ -22,7 +22,10 @@ Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Co
 
 1. Download the latest build: open the [CI runs on `main`](https://github.com/RemonStuff/Q0T4/actions/workflows/ci.yml?query=branch%3Amain), pick the newest green run, and download the **`q0t4-vsix`** artifact. It's a zip containing `q0t4-<version>.vsix`. Or build it yourself with `npm run package`.
 2. In VS Code (1.104 or newer): Extensions view → `…` → **Install from VSIX…** and pick the `.vsix`.
-3. Sign in to GitHub Copilot, select a model in the Chat picker, and send `@q0t4 hi`. The reply streams from that model. VS Code may ask for permission on the first request.
+3. Sign in to GitHub Copilot, select a model in the Chat picker, and send `@q0t4 hi`. The reply streams from that model, followed by a footer such as `*general: 1.2k / 200k this week · resets date unavailable · GPT-5*`. VS Code may ask for permission on the first request.
+   - The footer shows the running total for the shared subject `general`, including this request, and the model that answered. From 80% a `⚠️` line follows it.
+   - A request that does not fit the remaining budget is refused before any model is called. A reply that reaches the limit is cut off with `⛔ Stopped: general weekly budget reached.`
+   - The footer is hidden from the model: it is stripped from the history that is sent back.
 4. Send another message without typing `@q0t4`: it still goes to Q0T4, because the participant is sticky. Pick a different model for the next request or use Stop to cancel an answer.
 5. `/status`, `/subjects` and `/use` appear in the UI but report that slash commands are not available yet. They do not call a model.
 6. Attach a file with `#file` or a text selection to include its content. File references use the current editor text, including unsaved edits; selections include only their range. Unsupported attachments produce one progress note. An unreadable attached file stops the request before calling a model.
@@ -45,7 +48,7 @@ The full design is in [docs/PLAN.md](docs/PLAN.md).
 
 ## Known limits
 
-- There is no metering or budget enforcement yet. Planned budgeting applies only to chats through `@q0t4`, not inline completions, agent mode or normal Copilot chat.
+- Metering and the hard stop use one subject, `general`, with a fixed 200,000-token limit that never resets. To start again, clear Q0T4's global state. Budgeting applies only to chats through `@q0t4`, not inline completions, agent mode or normal Copilot chat.
 - Only explicitly attached text, files and selections are included. Q0T4 does not search the workspace or execute tool references. Image data, common binary image files and NUL-containing document text are unsupported; they are skipped with one progress note.
 - Detailed consent/quota error messages and retry-on-missing-model come in [#38](https://github.com/RemonStuff/Q0T4/issues/38). For now model failures show a generic retry message and preserve any partial reply.
 - Future token counts will be estimates and will not exactly match how GitHub meters Copilot.
@@ -79,9 +82,8 @@ released. A tokenizer that ignores cancellation may keep running internally.
 
 [`TokenCostModel`](src/core/cost/tokenCostModel.ts) implements the existing
 [`CostModel`](src/core/cost/costModel.ts): cost is input plus output tokens, with
-no credits or rate snapshot. Neither helper sends a model request. They are not
-wired into the participant yet, so installed chats still have no metering or
-budget enforcement.
+no credits or rate snapshot. Neither helper sends a model request. The participant
+uses them since [#19B](https://github.com/RemonStuff/Q0T4/issues/83).
 
 [`preCheck`](src/core/budget/preCheck.ts) is a pure budget decision in tokens or
 credits. It compares used cost plus estimated input against the budget plus any
@@ -105,9 +107,9 @@ Markdown. The formatter does not calculate dates.
 
 The pre-check shipped in [PR #80](https://github.com/RemonStuff/Q0T4/pull/80).
 Its exact-main CI passed unit, integration and installed-package checks.
-The installed participant does not supply a budget context, so it still
-neither counts nor enforces budgets. Storage and activation remain in
-[#19](https://github.com/RemonStuff/Q0T4/issues/19), and real reset labels in
+The installed participant supplies a budget context since
+[#19B](https://github.com/RemonStuff/Q0T4/issues/83), with the reset label
+`date unavailable` until real reset labels arrive in
 [#21](https://github.com/RemonStuff/Q0T4/issues/21). The command hints do not
 activate the unimplemented slash commands.
 
@@ -130,8 +132,8 @@ cost in the active unit (always tokens, credits only when rates are known), the
 rate snapshot it was costed with, and whether the reply was stopped. The handler
 records it in a `finally` block through a `UsageSink`, recounting the output from
 the accumulated text even after a cancellation. A failed write is reported to an
-optional error hook and never changes the reply. The installed participant does
-not supply a sink yet, so nothing is recorded until [#19](https://github.com/RemonStuff/Q0T4/issues/19).
+optional error hook and never changes the reply. The installed participant records
+into the totals store since [#19B](https://github.com/RemonStuff/Q0T4/issues/83).
 
 At or above the effective budget, the handler preserves the already-received
 chunk, cancels the model's separate signal and forwards no later chunks. It
@@ -149,9 +151,9 @@ generate more tokens before cancellation takes effect. Tests measure the
 character interval plus the arriving chunk with deterministic tokenizers;
 they do not prove a universal token or credit overshoot cap.
 
-[`core/format`](src/core/format/) now also holds the usage strings from
-[#17](https://github.com/RemonStuff/Q0T4/issues/17), still unused by the installed
-participant. `formatTokens` shows `950`, `112k` or `1.25M`; `formatCredits` shows
+[`core/format`](src/core/format/) holds the usage strings from
+[#17](https://github.com/RemonStuff/Q0T4/issues/17), used by the installed participant
+since #19B. `formatTokens` shows `950`, `112k` or `1.25M`; `formatCredits` shows
 `2,100`, and one decimal below 10 (`7.4`). Both round down by default.
 `formatFooter` writes the hidden `<!-- q0t4:footer -->` sentinel, a blank line, and
 `*owner/repo: 112k / 150k this week · resets Mon · GPT-5*` (with `credits` after
@@ -180,10 +182,10 @@ handler can record into it. It never resets; weekly totals from the ledger repla
 it in [#25](https://github.com/RemonStuff/Q0T4/issues/25). Writes are queued so
 requests that finish together lose no increment, and damaged stored data is ignored.
 The [`globalStateStorage`](src/adapters/globalStateStorage.ts) adapter puts it on
-VS Code's `globalState`. The installed participant does not use either yet; that is
+VS Code's `globalState`. The installed participant uses both since
 [#19B](https://github.com/RemonStuff/Q0T4/issues/83).
 
-All 527 local unit tests pass with 100% core coverage. The pull request for #19A
+All 546 local unit tests pass with 100% core coverage. The pull request for #19B
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).

@@ -9,40 +9,35 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-22, PR #100. Counts include merged work only; #15 work is not
+2026-10-22, PR #101. Counts include merged work only; #15 work is not
 counted as done.*
 
-**Now:** iterations 0, *Test harness*, and 1, *Walking skeleton*, are ✅ **done**.
-`@q0t4` streams replies from the selected model, passes history and attached
-text/files/selections, and cancels the underlying request. Installed-package
-tests verify actual reference content, model switching and cancellation.
-Iteration 2 has started: [#13 count input](issues/13-count-input.md) and
-`TokenCostModel` are implemented and tested, but are not wired into the
-participant. Hosted checks also verify that the existing installed chat flow
-still works. There is no active metering or budget enforcement, and
-unimplemented slash commands do not call a model.
-[#14 pre-check](issues/14-pre-check-refusal.md) is merged in
-[PR #80](https://github.com/RemonStuff/Q0T4/pull/80) and
-[#15 stream guard](issues/15-stream-guard.md) in
-[PR #81](https://github.com/RemonStuff/Q0T4/pull/81);
-[#16 recording policy](issues/16-recording-policy.md) in
-[PR #98](https://github.com/RemonStuff/Q0T4/pull/98). None is active in the
-installed participant, because it supplies no budget state yet.
-**Current work:** [#19](issues/19-wire-budget-enforcement.md) is split into two 4-hour
-jobs. [#19A](https://github.com/RemonStuff/Q0T4/issues/82) adds the `globalStateStorage`
-adapter and the core `TotalsStore` (one running total per subject, a `UsageSink`),
-with unit tests and an integration test against the real `globalState`. 527 local
-unit tests pass with 100% core coverage. Nothing is wired into the installed
-participant yet. Merge needs separate approval.
-**Next:** [#19B](https://github.com/RemonStuff/Q0T4/issues/83) wires counting, the
-pre-check, the stream guard, recording and the footer into the participant, which
-finishes iteration 2.
+**Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, and 2, *Counting and the
+hard stop*, are ✅ **done**. `@q0t4` streams replies from the selected model, passes
+history and attached text/files/selections, and cancels the underlying request. Since
+[#19B](https://github.com/RemonStuff/Q0T4/issues/83) it also counts every request, refuses
+one that does not fit the budget ([#14](issues/14-pre-check-refusal.md)), cuts a reply off
+when the budget runs out ([#15](issues/15-stream-guard.md)), records the usage
+([#16](issues/16-recording-policy.md), [#19A](https://github.com/RemonStuff/Q0T4/issues/82))
+and ends the reply with a footer and warning ([#17](issues/17-format-footer-and-warnings.md)),
+which is stripped from history ([#18](issues/18-history-footer-strip-and-metadata.md)).
+Slash commands still do not call a model, and there is one subject, `general`, with no
+weekly reset yet.
+**Current work:** [#19B](https://github.com/RemonStuff/Q0T4/issues/83) wires the budget into
+the participant: every `@q0t4` request is counted, pre-checked, cut off by the stream
+guard when needed, recorded into the totals store and followed by a footer and warning.
+Iteration 2 is complete with this PR (it still needs your manual look in the Chat view).
+Until weekly resets exist (iteration 3) every request counts against one subject,
+`general`, with a 200,000-token total that never resets. 546 local unit tests pass with
+100% core coverage; hosted integration and installed-package checks cover the wiring.
+**Next:** iteration 3, *Weekly storage*, starting with
+[#20 `BudgetCalendar`](issues/20-budget-calendar-week.md).
 
 | Iteration | Done | State |
 |---|---|---|
 | 0 Test harness | 7 / 7 | ✅ done |
 | 1 Walking skeleton | 5 / 5 | ✅ done |
-| 2 Counting and the hard stop | 6 / 7 | in progress |
+| 2 Counting and the hard stop | 7 / 7 | ✅ done |
 | 3 Weekly storage | 0 / 6 | ⚪ not started |
 | 4 Repo subjects | 0 / 8 | ⚪ not started |
 | 5 Visibility | 0 / 4 | ⚪ not started |
@@ -50,7 +45,7 @@ finishes iteration 2.
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **18 / 59** | 41 to build |
+| **Total** | **19 / 59** | 40 to build |
 
 **Done:**
 
@@ -74,6 +69,7 @@ finishes iteration 2.
 | #16 Usage recording policy | [#98](https://github.com/RemonStuff/Q0T4/pull/98) |
 | #17 Amounts, footer and warning formatting | [#99](https://github.com/RemonStuff/Q0T4/pull/99) |
 | #18 Footer stripping and result metadata | [#100](https://github.com/RemonStuff/Q0T4/pull/100) |
+| #19 globalState storage adapter and budget enforcement wiring | [#101](https://github.com/RemonStuff/Q0T4/pull/101) (19A), [#102](https://github.com/RemonStuff/Q0T4/pull/102) (19B) |
 
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
@@ -170,9 +166,9 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 16 Recording policy (needs 15) · PR #98
 - [x] 17 Amounts, footer and warning formatting (needs 03) ∥ (can start any time after iteration 0) · PR #99
 - [x] 18 Footer stripping and metadata (needs 08, 17) · PR #100
-- [ ] 19 globalState adapter and wiring (needs 14, 15, 16, 18). 🎯 **Install and try**
+- [x] 19 globalState adapter and wiring (needs 14, 15, 16, 18). 🎯 **Install and try**
   - [x] 19A `globalStateStorage` adapter and `TotalsStore` · PR #101
-  - [ ] 19B wiring and integration tests
+  - [x] 19B wiring and integration tests · PR #102
 
 ### Iteration 3: Weekly storage
 - [ ] 20 `BudgetCalendar`: day keys and the week window (needs 04)

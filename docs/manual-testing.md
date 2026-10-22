@@ -23,7 +23,9 @@ What this leaves to normal use, with your own Copilot; no separate test pass is 
 
 - [ ] `@q0t4 …` typed in the Chat view reaches Q0T4. The participant contribution and handler are tested; only VS Code's own routing isn't.
 - [ ] A follow-up message without `@q0t4` still goes to Q0T4 (sticky). `isSticky: true` is tested in the installed manifest; only VS Code honouring it isn't.
+- [ ] After a real chat, the footer (`*general: … / 200k this week · resets date unavailable · <model>*`) shows a total that grows with each reply. The footer text, totals and persistence are tested with the fake model; only a real Copilot tokenizer isn't.
+- [ ] Optional, in a dev build: lower `DEFAULT_SUBJECTS.general.weeklyLimit` and check the refusal and the `⛔` cut-off by hand. Both are tested with a limit override; this only confirms how they look in the Chat view.
 
-For normal use, sign in to Copilot and choose a model in Chat. `@q0t4` forwards your prompt, history and explicitly attached text/files/selections; it does not meter usage or enforce budgets yet. Slash commands are not implemented.
+For normal use, sign in to Copilot and choose a model in Chat. `@q0t4` forwards your prompt, history and explicitly attached text/files/selections, and meters the usage of one shared subject, `general`, against 200,000 tokens. Slash commands are not implemented.
 
 Report anything off with the bug template; the fix starts with a failing test.
