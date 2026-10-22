@@ -73,6 +73,8 @@ subject, `general`, with fixed settings.
 | #25 Wire the ledger: file adapter and system clock | [#108](https://github.com/RemonStuff/Q0T4/pull/108) |
 | #26B Settings schema and the VS Code config adapter | [#110](https://github.com/RemonStuff/Q0T4/pull/110) |
 | #26A Core `parseConfig` and `weeklyLimitFor` | [#109](https://github.com/RemonStuff/Q0T4/pull/109) |
+**Infrastructure PRs:** CI retries a VS Code test run that never started its tests (runner startup flake), see `.github/scripts/run-vscode-tests.sh`.
+
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
 **Decisions along the way:**

@@ -73,7 +73,7 @@ jobs:
           path: .vscode-test
           # The pinned VS Code version lives in .vscode-test.mjs.
           key: vscode-test-${{ runner.os }}-${{ hashFiles('.vscode-test.mjs') }}
-      - run: xvfb-run -a npm run test:integration
+      - run: .github/scripts/run-vscode-tests.sh test:integration
 
   package:
     name: Package .vsix + install smoke tests
@@ -93,7 +93,7 @@ jobs:
           key: vscode-test-${{ runner.os }}-${{ hashFiles('.vscode-test.mjs') }}
       # Packages the .vsix, installs it into a clean VS Code and tests it there,
       # so every uploaded artifact has been installed and tried.
-      - run: xvfb-run -a npm run test:vsix
+      - run: .github/scripts/run-vscode-tests.sh test:vsix
       - uses: actions/upload-artifact@v4
         with:
           name: q0t4-vsix
