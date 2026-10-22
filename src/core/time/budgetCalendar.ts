@@ -80,10 +80,15 @@ export function daysBetween(from: DayKey, to: DayKey): number {
  * The billing-cycle level joins this class in #54.
  */
 export class BudgetCalendar {
+  private readonly resetDay: () => ResetDay;
+
+  /** `resetDay` may be a function, so a changed setting applies without a new calendar. */
   constructor(
     private readonly clock: ClockPort,
-    private readonly resetDay: ResetDay,
-  ) {}
+    resetDay: ResetDay | (() => ResetDay),
+  ) {
+    this.resetDay = typeof resetDay === "function" ? resetDay : () => resetDay;
+  }
 
   /** The local calendar day of an instant, in the clock's time zone. */
   dayKey(instant: Date): DayKey {
@@ -112,7 +117,7 @@ export class BudgetCalendar {
   weekWindow(instant: Date): WeekWindow {
     const today = this.dayKey(instant);
     const weekday = new Date(utcMs(today)).getUTCDay();
-    const start = addDays(today, -((weekday - WEEKDAY[this.resetDay] + 7) % 7));
+    const start = addDays(today, -((weekday - WEEKDAY[this.resetDay()] + 7) % 7));
     return { start, end: addDays(start, 7) };
   }
 }

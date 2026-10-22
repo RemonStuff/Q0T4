@@ -4,7 +4,7 @@
 
 **Weekly budgets for GitHub Copilot Chat, per repo.**
 
-Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Copilot Chat panel. You chat through `@q0t4` as you would with Copilot. It forwards your prompt and conversation history to the model you picked. Metering and a hard stop are **active for one shared subject**, `general`, with a 200,000-token budget per week (the week resets on Monday). Per-repo subjects, settings and slash commands are still planned.
+Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Copilot Chat panel. You chat through `@q0t4` as you would with Copilot. It forwards your prompt and conversation history to the model you picked. Metering and a hard stop are **active for one shared subject**, `general`, with a token budget per week (200,000 by default; the week resets on Monday) that you can change in the `q0t4.*` settings. Per-repo subjects and slash commands are still planned.
 
 **Planned budgeting features:**
 
@@ -48,7 +48,7 @@ The full design is in [docs/PLAN.md](docs/PLAN.md).
 
 ## Known limits
 
-- Metering and the hard stop use one subject, `general`, with a fixed 200,000-token weekly budget that resets on Monday at local midnight, a warning from 80% of the week and a pace warning at 30% of the week in one day. The usage ledger is kept under the extension's global storage folder; month folders older than 13 months are pruned when VS Code starts, and the totals from the iteration-2 preview are dropped. Budgeting applies only to chats through `@q0t4`, not inline completions, agent mode or normal Copilot chat.
+- Metering and the hard stop use one subject, `general`, with a weekly token budget (200,000 by default, set with `q0t4.subjects`) that resets on Monday at local midnight (`q0t4.resetDay`), a warning from 80% of the week (`q0t4.warnAtPercent`) and a pace warning at 30% of the week in one day (`q0t4.dailyPaceWarning`). The usage ledger is kept under the extension's global storage folder; month folders older than 13 months are pruned when VS Code starts, and the totals from the iteration-2 preview are dropped. Budgeting applies only to chats through `@q0t4`, not inline completions, agent mode or normal Copilot chat.
 - Only explicitly attached text, files and selections are included. Q0T4 does not search the workspace or execute tool references. Image data, common binary image files and NUL-containing document text are unsupported; they are skipped with one progress note.
 - Detailed consent/quota error messages and retry-on-missing-model come in [#38](https://github.com/RemonStuff/Q0T4/issues/38). For now model failures show a generic retry message and preserve any partial reply.
 - Future token counts will be estimates and will not exactly match how GitHub meters Copilot.
@@ -232,7 +232,9 @@ not sent and the chat says so, because the budget is unknown. `systemClock` supp
 
 [`parseConfig`](src/core/subjects/parseConfig.ts) ([#26A](https://github.com/RemonStuff/Q0T4/issues/84)) validates the raw `q0t4.*` settings and never throws. A broken value falls back to its default and adds a warning; `null` means not set. `subjects` only overrides limits, keys are trimmed and keep their casing for display, two keys that differ only by case keep the first, and a `weeklyLimit` of 0 disables a subject. `defaultLimit` (150,000) applies to every repo that is not listed, `warnAtPercent` and `dailyPaceWarning` are clamped to 1-100, and an unknown `resetDay` becomes `monday`. `weeklyLimitFor(config, subject)` matches names case-insensitively. Nothing reads the settings yet; the VS Code settings and adapter are [#26B](https://github.com/RemonStuff/Q0T4/issues/85).
 
-All 677 local unit tests pass with 100% core coverage. The pull request for #26A
+The `q0t4.*` settings ([#26B](https://github.com/RemonStuff/Q0T4/issues/85)) are declared in `package.json` and read by the [`vscodeConfig`](src/adapters/vscodeConfig.ts) adapter through `parseConfig`: `q0t4.subjects` (per-repo or per-name weekly limits, e.g. `{ "RemonStuff/Q0T4": { "weeklyLimit": 50000 } }`), `q0t4.defaultLimit` (150,000, for every repo not listed), `q0t4.fallbackSubject`, `q0t4.resetDay`, `q0t4.warnAtPercent`, `q0t4.dailyPaceWarning` and `q0t4.includeHistory`. A change applies to the next request. A broken value falls back to its default and a warning is shown once, when the setting changes. The settings are application-scoped, so a repo's own `.vscode/settings.json` cannot raise its budget. Until repo detection arrives, all chats still use the fallback subject.
+
+All 682 local unit tests pass with 100% core coverage. The pull request for #26B
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).

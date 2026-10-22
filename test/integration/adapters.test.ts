@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import { chatStreamOutput } from "../../src/adapters/chatStreamOutput";
 import { historyAdapter } from "../../src/adapters/historyAdapter";
 import { systemClock } from "../../src/adapters/systemClock";
+import { vscodeConfig } from "../../src/adapters/vscodeConfig";
 import { vscodeModel } from "../../src/adapters/vscodeModel";
 import { vscodeModelSelector } from "../../src/adapters/vscodeModelSelector";
 import type { ChatMessage } from "../../src/core/types";
@@ -516,5 +517,57 @@ describe("systemClock adapter", () => {
     const before = Date.now();
     const now = systemClock.now().getTime();
     assert.ok(now >= before && now <= Date.now());
+  });
+});
+
+describe("vscodeConfig adapter", () => {
+  const settings = () => vscode.workspace.getConfiguration("q0t4");
+
+  it("reads the q0t4.* defaults from package.json", () => {
+    const config = vscodeConfig().get();
+    assert.equal(config.defaultLimit, 150_000);
+    assert.equal(config.fallbackSubject, "general");
+    assert.equal(config.resetDay, "monday");
+    assert.deepEqual(config.subjects, { general: { weeklyLimit: 200_000 } });
+  });
+
+  it("reads changed settings and fires onDidChange on update", async () => {
+    const config = vscodeConfig();
+    let fired!: () => void;
+    const changed = new Promise<void>((resolve) => {
+      fired = resolve;
+    });
+    const subscription = config.onDidChange(fired);
+    try {
+      await settings().update("defaultLimit", 123_456, vscode.ConfigurationTarget.Global);
+      await withDeadline(changed);
+      assert.equal(config.get().defaultLimit, 123_456);
+    } finally {
+      subscription.dispose();
+      await settings().update("defaultLimit", undefined, vscode.ConfigurationTarget.Global);
+    }
+    assert.equal(config.get().defaultLimit, 150_000);
+  });
+
+  it("reports a broken setting once, and still returns a usable config", async () => {
+    const reports: (readonly string[])[] = [];
+    const config = vscodeConfig((warnings) => reports.push(warnings));
+    let changes = 0;
+    const subscription = config.onDidChange(() => changes++);
+    try {
+      await settings().update("resetDay", "someday", vscode.ConfigurationTarget.Global);
+      await withDeadline(
+        new Promise<void>((resolve) => {
+          const timer = setInterval(() => changes > 0 && (clearInterval(timer), resolve()), 20);
+        }),
+      );
+      assert.equal(config.get().resetDay, "monday");
+      config.get();
+      assert.equal(reports.length, 1);
+      assert.match(reports[0]?.[0] ?? "", /resetDay/);
+    } finally {
+      subscription.dispose();
+      await settings().update("resetDay", undefined, vscode.ConfigurationTarget.Global);
+    }
   });
 });
