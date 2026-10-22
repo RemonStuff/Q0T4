@@ -279,3 +279,164 @@ describe("Ledger.subjectsSeen", () => {
     expect(await setup().ledger.subjectsSeen()).toEqual([]);
   });
 });
+
+describe("Ledger resilience", () => {
+  const range = ["2026-10-12", "2026-10-19"] as const;
+
+  it("skips an unparseable line and still sums the valid ones", async () => {
+    const { ledger, store } = setup();
+    await ledger.record(usage("org/repo", "2026-10-14T08:00:00.000Z", { tokens: 5 }));
+    store.injectCorruptLine("{not json");
+    await ledger.record(usage("org/repo", "2026-10-14T08:01:00.000Z", { tokens: 7 }));
+    expect(await ledger.usedInRange("org/repo", ...range)).toEqual({ tokens: 12 });
+    expect(await ledger.usedThisWeek("org/repo")).toEqual({ tokens: 12 });
+  });
+
+  it("skips a line that fails isLedgerEntry and counts it", async () => {
+    const { ledger, store } = setup();
+    await ledger.record(usage("org/repo", "2026-10-14T08:00:00.000Z", { tokens: 5 }));
+    store.injectCorruptLine(JSON.stringify({ v: 1, kind: "refund", subject: "org/repo" }));
+    store.injectCorruptLine(JSON.stringify({ v: 1, kind: "usage", subject: "org/repo" }));
+    expect(await ledger.usedThisWeek("org/repo")).toEqual({ tokens: 5 });
+    expect(ledger.corruptSkipped).toBe(2);
+  });
+
+  it("an entry with an unknown future schema version is skipped, not misread", async () => {
+    const { ledger, store } = setup();
+    const future = { ...usage("org/repo", "2026-10-14T08:00:00.000Z", { tokens: 999 }), v: 2 };
+    store.injectCorruptLine(JSON.stringify(future));
+    await ledger.record(usage("org/repo", "2026-10-14T08:01:00.000Z", { tokens: 1 }));
+    expect(await ledger.usedThisWeek("org/repo")).toEqual({ tokens: 1 });
+    expect(ledger.corruptSkipped).toBe(1);
+  });
+
+  it("reports corrupt lines once per session, not on every read", async () => {
+    const reports: number[] = [];
+    const store = new InMemoryLedger();
+    const clock = new FixedClock(NOW, "UTC");
+    const ledger = new Ledger(store, clock, new BudgetCalendar(clock, "monday"), () => "id", {
+      onCorrupt: (count) => reports.push(count),
+    });
+    await ledger.usedThisWeek("org/repo");
+    expect(reports).toEqual([]);
+    store.injectCorruptLine("{broken");
+    await ledger.usedThisWeek("org/repo");
+    await ledger.usedToday("org/repo");
+    await ledger.subjectsSeen();
+    store.injectCorruptLine("{broken again");
+    await ledger.usedThisWeek("org/repo");
+    expect(reports).toEqual([1]);
+    expect(ledger.corruptSkipped).toBe(2);
+  });
+
+  it("a failing corrupt-report hook does not break the read", async () => {
+    const store = new InMemoryLedger();
+    const clock = new FixedClock(NOW, "UTC");
+    const ledger = new Ledger(store, clock, new BudgetCalendar(clock, "monday"), () => "id", {
+      onCorrupt: () => {
+        throw new Error("hook failed");
+      },
+    });
+    await ledger.record(usage("org/repo", "2026-10-14T08:00:00.000Z", { tokens: 3 }));
+    store.injectCorruptLine("{broken");
+    expect(await ledger.usedThisWeek("org/repo")).toEqual({ tokens: 3 });
+  });
+});
+
+describe("Ledger.prune", () => {
+  async function seeded() {
+    const ctx = setup(); // now = 14 Oct 2026
+    for (const month of ["2024-12", "2025-08", "2025-09", "2025-10", "2026-05", "2026-10"]) {
+      await ctx.ledger.record(usage("org/repo", `${month}-15T08:00:00.000Z`, { tokens: 1 }));
+    }
+    return ctx;
+  }
+
+  it("removes months older than 13 months and keeps the rest", async () => {
+    const { ledger, store } = await seeded();
+    expect(await ledger.prune()).toEqual({ removed: ["2024-12", "2025-08"], failed: [] });
+    expect(await store.months()).toEqual(["2025-09", "2025-10", "2026-05", "2026-10"]);
+  });
+
+  it("never touches the current month, however old the rest is", async () => {
+    const { ledger, store } = setup();
+    await ledger.record(usage("org/repo", "2020-01-15T08:00:00.000Z", { tokens: 1 }));
+    await ledger.record(usage("org/repo", "2026-10-01T08:00:00.000Z", { tokens: 1 }));
+    expect((await ledger.prune()).removed).toEqual(["2020-01"]);
+    expect(await store.months()).toEqual(["2026-10"]);
+  });
+
+  it("uses the local month of the clock's time zone", async () => {
+    const store = new InMemoryLedger();
+    const clock = new FixedClock("2026-10-31T23:30:00.000Z", "Asia/Tokyo"); // already 1 Nov local
+    const ledger = new Ledger(store, clock, new BudgetCalendar(clock, "monday"), () => "id");
+    await ledger.record(usage("org/repo", "2025-10-15T08:00:00.000Z", { tokens: 1 }));
+    // Local month is 2026-11, so the cutoff is 2025-10 and 2025-10 is kept.
+    expect((await ledger.prune()).removed).toEqual([]);
+    clock.set("2026-11-30T23:30:00.000Z"); // 1 Dec local: cutoff 2025-11
+    expect((await ledger.prune()).removed).toEqual(["2025-10"]);
+  });
+
+  it("prunes across a year boundary", async () => {
+    const store = new InMemoryLedger();
+    const clock = new FixedClock("2026-01-10T09:00:00.000Z", "UTC");
+    const ledger = new Ledger(store, clock, new BudgetCalendar(clock, "monday"), () => "id");
+    for (const month of ["2024-11", "2024-12", "2025-01", "2025-12"]) {
+      await ledger.record(usage("org/repo", `${month}-15T08:00:00.000Z`, { tokens: 1 }));
+    }
+    // 13 months before January 2026 is December 2024, which is kept.
+    expect((await ledger.prune()).removed).toEqual(["2024-11"]);
+    expect(await store.months()).toEqual(["2024-12", "2025-01", "2025-12"]);
+  });
+
+  it("keeps going when one month cannot be removed, and reports it", async () => {
+    const { ledger, store } = await seeded();
+    const original = store.removeMonth.bind(store);
+    store.removeMonth = async (month) => {
+      if (month === "2024-12") throw new Error("locked");
+      return original(month);
+    };
+    expect(await ledger.prune()).toEqual({ removed: ["2025-08"], failed: ["2024-12"] });
+  });
+
+  it("is a no-op for an empty ledger", async () => {
+    expect(await setup().ledger.prune()).toEqual({ removed: [], failed: [] });
+  });
+});
+
+describe("Ledger and a changed resetDay", () => {
+  async function weekOfEntries() {
+    const store = new InMemoryLedger();
+    const clock = new FixedClock("2026-10-14T09:00:00.000Z", "UTC"); // Wednesday
+    const monday = new Ledger(store, clock, new BudgetCalendar(clock, "monday"), () => "m");
+    const wednesday = new Ledger(store, clock, new BudgetCalendar(clock, "wednesday"), () => "w");
+    for (const [day, tokens] of [
+      ["2026-10-12", 1],
+      ["2026-10-13", 2],
+      ["2026-10-14", 4],
+      ["2026-10-17", 8],
+      ["2026-10-20", 16],
+      ["2026-10-21", 32],
+    ] as const) {
+      await monday.record(usage("org/repo", `${day}T08:00:00.000Z`, { tokens }));
+    }
+    return { monday, wednesday };
+  }
+
+  it("changing resetDay from monday to wednesday mid-week counts exactly the entries inside the new window", async () => {
+    const { monday, wednesday } = await weekOfEntries();
+    expect(await monday.usedThisWeek("org/repo")).toEqual({ tokens: 1 + 2 + 4 + 8 }); // 12-18 Oct
+    expect(await wednesday.usedThisWeek("org/repo")).toEqual({ tokens: 4 + 8 + 16 }); // 14-20 Oct
+  });
+
+  it("no entry is ever counted twice when windows overlap after a resetDay change", async () => {
+    const { monday, wednesday } = await weekOfEntries();
+    // The old week up to the change, then the new week from the change: a partition.
+    const before = await monday.usedInRange("org/repo", "2026-10-12", "2026-10-14");
+    const after = await wednesday.usedThisWeek("org/repo");
+    expect(before.tokens + after.tokens).toBe(1 + 2 + 4 + 8 + 16);
+    // And one query never repeats an entry, however the windows overlap.
+    const everything = await monday.usedInRange("org/repo", "2026-10-01", "2026-11-01");
+    expect(everything).toEqual({ tokens: 63 });
+  });
+});

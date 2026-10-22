@@ -31,6 +31,7 @@ export class InMemoryStorage implements StoragePort {
  */
 export class InMemoryLedger implements LedgerPort {
   failAppends = false;
+  failRemovals = false;
 
   constructor(
     private readonly writerId = "writer-1",
@@ -52,6 +53,28 @@ export class InMemoryLedger implements LedgerPort {
   async append(entry: LedgerEntry): Promise<void> {
     if (this.failAppends) throw new Error("injected append failure");
     this.lines(this.writerId).push(JSON.stringify(entry));
+  }
+
+  async months(): Promise<readonly string[]> {
+    const months = new Set<string>();
+    for (const line of [...this.files.values()].flat()) {
+      const parsed = parse(line);
+      if (isLedgerEntry(parsed)) months.add(parsed.day.slice(0, 7));
+    }
+    return [...months].sort();
+  }
+
+  async removeMonth(month: string): Promise<void> {
+    if (this.failRemovals) throw new Error("injected removal failure");
+    for (const [writerId, lines] of this.files) {
+      this.files.set(
+        writerId,
+        lines.filter((line) => {
+          const parsed = parse(line);
+          return !(isLedgerEntry(parsed) && parsed.day.startsWith(month));
+        }),
+      );
+    }
   }
 
   async read(range: { readonly from: DayKey; readonly to: DayKey }): Promise<LedgerReadResult> {

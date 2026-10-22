@@ -214,7 +214,15 @@ entries from several writers are merged, and totals are in tokens, plus credits 
 iteration-2 `TotalsStore` until the file adapter lands in
 [#25](https://github.com/RemonStuff/Q0T4/issues/25).
 
-All 602 local unit tests pass with 100% core coverage. The pull request for #22
+The ledger never crashes on what is stored ([#23](https://github.com/RemonStuff/Q0T4/issues/23)). A
+line that is not valid JSON, fails validation or has an unknown schema version is skipped, never
+misread, and counted: `corruptSkipped` holds the count and an optional `onCorrupt` hook is called
+once per session. `prune()` deletes month folders older than 13 months through `LedgerPort.months()`
+and `removeMonth()`, never the current month (by the clock's local time), and keeps going if one month
+cannot be removed. Because totals are date-range sums rather than per-week records, changing `resetDay`
+mid-week needs no migration and counts each entry exactly once.
+
+All 618 local unit tests pass with 100% core coverage. The pull request for #23
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).
