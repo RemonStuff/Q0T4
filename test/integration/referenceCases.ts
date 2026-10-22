@@ -102,7 +102,7 @@ export function referenceForwardingTests(getApi: () => Promise<Q0T4Exports>) {
         { id: "unknown", value: {} },
       ]);
       assert.deepEqual(output.progress, [
-        "Subject: general (fallback)",
+        "Subject: general (thread)",
         "Some attached references could not be included (unsupported content).",
       ]);
       assert.equal(state.requests[0]?.messages.length, 3);
