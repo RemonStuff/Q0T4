@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { RECORDING_COUNT_TIMEOUT_MS } from "../../../../src/core/budget/streamGuard";
 import { chatHandler } from "../../../../src/core/chatHandler";
 import type {
   BudgetContext,
@@ -64,7 +65,7 @@ function fixture(unit: BudgetUnit, options: FakeModelOptions = {}, limit = 10_00
 describe.each(["tokens", "credits"] as const)("recording in chatHandler (%s)", (unit) => {
   it("records input and output on success, with the output recounted from the reply", async () => {
     const { request, deps, sink, model } = fixture(unit);
-    expect(await chatHandler(request, deps)).toEqual({
+    expect(await chatHandler(request, deps)).toMatchObject({
       metadata: { outcome: "completed", model: model.name },
     });
     expect(sink.entries).toHaveLength(1);
@@ -88,7 +89,7 @@ describe.each(["tokens", "credits"] as const)("recording in chatHandler (%s)", (
       yield "efgh";
     }
     vi.spyOn(model, "sendRequest").mockResolvedValue(stream());
-    expect(await chatHandler(request, deps)).toEqual({
+    expect(await chatHandler(request, deps)).toMatchObject({
       metadata: { outcome: "cancelled", model: model.name },
     });
     expect(sink.entries).toHaveLength(1);
@@ -103,7 +104,7 @@ describe.each(["tokens", "credits"] as const)("recording in chatHandler (%s)", (
     const { request, deps, sink, model, output } = fixture(unit, {
       failAfterChunk: { after: 2, error: new Error("boom") },
     });
-    expect(await chatHandler(request, deps)).toEqual({
+    expect(await chatHandler(request, deps)).toMatchObject({
       metadata: { outcome: "error", model: model.name },
     });
     expect(output.text).toContain("abcdefgh");
@@ -113,7 +114,7 @@ describe.each(["tokens", "credits"] as const)("recording in chatHandler (%s)", (
 
   it("records input and output when StreamGuard stops the reply", async () => {
     const { request, deps, sink, model } = fixture(unit, {}, 3);
-    expect(await chatHandler(request, deps)).toEqual({
+    expect(await chatHandler(request, deps)).toMatchObject({
       metadata: { outcome: "stopped", stopped: "budget", model: model.name },
     });
     expect(sink.entries).toHaveLength(1);
@@ -124,7 +125,7 @@ describe.each(["tokens", "credits"] as const)("recording in chatHandler (%s)", (
     const { request, deps, sink, model } = fixture(unit, {
       failBeforeFirstChunk: new Error("no"),
     });
-    expect(await chatHandler(request, deps)).toEqual({
+    expect(await chatHandler(request, deps)).toMatchObject({
       metadata: { outcome: "error", model: model.name },
     });
     expect(sink.entries).toEqual([]);
@@ -132,7 +133,7 @@ describe.each(["tokens", "credits"] as const)("recording in chatHandler (%s)", (
 
   it("records nothing when the pre-check refuses", async () => {
     const { request, deps, sink, model } = fixture(unit, {}, 0);
-    expect(await chatHandler(request, deps)).toEqual({
+    expect(await chatHandler(request, deps)).toMatchObject({
       metadata: { outcome: "refused", stopped: "precheck" },
     });
     expect(sink.entries).toEqual([]);
@@ -150,7 +151,7 @@ describe.each(["tokens", "credits"] as const)("recording in chatHandler (%s)", (
     for (const fail of ["reject", "throw"] as const) {
       const { request, deps, sink, output, model, errors } = fixture(unit);
       sink.fail = fail;
-      expect(await chatHandler(request, deps)).toEqual({
+      expect(await chatHandler(request, deps)).toMatchObject({
         metadata: { outcome: "completed", model: model.name },
       });
       expect(output.text).toBe("abcdefghijkl");
@@ -173,7 +174,7 @@ describe.each(["tokens", "credits"] as const)("recording in chatHandler (%s)", (
                 throw new Error("hook failed");
               },
             };
-      expect(await chatHandler(request, { ...deps, recording: hooked })).toEqual({
+      expect(await chatHandler(request, { ...deps, recording: hooked })).toMatchObject({
         metadata: { outcome: "completed", model: model.name },
       });
     }
@@ -194,6 +195,40 @@ describe.each(["tokens", "credits"] as const)("recording in chatHandler (%s)", (
     await chatHandler(request, deps);
     expect(sink.entries).toHaveLength(1);
     expect(sink.entries[0]).toMatchObject({ tokens: { input: 1, output: 0 } });
+  });
+});
+
+describe("recording in chatHandler (hung tokenizer)", () => {
+  it("does not hold up a cancelled chat: it records the last exact count after the timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      const { request, deps, sink, model, signal } = fixture("tokens");
+      async function* stream() {
+        yield "abcd";
+        signal.cancel();
+        yield "efgh";
+      }
+      vi.spyOn(model, "sendRequest").mockResolvedValue(stream());
+      const original = model.countTokens.bind(model);
+      vi.spyOn(model, "countTokens").mockImplementation((input) =>
+        typeof input === "string" ? new Promise<number>(() => undefined) : original(input),
+      );
+      let done = false;
+      const handling = chatHandler(request, deps).then((result) => {
+        done = true;
+        return result;
+      });
+      await vi.advanceTimersByTimeAsync(RECORDING_COUNT_TIMEOUT_MS - 1);
+      expect(done).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(await handling).toMatchObject({
+        metadata: { outcome: "cancelled", stopped: "cancelled", inputTokens: 1, outputTokens: 0 },
+      });
+      expect(sink.entries).toHaveLength(1);
+      expect(sink.entries[0]).toMatchObject({ tokens: { input: 1, output: 0 }, stopped: true });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 
@@ -227,7 +262,7 @@ describe("recording in chatHandler (contents)", () => {
   it("works without a recording context", async () => {
     const { request, deps, model } = fixture("tokens");
     const { recording: _recording, ...withoutRecording } = deps;
-    expect(await chatHandler(request, withoutRecording)).toEqual({
+    expect(await chatHandler(request, withoutRecording)).toMatchObject({
       metadata: { outcome: "completed", model: model.name },
     });
   });

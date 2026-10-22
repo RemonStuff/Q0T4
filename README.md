@@ -162,7 +162,19 @@ subject, reset label and model name as literal Markdown. `formatWarning` returns
 at 100%, or nothing below the threshold. Pool parts of the footer arrive in
 [#61](https://github.com/RemonStuff/Q0T4/issues/61).
 
-All 489 local unit tests pass with 100% core coverage. The pull request for #17
+[`stripFooter`](src/core/messages/stripFooter.ts) removes everything from the last
+`<!-- q0t4:footer -->` sentinel on, and `buildMessages` uses it, so Q0T4's footer and
+warnings are never sent back to the model. An assistant turn that is empty after
+stripping is dropped with its prompt. With a budget context, the handler's metadata
+now also carries `v`, `subject`, `unit`, `inputTokens`, `outputTokens`, `cost` (in the
+active unit) and `stopped` (`false`, `"budget"`, `"cancelled"` or `"precheck"`), next to the existing
+`outcome` and `model`. A refusal, or a request that `sendRequest` rejects, reports
+zero usage; other outcomes report what was charged, with the output recounted from
+the reply. That recount waits at most one second, so a tokenizer that ignores
+cancellation cannot hold up a cancelled chat; it then keeps the last exact count.
+Without a budget context the metadata is unchanged.
+
+All 516 local unit tests pass with 100% core coverage. The pull request for #18
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).

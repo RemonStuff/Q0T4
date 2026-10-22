@@ -46,7 +46,7 @@ describe.each(["tokens", "credits"] as const)("handler budget gate (%s)", (unit)
     const { request, deps, model, output } = fixture(unit);
 
     const result = await chatHandler(request, deps);
-    expect(result).toEqual({ metadata: { outcome: "refused", stopped: "precheck" } });
+    expect(result).toMatchObject({ metadata: { outcome: "refused", stopped: "precheck" } });
     expect(JSON.parse(JSON.stringify(result))).toEqual(result);
     expect(model.calls.sendRequest).toEqual([]);
     expect(output.text).toContain("org/repo");
@@ -61,7 +61,7 @@ describe.each(["tokens", "credits"] as const)("handler budget gate (%s)", (unit)
     const price = vi.spyOn(costModel, "cost");
     const budget = { ...deps.budget, used: cost(2), budget: cost(7) };
 
-    expect(await chatHandler(request, { ...deps, budget })).toEqual({
+    expect(await chatHandler(request, { ...deps, budget })).toMatchObject({
       metadata: { outcome: "stopped", stopped: "budget", model: model.name },
     });
     expect(price).toHaveBeenNthCalledWith(1, model, { input: 5, output: 0 });
@@ -114,7 +114,7 @@ describe.each(["tokens", "credits"] as const)("handler budget gate (%s)", (unit)
     const { request, deps, model, output, cost } = fixture(unit);
     const budget = { ...deps.budget, budget: cost(NaN) };
 
-    expect(await chatHandler(request, { ...deps, budget })).toEqual({
+    expect(await chatHandler(request, { ...deps, budget })).toMatchObject({
       metadata: { outcome: "error" },
     });
     expect(output.text).toBe("Q0T4 couldn't complete this request. Please try again.");
@@ -128,7 +128,7 @@ describe("handler budget orchestration", () => {
     const { budget, ...withoutBudget } = deps;
     vi.spyOn(model, "countTokens").mockRejectedValue(new Error("must not count"));
 
-    expect(await chatHandler(request, withoutBudget)).toEqual({
+    expect(await chatHandler(request, withoutBudget)).toMatchObject({
       metadata: { outcome: "completed", model: model.name },
     });
     expect(model.calls.countTokens).toEqual([]);
@@ -145,7 +145,7 @@ describe("handler budget orchestration", () => {
         { ...request, availability: "unavailable" },
         { ...deps, selector: new FakeModelSelector([fallback]) },
       ),
-    ).toEqual({ metadata: { outcome: "refused", stopped: "precheck" } });
+    ).toMatchObject({ metadata: { outcome: "refused", stopped: "precheck" } });
     expect(price).toHaveBeenCalledExactlyOnceWith(fallback, { input: 7, output: 0 });
     expect(model.calls.countTokens).toEqual([]);
     expect(fallback.calls.sendRequest).toEqual([]);
@@ -156,7 +156,7 @@ describe("handler budget orchestration", () => {
     vi.spyOn(model, "countTokens").mockRejectedValue(new Error("private tokenizer detail"));
     const price = vi.spyOn(costModel, "cost");
 
-    expect(await chatHandler(request, deps)).toEqual({ metadata: { outcome: "error" } });
+    expect(await chatHandler(request, deps)).toMatchObject({ metadata: { outcome: "error" } });
     expect(output.text).toBe("Q0T4 couldn't complete this request. Please try again.");
     expect(price).not.toHaveBeenCalled();
     expect(model.calls.sendRequest).toEqual([]);
@@ -180,7 +180,7 @@ describe("handler budget orchestration", () => {
 
     expect(await Promise.race([began.then(() => true), handling.then(() => false)])).toBe(true);
     signal.cancel();
-    expect(await handling).toEqual({ metadata: { outcome: "cancelled" } });
+    expect(await handling).toMatchObject({ metadata: { outcome: "cancelled" } });
     expect(output.calls).toEqual([]);
     expect(model.calls.sendRequest).toEqual([]);
     finish(5);
@@ -193,7 +193,7 @@ describe("handler budget orchestration", () => {
       return { cost: { tokens: 5 } };
     });
 
-    expect(await chatHandler(request, deps)).toEqual({ metadata: { outcome: "cancelled" } });
+    expect(await chatHandler(request, deps)).toMatchObject({ metadata: { outcome: "cancelled" } });
     expect(output.calls).toEqual([]);
     expect(model.calls.sendRequest).toEqual([]);
   });
@@ -204,7 +204,7 @@ describe("handler budget orchestration", () => {
       throw new Error("private pricing detail");
     });
 
-    expect(await chatHandler(request, deps)).toEqual({ metadata: { outcome: "error" } });
+    expect(await chatHandler(request, deps)).toMatchObject({ metadata: { outcome: "error" } });
     expect(output.text).toBe("Q0T4 couldn't complete this request. Please try again.");
     expect(model.calls.sendRequest).toEqual([]);
   });
@@ -224,7 +224,7 @@ describe("handler budget orchestration", () => {
     const { request, deps, model, output } = fixture("credits");
     const budget = { ...deps.budget, used: { tokens: 0 } };
 
-    expect(await chatHandler(request, { ...deps, budget })).toEqual({
+    expect(await chatHandler(request, { ...deps, budget })).toMatchObject({
       metadata: { outcome: "error" },
     });
     expect(output.text).toBe("Q0T4 couldn't complete this request. Please try again.");

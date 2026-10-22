@@ -14,6 +14,7 @@ const UNCANCELLABLE: CancellationSignal = {
 
 export const RECOUNT_CHARS = 400;
 export const NEAR_LIMIT_RATIO = 0.1;
+export const RECORDING_COUNT_TIMEOUT_MS = 1000;
 
 export interface StreamGuardOptions {
   readonly model: ModelPort;
@@ -84,17 +85,32 @@ export class StreamGuard {
   /**
    * Counts the whole reply for the ledger. It ignores cancellation, because the
    * user may already have stopped the reply and what was streamed is still used.
-   * If counting fails it keeps the last exact count, never an estimate.
+   * It waits at most `RECORDING_COUNT_TIMEOUT_MS`, so a tokenizer that hangs can't
+   * hold up a cancelled chat. If counting fails or times out it keeps the last
+   * exact count, never an estimate.
    */
   async countForRecording(): Promise<number> {
     if (this.text.length === this.countedChars) return this.tokens;
+    const text = this.text;
+    const counting = countTokens(this.options.model, [text], UNCANCELLABLE, "output").then(
+      (count) => {
+        costAmount({ tokens: count }, "tokens");
+        return count;
+      },
+      () => undefined,
+    );
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<undefined>((resolve) => {
+      timer = setTimeout(() => resolve(undefined), RECORDING_COUNT_TIMEOUT_MS);
+    });
     try {
-      const count = await countTokens(this.options.model, [this.text], UNCANCELLABLE, "output");
-      costAmount({ tokens: count }, "tokens");
-      this.tokens = count;
-      this.countedChars = this.text.length;
-    } catch {
-      // Keep the last exact count.
+      const count = await Promise.race([counting, timeout]);
+      if (count !== undefined) {
+        this.tokens = count;
+        this.countedChars = text.length;
+      }
+    } finally {
+      clearTimeout(timer);
     }
     return this.tokens;
   }

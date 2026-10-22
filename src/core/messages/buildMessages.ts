@@ -1,4 +1,5 @@
 import type { ChatMessage, HistoryTurn } from "../types";
+import { stripFooter } from "./stripFooter";
 import type { ResolvedReference } from "../../ports/ReferenceReaderPort";
 
 export function buildMessages(
@@ -13,11 +14,9 @@ export function buildMessages(
     if (turn.kind === "request") {
       pendingPrompt = turn.prompt;
     } else {
-      if (pendingPrompt !== undefined && turn.text.length > 0) {
-        messages.push(
-          { role: "user", text: pendingPrompt },
-          { role: "assistant", text: turn.text },
-        );
+      const reply = stripFooter(turn.text);
+      if (pendingPrompt !== undefined && reply.length > 0) {
+        messages.push({ role: "user", text: pendingPrompt }, { role: "assistant", text: reply });
       }
       pendingPrompt = undefined;
     }
