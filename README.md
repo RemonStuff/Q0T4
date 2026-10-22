@@ -222,7 +222,15 @@ and `removeMonth()`, never the current month (by the clock's local time), and ke
 cannot be removed. Because totals are date-range sums rather than per-week records, changing `resetDay`
 mid-week needs no migration and counts each entry exactly once.
 
-All 618 local unit tests pass with 100% core coverage. The pull request for #23
+[`paceWarning`](src/core/budget/paceWarning.ts) ([#24](https://github.com/RemonStuff/Q0T4/issues/24)) warns,
+without ever blocking, when a subject has used `dailyPaceWarning`% (default 30%) of its weekly budget within
+one local day, in whichever unit is active. It is computed from today's usage, so it ends at local midnight
+by itself. The handler writes `⚠️ Daily pace: 62k used today, at least 30% of the weekly budget (60k).`
+after the weekly warning when it is given today's usage (`budget.usedToday`) and the setting
+(`footer.dailyPaceWarning`); the figures count the request just answered. The installed participant
+supplies today's usage from the ledger in [#25](https://github.com/RemonStuff/Q0T4/issues/25).
+
+All 645 local unit tests pass with 100% core coverage. The pull request for #24
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).

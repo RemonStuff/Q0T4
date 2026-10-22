@@ -10,6 +10,7 @@ import type {
 } from "../ports/ReferenceReaderPort";
 import type { UsageSink } from "../ports/UsageSink";
 import { countInput } from "./budget/countInput";
+import { paceWarning } from "./budget/paceWarning";
 import { preCheck } from "./budget/preCheck";
 import type { PreCheckResult } from "./budget/preCheck";
 import { recordingPolicy } from "./budget/recordingPolicy";
@@ -23,7 +24,7 @@ import { formatFooter } from "./format/footer";
 import { formatNoModel } from "./format/formatNoModel";
 import { formatRefusal } from "./format/formatRefusal";
 import { formatStopped } from "./format/formatStopped";
-import { formatWarning } from "./format/warnings";
+import { formatPaceWarning, formatWarning } from "./format/warnings";
 import { buildMessages } from "./messages/buildMessages";
 import { resolveModel } from "./models/resolveModel";
 import type { ModelResolution } from "./models/resolveModel";
@@ -60,6 +61,8 @@ export interface Deps {
 export interface FooterContext {
   /** `warnAtPercent` from the settings. */
   readonly warnAtPercent: number;
+  /** `dailyPaceWarning` from the settings; with `budget.usedToday` it enables the pace warning. */
+  readonly dailyPaceWarning?: number;
 }
 
 export interface RecordingContext {
@@ -77,6 +80,8 @@ export interface BudgetContext {
   readonly budget: Cost;
   readonly resetLabel: string;
   readonly extraAllowance?: Cost;
+  /** What the subject used today before this request; enables the daily pace warning. */
+  readonly usedToday?: Cost;
 }
 
 type OutcomeMetadata =
@@ -345,6 +350,15 @@ function writeFooter(
     warnAtPercent: footer.warnAtPercent,
   });
   if (warning !== null) output.markdown(`\n\n${warning}`);
+  if (footer.dailyPaceWarning !== undefined && budget.usedToday !== undefined) {
+    const pace = paceWarning({
+      unit,
+      usedToday: addCost(budget.usedToday, usage.cost, unit),
+      weeklyBudget: budget.budget,
+      percent: footer.dailyPaceWarning,
+    });
+    if (pace !== null) output.markdown(`\n\n${formatPaceWarning({ unit, pace })}`);
+  }
 }
 
 /** Sums two costs in the active unit; the pre-check already rejected a missing amount. */
