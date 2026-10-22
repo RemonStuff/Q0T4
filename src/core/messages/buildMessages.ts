@@ -1,12 +1,26 @@
-import type { ChatMessage, HistoryTurn } from "../types";
+import type { ChatMessage, HistoryTurn, SubjectName } from "../types";
+import { filterHistoryBySubject } from "./filterHistory";
 import { stripFooter } from "./stripFooter";
 import type { ResolvedReference } from "../../ports/ReferenceReaderPort";
 
+export interface BuildMessagesOptions {
+  /** Send only history charged to this subject. Without it, all history is sent. */
+  readonly subject?: SubjectName;
+  /** `false` sends no history at all (references and the prompt are still sent). */
+  readonly includeHistory?: boolean;
+}
+
 export function buildMessages(
   prompt: string,
-  history: readonly HistoryTurn[],
+  fullHistory: readonly HistoryTurn[],
   references: readonly ResolvedReference[] = [],
+  { subject, includeHistory = true }: BuildMessagesOptions = {},
 ): ChatMessage[] {
+  const history = !includeHistory
+    ? []
+    : subject === undefined
+      ? fullHistory
+      : filterHistoryBySubject(fullHistory, subject);
   const messages: ChatMessage[] = [];
   let pendingPrompt: string | undefined;
 
