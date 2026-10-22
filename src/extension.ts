@@ -9,17 +9,20 @@ import { referenceReader } from "./adapters/referenceReader";
 import { systemClock } from "./adapters/systemClock";
 import { vscodeModel } from "./adapters/vscodeModel";
 import { vscodeConfig } from "./adapters/vscodeConfig";
+import { workspaceRepo } from "./adapters/workspaceRepo";
 import { vscodeModelSelector } from "./adapters/vscodeModelSelector";
 import { chatHandler } from "./core/chatHandler";
 import { TokenCostModel } from "./core/cost/tokenCostModel";
 import { formatLedgerError } from "./core/errors/formatLedgerError";
 import { Ledger } from "./core/ledger/ledger";
 import { weeklyLimitFor } from "./core/subjects/parseConfig";
-import { BudgetCalendar } from "./core/time/budgetCalendar";
+import { routeRequest } from "./core/subjects/routeRequest";
+import { BudgetCalendar, addDays } from "./core/time/budgetCalendar";
 import { formatResetLong, formatResetShort, nextResetKey } from "./core/time/reset";
 import type { Cost } from "./core/types";
 import type { ClockPort } from "./ports/ClockPort";
 import type { ConfigPort } from "./ports/ConfigPort";
+import type { WorkspacePort } from "./ports/WorkspacePort";
 import type { LedgerPort } from "./ports/LedgerPort";
 import type { StoragePort } from "./ports/StoragePort";
 
@@ -49,7 +52,12 @@ export interface Q0T4TestHooks {
   readonly ready: Promise<void>;
   /** Overrides the limit of the default subject, in tokens; `undefined` restores it. */
   setLimit(limit: number | undefined): void;
+  /** Replaces the workspace the participant reads its repo from; `undefined` restores the real one. */
+  setWorkspace(workspace: WorkspacePort | undefined): void;
 }
+
+/** `/use` accepts subjects with usage in the last 12 weeks. */
+const RECENT_DAYS = 84;
 
 export interface Q0T4Exports {
   readonly test: Q0T4TestHooks;
@@ -58,6 +66,7 @@ export interface Q0T4Exports {
 export interface RequestHandlerOptions {
   readonly ledgerPort: LedgerPort;
   readonly config: ConfigPort;
+  readonly workspace: WorkspacePort;
   readonly clock?: ClockPort;
 }
 
@@ -65,6 +74,7 @@ export interface RequestHandlerOptions {
 export function createRequestHandler({
   ledgerPort,
   config,
+  workspace,
   clock = systemClock,
 }: RequestHandlerOptions) {
   const requests: string[] = [];
@@ -73,12 +83,30 @@ export function createRequestHandler({
     onCorrupt: (count) => console.warn(`Q0T4: skipped ${count} unreadable usage ledger line(s).`),
   });
   let limitOverride: number | undefined;
+  let workspaceOverride: WorkspacePort | undefined;
+  const currentWorkspace: WorkspacePort = {
+    currentRepo: () => (workspaceOverride ?? workspace).currentRepo(),
+  };
 
   const handleRequest: vscode.ChatRequestHandler = async (request, chatContext, stream, token) => {
     requests.push(request.prompt);
     const settings = config.get();
-    // One subject until repo detection arrives (#31, #33): the fallback subject.
-    const subject = settings.fallbackSubject;
+    const history = historyAdapter(chatContext.history);
+    const route = await routeRequest({
+      prompt: request.prompt,
+      command: request.command,
+      history,
+      workspace: currentWorkspace,
+      config,
+      recentSubjects: () =>
+        ledger.subjectsSeen(addDays(calendar.dayKey(clock.now()), -RECENT_DAYS)),
+    });
+    if (route.kind === "reply") {
+      stream.markdown(route.text);
+      return { metadata: route.metadata };
+    }
+    const subject = route.subject;
+    stream.progress(route.note);
     const limit = limitOverride ?? weeklyLimitFor(settings, subject);
 
     let used: Cost;
@@ -97,11 +125,15 @@ export function createRequestHandler({
 
     return chatHandler(
       {
-        prompt: request.prompt,
-        history: historyAdapter(chatContext.history),
+        prompt: route.prompt,
+        history,
+        historyScope: { subject, includeHistory: settings.includeHistory },
         references: request.references,
         model: vscodeModel(request.model),
-        ...(request.command === undefined ? {} : { command: request.command }),
+        // `/use` was handled by the router; any other command is not implemented yet.
+        ...(request.command === undefined || request.command === "use"
+          ? {}
+          : { command: request.command }),
       },
       {
         selector: vscodeModelSelector,
@@ -138,6 +170,9 @@ export function createRequestHandler({
     setLimit(limit: number | undefined) {
       limitOverride = limit;
     },
+    setWorkspace(next: WorkspacePort | undefined) {
+      workspaceOverride = next;
+    },
   };
 }
 
@@ -167,9 +202,10 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
   const config = vscodeConfig((warnings) =>
     vscode.window.showWarningMessage(`Q0T4 settings: ${warnings.join(" ")}`),
   );
-  const { handleRequest, requests, ledger, setLimit } = createRequestHandler({
+  const { handleRequest, requests, ledger, setLimit, setWorkspace } = createRequestHandler({
     ledgerPort: fileLedger(ledgerRoot, sessionId),
     config,
+    workspace: workspaceRepo(),
   });
   const ready = housekeeping(ledger, storage);
 
@@ -178,7 +214,17 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
   context.subscriptions.push(participant);
 
   return {
-    test: { handleRequest, requests, storage, ledger, ledgerRoot, sessionId, ready, setLimit },
+    test: {
+      handleRequest,
+      requests,
+      storage,
+      ledger,
+      ledgerRoot,
+      sessionId,
+      ready,
+      setLimit,
+      setWorkspace,
+    },
   };
 }
 

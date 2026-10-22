@@ -3,7 +3,7 @@ import * as vscode from "vscode";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileLedger } from "../../src/adapters/fileLedger";
-import { FakeConfig } from "../fakes/environment";
+import { FakeConfig, FakeWorkspace } from "../fakes/environment";
 import { LEGACY_TOTALS_KEY, createRequestHandler, housekeeping } from "../../src/extension";
 import {
   FAKE_PROVIDER_ID,
@@ -48,6 +48,13 @@ describe("@q0t4 participant", () => {
 
   beforeEach(async () => {
     await vscode.commands.executeCommand("q0t4-test.setScript", ["Hel", "lo", "!"]);
+    // The test window opens a folder inside the Q0T4 checkout. These tests are about the
+    // fallback subject `general`; the repo subject has its own tests (workspace.test.ts).
+    (await participantApi()).test.setWorkspace(new FakeWorkspace(undefined));
+  });
+
+  afterEach(async () => {
+    (await participantApi()).test.setWorkspace(undefined);
   });
 
   it("package.json contributes chat participant q0t4 with isSticky true", () => {
@@ -248,7 +255,7 @@ describe("@q0t4 participant", () => {
     }
   });
 
-  for (const command of ["status", "subjects", "use"]) {
+  for (const command of ["status", "subjects"]) {
     it(`does not send the unimplemented /${command} command to a model`, async () => {
       const api = await participantApi();
       const source = new vscode.CancellationTokenSource();
@@ -389,6 +396,7 @@ describe("@q0t4 participant", () => {
       // A second activation reads the same files through its own writer.
       const reactivated = createRequestHandler({
         config: new FakeConfig(),
+        workspace: new FakeWorkspace(undefined),
         ledgerPort: fileLedger(api.test.ledgerRoot, "after-reload"),
       });
       const total = (await reactivated.ledger.usedThisWeek("general")).tokens;
@@ -400,6 +408,7 @@ describe("@q0t4 participant", () => {
       const api = await participantApi();
       const other = createRequestHandler({
         config: new FakeConfig(),
+        workspace: new FakeWorkspace(undefined),
         ledgerPort: fileLedger(api.test.ledgerRoot, "window-b"),
       });
       const before = await weekTokens();
@@ -465,6 +474,7 @@ describe("@q0t4 participant", () => {
     it("does not send the request when the ledger can't be read", async () => {
       const unreadable = createRequestHandler({
         config: new FakeConfig(),
+        workspace: new FakeWorkspace(undefined),
         ledgerPort: {
           append: async () => undefined,
           read: async () => {
