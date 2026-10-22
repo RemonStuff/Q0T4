@@ -124,6 +124,67 @@ describe.each(["tokens", "credits"] as const)("footer in chatHandler (%s)", (uni
   });
 });
 
+describe.each(["tokens", "credits"] as const)("daily pace in chatHandler (%s)", (unit) => {
+  const cost = (value: number): Cost =>
+    unit === "tokens" ? { tokens: value } : { tokens: 0, credits: value };
+
+  function withPace(usedToday: number, percent = 30, limit = 100, used = 0) {
+    const ctx = fixture(unit, {}, limit, used);
+    const deps: Deps = {
+      ...ctx.deps,
+      budget: { ...(ctx.deps.budget as BudgetContext), usedToday: cost(usedToday) },
+      footer: { warnAtPercent: 80, dailyPaceWarning: percent },
+    };
+    return { ...ctx, deps };
+  }
+
+  it("adds no pace warning below the threshold, counting this request", async () => {
+    const { request, deps, output } = withPace(10); // 10 + 4 = 14 of 100, threshold 30
+    await chatHandler(request, deps);
+    expect(output.text).not.toContain("Daily pace");
+  });
+
+  it("warns when today's usage including this request reaches the threshold", async () => {
+    const { request, deps, output } = withPace(26); // 26 + 4 = 30 of 100
+    await chatHandler(request, deps);
+    expect(output.text).toMatch(
+      /⚠️ Daily pace: 30(?: credits)? used today, at least 30% of the weekly budget \(30(?: credits)?\)\.$/,
+    );
+  });
+
+  it("puts the pace warning after the weekly warning when both apply", async () => {
+    const { request, deps, output } = withPace(60, 30, 100, 80);
+    await chatHandler(request, deps);
+    const weekly = output.text.indexOf("% of the weekly budget used.");
+    const pace = output.text.indexOf("Daily pace");
+    expect(weekly).toBeGreaterThan(output.text.indexOf(FOOTER_SENTINEL));
+    expect(pace).toBeGreaterThan(weekly);
+    expect(stripFooter(output.text)).toBe("abcdefghijkl");
+  });
+
+  it("never blocks a request: even a huge daily total still gets its reply", async () => {
+    const { request, deps, output, model } = withPace(1_000_000, 1, 100, 0);
+    const result = await chatHandler(request, deps);
+    expect(result.metadata).toMatchObject({ outcome: "completed" });
+    expect(model.calls.sendRequest).toHaveLength(1);
+    expect(output.text).toContain("abcdefghijkl");
+    expect(output.text).toContain("Daily pace");
+  });
+
+  it("adds no pace warning without a daily total or without the setting", async () => {
+    const noTotal = fixture(unit, {}, 100);
+    await chatHandler(noTotal.request, {
+      ...noTotal.deps,
+      footer: { warnAtPercent: 80, dailyPaceWarning: 1 },
+    });
+    expect(noTotal.output.text).not.toContain("Daily pace");
+
+    const noSetting = withPace(1_000_000);
+    await chatHandler(noSetting.request, { ...noSetting.deps, footer: { warnAtPercent: 80 } });
+    expect(noSetting.output.text).not.toContain("Daily pace");
+  });
+});
+
 describe("footer in chatHandler (when it is not written)", () => {
   it("writes nothing extra without the footer setting", async () => {
     const { request, deps, output } = fixture("tokens");

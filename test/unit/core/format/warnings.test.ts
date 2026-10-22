@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatWarning } from "../../../../src/core/format/warnings";
+import { formatPaceWarning, formatWarning } from "../../../../src/core/format/warnings";
 import type { BudgetUnit, Cost } from "../../../../src/core/types";
 
 const amount = (unit: BudgetUnit, value: number): Cost =>
@@ -31,5 +31,29 @@ describe.each(["tokens", "credits"] as const)("formatWarning (%s)", (unit) => {
   it("still shows ⛔ at 100% when warnAtPercent is 100", () => {
     expect(warn(99, 100, 100)).toBeNull();
     expect(warn(100, 100, 100)).toBe("⛔ Weekly budget reached.");
+  });
+});
+
+describe.each(["tokens", "credits"] as const)("formatPaceWarning (%s)", (unit) => {
+  const label = unit === "credits" ? " credits" : "";
+
+  it("shows today's usage and the threshold in the active unit", () => {
+    expect(
+      formatPaceWarning({ unit, pace: { usedToday: 61_200, threshold: 60_000, percent: 30 } }),
+    ).toBe(
+      unit === "tokens"
+        ? "⚠️ Daily pace: 62k used today, at least 30% of the weekly budget (60k)."
+        : "⚠️ Daily pace: 61,200 credits used today, at least 30% of the weekly budget (60,000 credits).",
+    );
+    expect(label).toBe(unit === "credits" ? " credits" : "");
+  });
+
+  it("rounds used up and the threshold down, so it never contradicts itself", () => {
+    const text = formatPaceWarning({
+      unit,
+      pace: { usedToday: 60_001, threshold: 60_000.9, percent: 30 },
+    });
+    expect(text).toContain(unit === "tokens" ? "61k used today" : "60,001 credits used today");
+    expect(text).toContain(unit === "tokens" ? "(60k)" : "(60,000 credits)");
   });
 });

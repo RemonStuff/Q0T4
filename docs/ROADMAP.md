@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-22, PR #105. Counts include merged work only; #15 work is not
+2026-10-22, PR #106. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, and 2, *Counting and the
@@ -23,22 +23,22 @@ and ends the reply with a footer and warning ([#17](issues/17-format-footer-and-
 which is stripped from history ([#18](issues/18-history-footer-strip-and-metadata.md)).
 Slash commands still do not call a model, and there is one subject, `general`, with no
 weekly reset yet.
-**Current work:** [#23 ledger resilience](issues/23-ledger-resilience.md) makes the `Ledger` robust: unreadable lines (bad JSON, failed validation, an unknown schema version) are skipped, counted and reported once per session; `prune()` removes month folders older than 13 months, never the current one, and keeps going if one month cannot be removed; and a changed `resetDay` needs no migration because totals are date-range sums. `LedgerPort` gains `months()` and `removeMonth()`. 618 local unit tests pass with 100% core coverage.
-**Next:** [#24 daily pace](issues/24-daily-pace-warning.md), then [#25 wiring](issues/25-wire-ledger.md).
+**Current work:** [#24 daily pace](issues/24-daily-pace-warning.md) adds `paceWarning`, which warns (without blocking) when a subject has used `dailyPaceWarning`% of its weekly budget within one local day, and `formatPaceWarning`. The handler writes it after the weekly warning when it is given today's usage and the setting. 645 local unit tests pass with 100% core coverage. #25 supplies today's usage from the ledger.
+**Next:** [#25 wiring the ledger](issues/25-wire-ledger.md), which finishes iteration 3.
 
 | Iteration | Done | State |
 |---|---|---|
 | 0 Test harness | 7 / 7 | ✅ done |
 | 1 Walking skeleton | 5 / 5 | ✅ done |
 | 2 Counting and the hard stop | 7 / 7 | ✅ done |
-| 3 Weekly storage | 4 / 6 | in progress |
+| 3 Weekly storage | 5 / 6 | in progress |
 | 4 Repo subjects | 0 / 8 | ⚪ not started |
 | 5 Visibility | 0 / 4 | ⚪ not started |
 | 6 Hardening and release (v0.1) | 0 / 4 | ⚪ not started |
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **23 / 59** | 36 to build |
+| **Total** | **24 / 59** | 35 to build |
 
 **Done:**
 
@@ -68,6 +68,7 @@ weekly reset yet.
 | #21 Core next reset and reset labels | [#104](https://github.com/RemonStuff/Q0T4/pull/104) |
 | #22 Core `Ledger`: append-only usage entries and totals | [#105](https://github.com/RemonStuff/Q0T4/pull/105) |
 | #23 `Ledger` resilience: corrupt lines, retention, settings changes | [#106](https://github.com/RemonStuff/Q0T4/pull/106) |
+| #24 Daily pace tracking and warning | [#107](https://github.com/RemonStuff/Q0T4/pull/107) |
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
 **Decisions along the way:**
@@ -172,7 +173,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 21 Next reset (needs 20) · PR #104
 - [x] 22 `Ledger`: append-only entries and totals (needs 20) ∥ · PR #105
 - [x] 23 Ledger resilience (needs 22) · PR #106
-- [ ] 24 Daily pace warning (needs 17, 22) ∥
+- [x] 24 Daily pace warning (needs 17, 22) ∥ · PR #107
 - [ ] 25 Wire the ledger: file adapter and system clock (needs 19, 21, 23, 24). 🎯 **Install and try**
 
 ### Iteration 4: Repo subjects
