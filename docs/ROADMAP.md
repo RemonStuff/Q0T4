@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-22, PR #117. Counts include merged work only; #15 work is not
+2026-10-22, PR #118. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, 2, *Counting and the hard
@@ -24,8 +24,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands still do not call a model, and there is one
 subject, `general`, with fixed settings.
-**Current work:** [#33A](https://github.com/RemonStuff/Q0T4/issues/86) wires the repo subjects into the participant: each request is routed first (`/use`, the conversation's subject, the current repo, the fallback), a note such as `Subject: RemonStuff/Q0T4 (repo)` is shown, the limit, usage and footer follow that subject, and only that subject's history is sent (`q0t4.includeHistory` turns history off). `/use <subject>` alone switches the conversation without calling a model. [#33B](https://github.com/RemonStuff/Q0T4/issues/87) adds the end-to-end tests with temporary git repos.
-**Next:** [#33B](https://github.com/RemonStuff/Q0T4/issues/87), then iteration 5 (status bar and commands).
+**Current work:** [#33](issues/33-wire-subjects.md) is finished: repo subjects work end to end and are tested in real VS Code with temporary git repos (and in the installed `.vsix`). Iteration 4 has one issue left, the last of the iteration.
+**Next:** iteration 4 wrap-up, then iteration 5 (status bar and commands).
 
 | Iteration | Done | State |
 |---|---|---|
@@ -33,13 +33,13 @@ subject, `general`, with fixed settings.
 | 1 Walking skeleton | 5 / 5 | ✅ done |
 | 2 Counting and the hard stop | 7 / 7 | ✅ done |
 | 3 Weekly storage | 6 / 6 | ✅ done |
-| 4 Repo subjects | 7 / 8 | in progress |
+| 4 Repo subjects | 8 / 8 | ✅ done |
 | 5 Visibility | 0 / 4 | ⚪ not started |
 | 6 Hardening and release (v0.1) | 0 / 4 | ⚪ not started |
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **32 / 59** | 27 to build |
+| **Total** | **33 / 59** | 26 to build |
 
 **Done:**
 
@@ -77,6 +77,7 @@ subject, `general`, with fixed settings.
 | #30 `WorkspacePort` and the git workspace adapter | [#115](https://github.com/RemonStuff/Q0T4/pull/115) |
 | #31 Core `resolveSubject` pipeline | [#116](https://github.com/RemonStuff/Q0T4/pull/116) |
 | #32 Same-subject history filter and `includeHistory` | [#117](https://github.com/RemonStuff/Q0T4/pull/117) |
+| #33B Wire repo subjects end to end | [#119](https://github.com/RemonStuff/Q0T4/pull/119) |
 | #33A Wire subject resolution into the participant | [#118](https://github.com/RemonStuff/Q0T4/pull/118) |
 | #26B Settings schema and the VS Code config adapter | [#110](https://github.com/RemonStuff/Q0T4/pull/110) |
 | #26A Core `parseConfig` and `weeklyLimitFor` | [#109](https://github.com/RemonStuff/Q0T4/pull/109) |
@@ -199,8 +200,9 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 30 WorkspacePort and git workspace adapter (needs 27) · PR #115
 - [x] 31 `resolveSubject` pipeline (needs 27, 28, 29, 30) · PR #116
 - [x] 32 Same-subject history (needs 28) ∥ · PR #117
-- [ ] 33 Wire repo subjects (needs 31, 32). 🎯 **Install and try**
+- [x] 33 Wire repo subjects (needs 31, 32) · PR #119. 🎯 **Install and try**
   - [x] 33A Wire subject resolution into the participant · PR #118
+  - [x] 33B Wire repo subjects end to end · PR #119
 
 ### Iteration 5: Visibility
 - [ ] 34 `/status` (needs 33)

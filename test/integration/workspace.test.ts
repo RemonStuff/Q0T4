@@ -1,47 +1,11 @@
 import * as assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import * as vscode from "vscode";
-import { loadGitApi, workspaceRepo } from "../../src/adapters/workspaceRepo";
-import type { WorkspaceEnv } from "../../src/adapters/workspaceRepo";
-
-const created: string[] = [];
-
-async function tempDir(): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), "q0t4-ws-"));
-  created.push(dir);
-  return dir;
-}
-
-async function gitRepo(origin?: string): Promise<string> {
-  const dir = await tempDir();
-  execFileSync("git", ["init", "-q", dir]);
-  if (origin !== undefined) execFileSync("git", ["-C", dir, "remote", "add", "origin", origin]);
-  return dir;
-}
-
-const folderOf = (path: string, index = 0): vscode.WorkspaceFolder => ({
-  uri: vscode.Uri.file(path),
-  name: basename(path),
-  index,
-});
-
-const realGit = (): Promise<Awaited<ReturnType<typeof loadGitApi>>> => loadGitApi();
-
-function env(
-  folders: readonly vscode.WorkspaceFolder[],
-  activeUri?: vscode.Uri,
-  git: WorkspaceEnv["git"] = realGit,
-): WorkspaceEnv {
-  return { folders: () => folders, activeUri: () => activeUri, git };
-}
+import { workspaceRepo } from "../../src/adapters/workspaceRepo";
+import { env, folderOf, gitRepo, removeTempDirs, tempDir } from "./gitFixtures";
 
 describe("workspaceRepo adapter", () => {
-  after(async () => {
-    await Promise.all(created.map((dir) => rm(dir, { recursive: true, force: true })));
-  });
+  after(removeTempDirs);
 
   it("returns undefined when no folder is open", async () => {
     assert.equal(await workspaceRepo(env([])).currentRepo(), undefined);

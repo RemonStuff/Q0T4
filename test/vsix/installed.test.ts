@@ -17,6 +17,7 @@ import {
   withDeadline,
 } from "../integration/support";
 import { FakeWorkspace } from "../fakes/environment";
+import { removeTempDirs, workspaceWithOrigin } from "../integration/gitFixtures";
 import type { ProviderState } from "../integration/support";
 
 const Q0T4_ID = "RemonStuff.q0t4";
@@ -116,6 +117,32 @@ describe("installed .vsix", () => {
       assert.deepEqual(api.test.requests.at(-1), "hi");
     } finally {
       source.dispose();
+    }
+  });
+
+  it("the installed participant charges a prompt in a git repo to the repo and shows the subject", async () => {
+    const api = await installed().activate();
+    api.test.setWorkspace(
+      await workspaceWithOrigin("https://github.com/test-owner/installed-repo.git"),
+    );
+    const { stream, markdown, progress } = recordingStream();
+    const source = new vscode.CancellationTokenSource();
+    try {
+      const result = await api.test.handleRequest(
+        chatRequest(await fakeModel()),
+        { history: [] },
+        stream,
+        source.token,
+      );
+      assert.deepEqual(progress, ["Subject: test-owner/installed-repo (repo)"]);
+      assert.match(markdown.join(""), /\*test\\-owner\/installed\\-repo: [^/]+ \/ 150k this week/);
+      assert.equal(
+        (result as { metadata: { subject: string } }).metadata.subject,
+        "test-owner/installed-repo",
+      );
+    } finally {
+      source.dispose();
+      await removeTempDirs();
     }
   });
 
