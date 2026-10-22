@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-22, PR #101. Counts include merged work only; #15 work is not
+2026-10-22, PR #102. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, and 2, *Counting and the
@@ -23,29 +23,22 @@ and ends the reply with a footer and warning ([#17](issues/17-format-footer-and-
 which is stripped from history ([#18](issues/18-history-footer-strip-and-metadata.md)).
 Slash commands still do not call a model, and there is one subject, `general`, with no
 weekly reset yet.
-**Current work:** [#19B](https://github.com/RemonStuff/Q0T4/issues/83) wires the budget into
-the participant: every `@q0t4` request is counted, pre-checked, cut off by the stream
-guard when needed, recorded into the totals store and followed by a footer and warning.
-Iteration 2 is complete with this PR (it still needs your manual look in the Chat view).
-Until weekly resets exist (iteration 3) every request counts against one subject,
-`general`, with a 200,000-token total that never resets. 549 local unit tests pass with
-100% core coverage; hosted integration and installed-package checks cover the wiring.
-**Next:** iteration 3, *Weekly storage*, starting with
-[#20 `BudgetCalendar`](issues/20-budget-calendar-week.md).
+**Current work:** [#20 `BudgetCalendar`](issues/20-budget-calendar-week.md) adds the pure calendar for the enforced week: `dayKey` (the local calendar day) and `weekWindow` (the `[start, end)` day keys for `resetDay`), computed with `Intl` in the clock's time zone and on calendar days, so DST and the machine's `TZ` cannot move a boundary. 569 local unit tests pass with 100% core coverage. Nothing uses it yet.
+**Next:** [#21 next reset and labels](issues/21-next-reset.md), then the ledger ([#22](issues/22-ledger.md)).
 
 | Iteration | Done | State |
 |---|---|---|
 | 0 Test harness | 7 / 7 | ✅ done |
 | 1 Walking skeleton | 5 / 5 | ✅ done |
 | 2 Counting and the hard stop | 7 / 7 | ✅ done |
-| 3 Weekly storage | 0 / 6 | ⚪ not started |
+| 3 Weekly storage | 1 / 6 | in progress |
 | 4 Repo subjects | 0 / 8 | ⚪ not started |
 | 5 Visibility | 0 / 4 | ⚪ not started |
 | 6 Hardening and release (v0.1) | 0 / 4 | ⚪ not started |
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **19 / 59** | 40 to build |
+| **Total** | **20 / 59** | 39 to build |
 
 **Done:**
 
@@ -71,6 +64,7 @@ Until weekly resets exist (iteration 3) every request counts against one subject
 | #18 Footer stripping and result metadata | [#100](https://github.com/RemonStuff/Q0T4/pull/100) |
 | #19 globalState storage adapter and budget enforcement wiring | [#101](https://github.com/RemonStuff/Q0T4/pull/101) (19A), [#102](https://github.com/RemonStuff/Q0T4/pull/102) (19B) |
 
+| #20 Core `BudgetCalendar`: day keys and the week window | [#103](https://github.com/RemonStuff/Q0T4/pull/103) |
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
 **Decisions along the way:**
@@ -171,7 +165,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
   - [x] 19B wiring and integration tests · PR #102
 
 ### Iteration 3: Weekly storage
-- [ ] 20 `BudgetCalendar`: day keys and the week window (needs 04)
+- [x] 20 `BudgetCalendar`: day keys and the week window (needs 04) · PR #103
 - [ ] 21 Next reset (needs 20)
 - [ ] 22 `Ledger`: append-only entries and totals (needs 20) ∥
 - [ ] 23 Ledger resilience (needs 22)
