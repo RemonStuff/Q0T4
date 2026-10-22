@@ -24,8 +24,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands still do not call a model, and there is one
 subject, `general`, with fixed settings.
-**Current work:** [#33](issues/33-wire-subjects.md) is finished: repo subjects work end to end and are tested in real VS Code with temporary git repos (and in the installed `.vsix`). Iteration 4 has one issue left, the last of the iteration.
-**Next:** iteration 4 wrap-up, then iteration 5 (status bar and commands).
+**Current work:** [#33](issues/33-wire-subjects.md) is finished: repo subjects work end to end and are tested in real VS Code with temporary git repos (and in the installed `.vsix`). Iteration 4 (repo subjects) is complete: each repo has its own weekly budget.
+**Next:** iteration 5, starting with [#34 the `/status` command](issues/34-status-command.md).
 
 | Iteration | Done | State |
 |---|---|---|
