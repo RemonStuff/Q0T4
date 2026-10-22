@@ -204,7 +204,17 @@ and refusal still receive their label from the caller; the installed participant
 `date unavailable` until the ledger is wired in
 [#25](https://github.com/RemonStuff/Q0T4/issues/25).
 
-All 580 local unit tests pass with 100% core coverage. The pull request for #21
+[`Ledger`](src/core/ledger/ledger.ts) ([#22](https://github.com/RemonStuff/Q0T4/issues/22)) keeps usage as an
+append-only ledger over `LedgerPort`, and is a `UsageSink`. `record` appends a validated entry and never
+rewrites an old one; `markReset` appends a reset marker. `usedInRange` sums a subject's usage over `[from, to)`
+days, `usedThisWeek` over the current budget week (after the subject's latest reset marker) and `usedToday`
+over today's local day, so a changed `resetDay` needs no migration. Subjects match case-insensitively,
+entries from several writers are merged, and totals are in tokens, plus credits when entries carry them.
+`subjectsSeen` lists every subject in the stored months. The installed participant still uses the
+iteration-2 `TotalsStore` until the file adapter lands in
+[#25](https://github.com/RemonStuff/Q0T4/issues/25).
+
+All 602 local unit tests pass with 100% core coverage. The pull request for #22
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).
