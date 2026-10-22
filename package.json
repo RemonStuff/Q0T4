@@ -41,7 +41,86 @@
           }
         ]
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Q0T4",
+      "properties": {
+        "q0t4.subjects": {
+          "type": "object",
+          "default": {
+            "general": {
+              "weeklyLimit": 200000
+            }
+          },
+          "markdownDescription": "Weekly token limits that **override** the default for specific repos or names. Keys are `owner/repo` (matched case-insensitively) or a plain name such as `general`. Example: `{ \"RemonStuff/Q0T4\": { \"weeklyLimit\": 50000 } }`. A `weeklyLimit` of `0` disables a subject. Every repo that is not listed gets `q0t4.defaultLimit`.",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "weeklyLimit": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Tokens per week for this subject."
+              },
+              "description": {
+                "type": "string",
+                "description": "A note shown next to the subject."
+              }
+            }
+          },
+          "scope": "application"
+        },
+        "q0t4.defaultLimit": {
+          "type": "number",
+          "default": 150000,
+          "minimum": 0,
+          "markdownDescription": "The weekly token limit for every repo that is not listed in `q0t4.subjects`.",
+          "scope": "application"
+        },
+        "q0t4.fallbackSubject": {
+          "type": "string",
+          "default": "general",
+          "markdownDescription": "The subject for chats when no folder is open.",
+          "scope": "application"
+        },
+        "q0t4.resetDay": {
+          "type": "string",
+          "default": "monday",
+          "enum": [
+            "monday",
+            "tuesday",
+            "wednesday",
+            "thursday",
+            "friday",
+            "saturday",
+            "sunday"
+          ],
+          "markdownDescription": "The day the weekly budget resets, at local midnight.",
+          "scope": "application"
+        },
+        "q0t4.warnAtPercent": {
+          "type": "number",
+          "default": 80,
+          "minimum": 1,
+          "maximum": 100,
+          "markdownDescription": "Show a warning under the reply once this percentage of the weekly budget is used.",
+          "scope": "application"
+        },
+        "q0t4.dailyPaceWarning": {
+          "type": "number",
+          "default": 30,
+          "minimum": 1,
+          "maximum": 100,
+          "markdownDescription": "Show a warning when this percentage of the weekly budget is used within one day. It never blocks a request.",
+          "scope": "application"
+        },
+        "q0t4.includeHistory": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Send earlier messages of the same subject to the model. When off, only the current prompt is sent.",
+          "scope": "application"
+        }
+      }
+    }
   },
   "scripts": {
     "build": "node esbuild.mjs",

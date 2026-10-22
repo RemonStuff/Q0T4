@@ -140,6 +140,17 @@ describe("BudgetCalendar day keys", () => {
   });
 });
 
+describe("BudgetCalendar with a resetDay that changes", () => {
+  it("reads the reset day each time when given a function", () => {
+    let day: ResetDay = "monday";
+    const cal = new BudgetCalendar(new FixedClock("2026-01-01T00:00:00Z", "UTC"), () => day);
+    const instant = at("2026-10-14T09:00:00Z"); // Wednesday
+    expect(cal.weekWindow(instant)).toEqual({ start: "2026-10-12", end: "2026-10-19" });
+    day = "wednesday";
+    expect(cal.weekWindow(instant)).toEqual({ start: "2026-10-14", end: "2026-10-21" });
+  });
+});
+
 describe("calendar-day arithmetic", () => {
   it("addDays moves across months, years and leap days", () => {
     expect(addDays("2026-10-31", 1)).toBe("2026-11-01");

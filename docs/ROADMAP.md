@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-22, PR #108. Counts include merged work only; #15 work is not
+2026-10-22, PR #109. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, 2, *Counting and the hard
@@ -24,8 +24,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands still do not call a model, and there is one
 subject, `general`, with fixed settings.
-**Current work:** [#26A](https://github.com/RemonStuff/Q0T4/issues/84) adds the pure `parseConfig` for the `q0t4.*` settings and `weeklyLimitFor`: broken values fall back to defaults with a warning, subjects match case-insensitively, a limit of 0 disables a subject. Nothing reads it yet; [#26B](https://github.com/RemonStuff/Q0T4/issues/85) adds the VS Code settings and the adapter and replaces the fixed defaults. 677 local unit tests pass with 100% core coverage.
-**Next:** [#26B](https://github.com/RemonStuff/Q0T4/issues/85), then the subject detection pieces [#27](issues/27-repo-identifier.md) to [#33](issues/33-wire-subjects.md).
+**Current work:** [#26B](https://github.com/RemonStuff/Q0T4/issues/85) declares the `q0t4.*` settings in `package.json` and adds the `vscodeConfig` adapter, so the weekly limit, reset day and both warning levels now come from the user's settings. A broken value falls back with a one-time warning. The settings are application-scoped, so a cloned repo cannot raise its own budget. 682 local unit tests pass with 100% core coverage.
+**Next:** the subject detection pieces: [#27 repo identifier](issues/27-repo-identifier.md), [#28 thread subject](issues/28-thread-subject.md), [#29 `/use` parsing](issues/29-use-command-parsing.md).
 
 | Iteration | Done | State |
 |---|---|---|
@@ -33,13 +33,13 @@ subject, `general`, with fixed settings.
 | 1 Walking skeleton | 5 / 5 | ✅ done |
 | 2 Counting and the hard stop | 7 / 7 | ✅ done |
 | 3 Weekly storage | 6 / 6 | ✅ done |
-| 4 Repo subjects | 0 / 8 | ⚪ not started |
+| 4 Repo subjects | 1 / 8 | in progress |
 | 5 Visibility | 0 / 4 | ⚪ not started |
 | 6 Hardening and release (v0.1) | 0 / 4 | ⚪ not started |
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **25 / 59** | 34 to build |
+| **Total** | **26 / 59** | 33 to build |
 
 **Done:**
 
@@ -71,6 +71,7 @@ subject, `general`, with fixed settings.
 | #23 `Ledger` resilience: corrupt lines, retention, settings changes | [#106](https://github.com/RemonStuff/Q0T4/pull/106) |
 | #24 Daily pace tracking and warning | [#107](https://github.com/RemonStuff/Q0T4/pull/107) |
 | #25 Wire the ledger: file adapter and system clock | [#108](https://github.com/RemonStuff/Q0T4/pull/108) |
+| #26B Settings schema and the VS Code config adapter | [#110](https://github.com/RemonStuff/Q0T4/pull/110) |
 | #26A Core `parseConfig` and `weeklyLimitFor` | [#109](https://github.com/RemonStuff/Q0T4/pull/109) |
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
@@ -180,8 +181,9 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 25 Wire the ledger: file adapter and system clock (needs 19, 21, 23, 24) · PR #108. 🎯 **Install and try**
 
 ### Iteration 4: Repo subjects
-- [ ] 26 Settings schema, `parseConfig` and limits (needs 25)
+- [x] 26 Settings schema, `parseConfig` and limits (needs 25) · PR #110
   - [x] 26A Core `parseConfig` and `weeklyLimitFor` · PR #109
+  - [x] 26B Settings schema and the VS Code config adapter · PR #110
 - [ ] 27 Repo identifier from git remotes (needs 26)
 - [ ] 28 Thread subject (needs 18, 26) ∥
 - [ ] 29 `/use` parsing (needs 26) ∥

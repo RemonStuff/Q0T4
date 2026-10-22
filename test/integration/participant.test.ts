@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileLedger } from "../../src/adapters/fileLedger";
+import { FakeConfig } from "../fakes/environment";
 import { LEGACY_TOTALS_KEY, createRequestHandler, housekeeping } from "../../src/extension";
 import {
   FAKE_PROVIDER_ID,
@@ -387,6 +388,7 @@ describe("@q0t4 participant", () => {
       const { metadata } = await request();
       // A second activation reads the same files through its own writer.
       const reactivated = createRequestHandler({
+        config: new FakeConfig(),
         ledgerPort: fileLedger(api.test.ledgerRoot, "after-reload"),
       });
       const total = (await reactivated.ledger.usedThisWeek("general")).tokens;
@@ -397,6 +399,7 @@ describe("@q0t4 participant", () => {
     it("two windows on the same storage both see each other's usage", async () => {
       const api = await participantApi();
       const other = createRequestHandler({
+        config: new FakeConfig(),
         ledgerPort: fileLedger(api.test.ledgerRoot, "window-b"),
       });
       const before = await weekTokens();
@@ -436,8 +439,32 @@ describe("@q0t4 participant", () => {
       assert.ok(months.length > 0, "the current month must stay");
     });
 
+    it("enforces a subject limit from the q0t4.subjects setting, and a changed setting applies at once", async () => {
+      const settings = vscode.workspace.getConfiguration("q0t4");
+      try {
+        await settings.update(
+          "subjects",
+          { general: { weeklyLimit: 0 } },
+          vscode.ConfigurationTarget.Global,
+        );
+        const refused = await request();
+        assert.equal(refused.metadata.stopped, "precheck");
+        assert.ok(refused.text.includes("doesn't fit the budget for general"), refused.text);
+        await settings.update(
+          "subjects",
+          { general: { weeklyLimit: 200_000 } },
+          vscode.ConfigurationTarget.Global,
+        );
+        const allowed = await request();
+        assert.equal(allowed.metadata.stopped, false);
+      } finally {
+        await settings.update("subjects", undefined, vscode.ConfigurationTarget.Global);
+      }
+    });
+
     it("does not send the request when the ledger can't be read", async () => {
       const unreadable = createRequestHandler({
+        config: new FakeConfig(),
         ledgerPort: {
           append: async () => undefined,
           read: async () => {

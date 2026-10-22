@@ -8,22 +8,18 @@ import { historyAdapter } from "./adapters/historyAdapter";
 import { referenceReader } from "./adapters/referenceReader";
 import { systemClock } from "./adapters/systemClock";
 import { vscodeModel } from "./adapters/vscodeModel";
+import { vscodeConfig } from "./adapters/vscodeConfig";
 import { vscodeModelSelector } from "./adapters/vscodeModelSelector";
 import { chatHandler } from "./core/chatHandler";
 import { TokenCostModel } from "./core/cost/tokenCostModel";
 import { formatLedgerError } from "./core/errors/formatLedgerError";
 import { Ledger } from "./core/ledger/ledger";
-import {
-  DEFAULT_DAILY_PACE_WARNING,
-  DEFAULT_RESET_DAY,
-  DEFAULT_SUBJECT,
-  DEFAULT_SUBJECTS,
-  DEFAULT_WARN_AT_PERCENT,
-} from "./core/subjects/defaultSubjects";
+import { weeklyLimitFor } from "./core/subjects/parseConfig";
 import { BudgetCalendar } from "./core/time/budgetCalendar";
 import { formatResetLong, formatResetShort, nextResetKey } from "./core/time/reset";
 import type { Cost } from "./core/types";
 import type { ClockPort } from "./ports/ClockPort";
+import type { ConfigPort } from "./ports/ConfigPort";
 import type { LedgerPort } from "./ports/LedgerPort";
 import type { StoragePort } from "./ports/StoragePort";
 
@@ -61,13 +57,18 @@ export interface Q0T4Exports {
 
 export interface RequestHandlerOptions {
   readonly ledgerPort: LedgerPort;
+  readonly config: ConfigPort;
   readonly clock?: ClockPort;
 }
 
 /** Builds the participant's request handler over a ledger and a clock. */
-export function createRequestHandler({ ledgerPort, clock = systemClock }: RequestHandlerOptions) {
+export function createRequestHandler({
+  ledgerPort,
+  config,
+  clock = systemClock,
+}: RequestHandlerOptions) {
   const requests: string[] = [];
-  const calendar = new BudgetCalendar(clock, DEFAULT_RESET_DAY);
+  const calendar = new BudgetCalendar(clock, () => config.get().resetDay);
   const ledger = new Ledger(ledgerPort, clock, calendar, randomUUID, {
     onCorrupt: (count) => console.warn(`Q0T4: skipped ${count} unreadable usage ledger line(s).`),
   });
@@ -75,14 +76,17 @@ export function createRequestHandler({ ledgerPort, clock = systemClock }: Reques
 
   const handleRequest: vscode.ChatRequestHandler = async (request, chatContext, stream, token) => {
     requests.push(request.prompt);
-    const limit = limitOverride ?? DEFAULT_SUBJECTS[DEFAULT_SUBJECT]?.weeklyLimit ?? 0;
+    const settings = config.get();
+    // One subject until repo detection arrives (#31, #33): the fallback subject.
+    const subject = settings.fallbackSubject;
+    const limit = limitOverride ?? weeklyLimitFor(settings, subject);
 
     let used: Cost;
     let usedToday: Cost;
     try {
       [used, usedToday] = await Promise.all([
-        ledger.usedThisWeek(DEFAULT_SUBJECT),
-        ledger.usedToday(DEFAULT_SUBJECT),
+        ledger.usedThisWeek(subject),
+        ledger.usedToday(subject),
       ]);
     } catch {
       // The budget is unknown, so the request is not sent.
@@ -105,7 +109,7 @@ export function createRequestHandler({ ledgerPort, clock = systemClock }: Reques
         signal: token,
         referenceReader,
         budget: {
-          subject: DEFAULT_SUBJECT,
+          subject,
           costModel: new TokenCostModel(),
           used,
           usedToday,
@@ -120,8 +124,8 @@ export function createRequestHandler({ ledgerPort, clock = systemClock }: Reques
           onError: (error) => console.error("Q0T4: couldn't record usage.", error),
         },
         footer: {
-          warnAtPercent: DEFAULT_WARN_AT_PERCENT,
-          dailyPaceWarning: DEFAULT_DAILY_PACE_WARNING,
+          warnAtPercent: settings.warnAtPercent,
+          dailyPaceWarning: settings.dailyPaceWarning,
         },
       },
     );
@@ -160,8 +164,12 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
   const storage = globalStateStorage(context.globalState);
   const ledgerRoot = context.globalStorageUri.fsPath;
   const sessionId = vscode.env.sessionId;
+  const config = vscodeConfig((warnings) =>
+    vscode.window.showWarningMessage(`Q0T4 settings: ${warnings.join(" ")}`),
+  );
   const { handleRequest, requests, ledger, setLimit } = createRequestHandler({
     ledgerPort: fileLedger(ledgerRoot, sessionId),
+    config,
   });
   const ready = housekeeping(ledger, storage);
 
