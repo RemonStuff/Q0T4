@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-22, PR #99. Counts include merged work only; #15 work is not
+2026-10-22, PR #100. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, and 1, *Walking skeleton*, are ✅ **done**.
@@ -28,15 +28,15 @@ unimplemented slash commands do not call a model.
 [#16 recording policy](issues/16-recording-policy.md) in
 [PR #98](https://github.com/RemonStuff/Q0T4/pull/98). None is active in the
 installed participant, because it supplies no budget state yet.
-**Current work:** [#18 footer stripping and metadata](issues/18-history-footer-strip-and-metadata.md)
-strips Q0T4's footer and warnings from assistant history before it goes back to the
-model, and adds the usage fields (`v`, `subject`, `unit`, `inputTokens`,
-`outputTokens`, `cost`, `stopped`) to the handler's metadata when a budget context
-is supplied. 516 local unit tests pass with 100% core coverage. Nothing is wired
-into the installed participant yet. Merge needs separate approval.
-**Next:** [#19 wiring](issues/19-wire-budget-enforcement.md), split into
-[#19A](https://github.com/RemonStuff/Q0T4/issues/82) (storage adapter and totals store)
-and [#19B](https://github.com/RemonStuff/Q0T4/issues/83) (enforcement wiring).
+**Current work:** [#19](issues/19-wire-budget-enforcement.md) is split into two 4-hour
+jobs. [#19A](https://github.com/RemonStuff/Q0T4/issues/82) adds the `globalStateStorage`
+adapter and the core `TotalsStore` (one running total per subject, a `UsageSink`),
+with unit tests and an integration test against the real `globalState`. 527 local
+unit tests pass with 100% core coverage. Nothing is wired into the installed
+participant yet. Merge needs separate approval.
+**Next:** [#19B](https://github.com/RemonStuff/Q0T4/issues/83) wires counting, the
+pre-check, the stream guard, recording and the footer into the participant, which
+finishes iteration 2.
 
 | Iteration | Done | State |
 |---|---|---|
@@ -171,6 +171,8 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 17 Amounts, footer and warning formatting (needs 03) ∥ (can start any time after iteration 0) · PR #99
 - [x] 18 Footer stripping and metadata (needs 08, 17) · PR #100
 - [ ] 19 globalState adapter and wiring (needs 14, 15, 16, 18). 🎯 **Install and try**
+  - [x] 19A `globalStateStorage` adapter and `TotalsStore` · PR #101
+  - [ ] 19B wiring and integration tests
 
 ### Iteration 3: Weekly storage
 - [ ] 20 `BudgetCalendar`: day keys and the week window (needs 04)
