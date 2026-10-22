@@ -234,7 +234,9 @@ not sent and the chat says so, because the budget is unknown. `systemClock` supp
 
 The `q0t4.*` settings ([#26B](https://github.com/RemonStuff/Q0T4/issues/85)) are declared in `package.json` and read by the [`vscodeConfig`](src/adapters/vscodeConfig.ts) adapter through `parseConfig`: `q0t4.subjects` (per-repo or per-name weekly limits, e.g. `{ "RemonStuff/Q0T4": { "weeklyLimit": 50000 } }`), `q0t4.defaultLimit` (150,000, for every repo not listed), `q0t4.fallbackSubject`, `q0t4.resetDay`, `q0t4.warnAtPercent`, `q0t4.dailyPaceWarning` and `q0t4.includeHistory`. A change applies to the next request. A broken value falls back to its default and a warning is shown once, when the setting changes. The settings are application-scoped, so a repo's own `.vscode/settings.json` cannot raise its budget. Until repo detection arrives, all chats still use the fallback subject.
 
-All 682 local unit tests pass with 100% core coverage. The pull request for #26B
+[`normaliseRemote` and `repoSubject`](src/core/subjects/repoIdentifier.ts) ([#27](https://github.com/RemonStuff/Q0T4/issues/27)) derive the subject from the repo a folder is in. A git remote becomes `owner/repo` and never includes the host, so the same repo matches on every machine and clone: HTTPS, `git@host:owner/repo.git`, `ssh://` URLs, a trailing `.git` or slash and credentials in the URL are handled, GitLab subgroups are kept (`group/sub/repo`) and Azure DevOps becomes `org/project/repo`. `repoSubject` uses the `origin` remote, else the first remote that can be read, else the folder name, and returns nothing when no folder is open, so the caller uses the fallback subject. Nothing calls it yet; the workspace adapter is [#30](https://github.com/RemonStuff/Q0T4/issues/30).
+
+All 727 local unit tests pass with 100% core coverage. The pull request for #27
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).
