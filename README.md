@@ -236,7 +236,7 @@ The `q0t4.*` settings ([#26B](https://github.com/RemonStuff/Q0T4/issues/85)) are
 
 [`normaliseRemote` and `repoSubject`](src/core/subjects/repoIdentifier.ts) ([#27](https://github.com/RemonStuff/Q0T4/issues/27)) derive the subject from the repo a folder is in. A git remote becomes `owner/repo` and never includes the host, so the same repo matches on every machine and clone: HTTPS, `git@host:owner/repo.git`, `ssh://` URLs, a trailing `.git` or slash and credentials in the URL are handled, GitLab subgroups are kept (`group/sub/repo`) and Azure DevOps becomes `org/project/repo`. `repoSubject` uses the `origin` remote, else the first remote that can be read, else the folder name, and returns nothing when no folder is open, so the caller uses the fallback subject. Nothing calls it yet; the workspace adapter is [#30](https://github.com/RemonStuff/Q0T4/issues/30).
 
-All 724 local unit tests pass with 100% core coverage. The pull request for #27
+All 727 local unit tests pass with 100% core coverage. The pull request for #27
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).

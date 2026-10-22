@@ -20,6 +20,7 @@ describe("normaliseRemote", () => {
     ["https://dev.azure.com/org/My%20Project/_git/repo", "org/My Project/repo"],
     ["https://org.visualstudio.com/project/_git/repo", "org/project/repo"],
     ["git@ssh.dev.azure.com:v3/org/project/repo", "org/project/repo"],
+    ["org@vs-ssh.visualstudio.com:v3/org/project/repo", "org/project/repo"],
     ["ssh://git@ssh.dev.azure.com/v3/org/project/repo", "org/project/repo"],
     ["  https://github.com/o/r.git  ", "o/r"],
     ["https://github.com/o/r.git/", "o/r"],
@@ -41,8 +42,15 @@ describe("normaliseRemote", () => {
     "https://github.com/",
     "git@github.com:repo.git",
     "https://dev.azure.com/org/project",
+    "https://vs-ssh.visualstudio.com/project/_git/repo",
   ])("cannot normalise %j", (url) => {
     expect(normaliseRemote(url)).toBeUndefined();
+  });
+
+  it("returns undefined for a URL the parser rejects, and keeps a path with broken percent-encoding as is", () => {
+    expect(normaliseRemote("https://[broken/o/r.git")).toBeUndefined();
+    expect(normaliseRemote("https://github.com/o/100%/r.git")).toBe("o/100%/r");
+    expect(normaliseRemote("git@github.com:o/50%.git")).toBe("o/50%");
   });
 
   it("never includes the host name, so the same repo on two machines matches", () => {

@@ -51,8 +51,8 @@ function azureSegments(host: string, segments: string[]): string[] {
   if (segments[0] === "v3") return clean(segments.slice(1));
   const withoutGit = segments.filter((segment) => segment !== "_git");
   if (host.endsWith("visualstudio.com")) {
-    const org = host.split(".")[0];
-    return org === undefined || org === "vs-ssh" ? [] : clean([org, ...withoutGit]);
+    const org = host.split(".")[0] as string;
+    return org === "vs-ssh" ? [] : clean([org, ...withoutGit]);
   }
   return clean(withoutGit);
 }
