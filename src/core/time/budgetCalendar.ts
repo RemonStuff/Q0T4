@@ -12,6 +12,8 @@ const WEEKDAY: Readonly<Record<ResetDay, number>> = {
   saturday: 6,
 };
 
+const MINUTE_MS = 60_000;
+const HOUR_MS = 3_600_000;
 const DAY_MS = 86_400_000;
 
 export interface LocalParts {
@@ -87,6 +89,23 @@ export class BudgetCalendar {
   dayKey(instant: Date): DayKey {
     const { year, month, day } = localParts(instant, this.clock.timeZone());
     return [year, month, day].map((n, i) => String(n).padStart(i === 0 ? 4 : 2, "0")).join("-");
+  }
+
+  /**
+   * The first instant of a local day: midnight, or the first moment after a DST
+   * change that skipped midnight. Found by search, because local days are not
+   * always 24 hours long.
+   */
+  startOfDay(key: DayKey): Date {
+    // Every time zone's midnight is within 14 hours of the same UTC midnight.
+    let low = utcMs(key) - 15 * HOUR_MS; // still the day before in every zone
+    let high = utcMs(key) + 12 * HOUR_MS; // already this day in every zone
+    while (high - low > MINUTE_MS) {
+      const middle = low + Math.floor((high - low) / MINUTE_MS / 2) * MINUTE_MS;
+      if (this.dayKey(new Date(middle)) >= key) high = middle;
+      else low = middle;
+    }
+    return new Date(high);
   }
 
   /** The `[start, end)` day keys of the budget week that contains the instant. */
