@@ -4,6 +4,7 @@ import {
   FakeConfig,
   FakeReferenceReader,
   FakeUi,
+  FakeWorkspace,
   FixedClock,
   RecordingOutput,
 } from "./index";
@@ -144,5 +145,33 @@ describe("FakeCancellation", () => {
     signal.onCancellationRequested(listener).dispose();
     signal.cancel();
     expect(listener).not.toHaveBeenCalled();
+  });
+});
+
+describe("FakeWorkspace", () => {
+  const repo = {
+    folderName: "Q0T4",
+    remotes: [{ name: "origin", url: "https://github.com/RemonStuff/Q0T4.git" }],
+  };
+
+  it("returns the configured repo info", async () => {
+    const workspace = new FakeWorkspace(repo);
+    expect(await workspace.currentRepo()).toEqual(repo);
+    expect(workspace.calls).toBe(1);
+  });
+
+  it("returns undefined when configured with no folder", async () => {
+    expect(await new FakeWorkspace(undefined).currentRepo()).toBeUndefined();
+  });
+
+  it("returns a copy that callers can't mutate, and follows set()", async () => {
+    const workspace = new FakeWorkspace(repo);
+    ((await workspace.currentRepo())?.remotes as { name: string; url: string }[]).push({
+      name: "x",
+      url: "y",
+    });
+    expect((await workspace.currentRepo())?.remotes).toHaveLength(1);
+    workspace.set(undefined);
+    expect(await workspace.currentRepo()).toBeUndefined();
   });
 });

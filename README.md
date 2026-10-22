@@ -240,7 +240,9 @@ The `q0t4.*` settings ([#26B](https://github.com/RemonStuff/Q0T4/issues/85)) are
 
 [`parseUse`](src/core/subjects/parseUse.ts) ([#29](https://github.com/RemonStuff/Q0T4/issues/29)) parses what follows `/use`: `<subject> <question>`. The subject must be a known one, matched case-insensitively and returned in its canonical spelling, so a typo cannot silently create a budget: [`knownSubjects`](src/core/subjects/knownSubjects.ts) is the configured keys, the fallback subject, subjects with usage in the last 12 weeks (`Ledger.subjectsSeen(since)`) and the current repo. A subject may contain spaces (Azure DevOps projects), so the longest known subject wins. The question keeps its whitespace and newlines. `/use general` alone only switches the conversation's subject; an unknown subject or an empty `/use` returns a message listing the known subjects (at most 20). Nothing calls it yet; the pipeline is [#31](https://github.com/RemonStuff/Q0T4/issues/31).
 
-All 759 local unit tests pass with 100% core coverage. The pull request for #29
+[`workspaceRepo`](src/adapters/workspaceRepo.ts) ([#30](https://github.com/RemonStuff/Q0T4/issues/30)) tells which repo the user is working in. The folder is chosen by the pure [`pickFolder`](src/core/subjects/pickFolder.ts): the workspace folder that contains the active editor's file (the deepest, if folders are nested), else the first folder, else none. Its remotes come from VS Code's built-in Git extension, which is asked to open the folder's repository if it has not found it yet, and waited for briefly while it starts. If the Git extension is missing, disabled or fails, or the folder is not a git repo, the folder is still returned, with no remotes. The adapter is tested against real temporary git repos in the integration tests. The participant does not use it yet; that is [#33](https://github.com/RemonStuff/Q0T4/issues/33).
+
+All 769 local unit tests pass with 100% core coverage. The pull request for #30
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).
