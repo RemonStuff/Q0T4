@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-20, PR #80. Counts include merged work only; #15 work is not
+2026-10-20, PR #81. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, and 1, *Walking skeleton*, are ✅ **done**.
@@ -22,22 +22,23 @@ participant. Hosted checks also verify that the existing installed chat flow
 still works. There is no active metering or budget enforcement, and
 unimplemented slash commands do not call a model.
 [#14 pre-check](issues/14-pre-check-refusal.md) is merged in
-[PR #80](https://github.com/RemonStuff/Q0T4/pull/80). Its exact-main CI passed
-305 unit tests on each OS, 57 integration tests and 12 installed-VSIX tests.
-The installed participant does not supply budget state, so enforcement is
-still inactive.
-**Current work:** [#15 stream guard](issues/15-stream-guard.md) adds adaptive
-output recounting and cut-off behind that optional core gate. All 399 local
-unit tests pass with 100% core coverage. Exact-source hosted results are
-recorded in the pull request; merge needs separate approval.
-**Next:** finish delivery of #15, then
-[#16 recording policy](issues/16-recording-policy.md).
+[PR #80](https://github.com/RemonStuff/Q0T4/pull/80) and
+[#15 stream guard](issues/15-stream-guard.md) in
+[PR #81](https://github.com/RemonStuff/Q0T4/pull/81). Neither is active in the
+installed participant, because it supplies no budget state yet.
+**Current work:** [#16 recording policy](issues/16-recording-policy.md) adds the
+pure policy that decides what each request is charged, and the handler's
+`finally` block that records it through a `UsageSink`. 442 local unit tests
+pass with 100% core coverage. Nothing is wired into the installed participant
+yet. Merge needs separate approval.
+**Next:** [#17 amounts, footer and warnings](issues/17-format-footer-and-warnings.md),
+then [#18](issues/18-history-footer-strip-and-metadata.md).
 
 | Iteration | Done | State |
 |---|---|---|
 | 0 Test harness | 7 / 7 | ✅ done |
 | 1 Walking skeleton | 5 / 5 | ✅ done |
-| 2 Counting and the hard stop | 2 / 7 | in progress |
+| 2 Counting and the hard stop | 4 / 7 | in progress |
 | 3 Weekly storage | 0 / 6 | ⚪ not started |
 | 4 Repo subjects | 0 / 8 | ⚪ not started |
 | 5 Visibility | 0 / 4 | ⚪ not started |
@@ -45,7 +46,7 @@ recorded in the pull request; merge needs separate approval.
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **14 / 59** | 45 to build |
+| **Total** | **16 / 59** | 43 to build |
 
 **Done:**
 
@@ -65,6 +66,8 @@ recorded in the pull request; merge needs separate approval.
 | #12 Attached references | [#78](https://github.com/RemonStuff/Q0T4/pull/78) |
 | #13 Input counting and token costing | [#79](https://github.com/RemonStuff/Q0T4/pull/79) |
 | #14 Budget pre-check and refusal | [#80](https://github.com/RemonStuff/Q0T4/pull/80) |
+| #15 Stream guard: adaptive recount and cut-off | [#81](https://github.com/RemonStuff/Q0T4/pull/81) |
+| #16 Usage recording policy | [#98](https://github.com/RemonStuff/Q0T4/pull/98) |
 
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
@@ -92,7 +95,7 @@ recorded in the pull request; merge needs separate approval.
   model without cancelling the chat, and never forward another chunk.
   The stop has explicit metadata, not invented usage. A recount interval plus
   an arriving chunk bounds detection for the test tokenizer, not real billing.
-  Recording on every exit remains in #16 and installed activation in #19.
+  Recording on every exit is in #16 and installed activation remains in #19.
 
 Both are in PLAN §6–§7.
 
@@ -156,9 +159,9 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 
 ### Iteration 2: Counting and the hard stop
 - [x] 13 `countInput` and `TokenCostModel`, reusing `CostModel` (needs 10) · PR #79
-- [ ] 14 `preCheck` and refusal (needs 13)
-- [ ] 15 `StreamGuard` (needs 13) ∥
-- [ ] 16 Recording policy (needs 15)
+- [x] 14 `preCheck` and refusal (needs 13) · PR #80
+- [x] 15 `StreamGuard` (needs 13) ∥ · PR #81
+- [x] 16 Recording policy (needs 15) · PR #98
 - [ ] 17 Amounts, footer and warning formatting (needs 03) ∥ (can start any time after iteration 0)
 - [ ] 18 Footer stripping and metadata (needs 08, 17)
 - [ ] 19 globalState adapter and wiring (needs 14, 15, 16, 18). 🎯 **Install and try**

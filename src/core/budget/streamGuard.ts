@@ -7,6 +7,11 @@ import type { Cost } from "../types";
 import { countTokens } from "./countTokens";
 import { effectiveBudget, preCheck } from "./preCheck";
 
+const UNCANCELLABLE: CancellationSignal = {
+  isCancellationRequested: false,
+  onCancellationRequested: () => ({ dispose: () => undefined }),
+};
+
 export const RECOUNT_CHARS = 400;
 export const NEAR_LIMIT_RATIO = 0.1;
 
@@ -72,6 +77,24 @@ export class StreamGuard {
       this.tokens = count;
       this.countedChars = this.text.length;
       if (this.spent + cost >= this.limit) this.stop();
+    }
+    return this.tokens;
+  }
+
+  /**
+   * Counts the whole reply for the ledger. It ignores cancellation, because the
+   * user may already have stopped the reply and what was streamed is still used.
+   * If counting fails it keeps the last exact count, never an estimate.
+   */
+  async countForRecording(): Promise<number> {
+    if (this.text.length === this.countedChars) return this.tokens;
+    try {
+      const count = await countTokens(this.options.model, [this.text], UNCANCELLABLE, "output");
+      costAmount({ tokens: count }, "tokens");
+      this.tokens = count;
+      this.countedChars = this.text.length;
+    } catch {
+      // Keep the last exact count.
     }
     return this.tokens;
   }

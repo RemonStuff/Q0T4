@@ -1,15 +1,19 @@
 import type { CancellationSignal } from "../ports/CancellationSignal";
 import type { ChatOutputPort } from "../ports/ChatOutputPort";
 import type { ModelPort } from "../ports/ModelPort";
+import type { ClockPort } from "../ports/ClockPort";
 import type { ModelSelectorPort } from "../ports/ModelSelectorPort";
 import type {
   PromptReference,
   ReferenceReaderPort,
   ResolvedReference,
 } from "../ports/ReferenceReaderPort";
+import type { UsageSink } from "../ports/UsageSink";
 import { countInput } from "./budget/countInput";
 import { preCheck } from "./budget/preCheck";
 import type { PreCheckResult } from "./budget/preCheck";
+import { recordingPolicy } from "./budget/recordingPolicy";
+import type { RecordingOutcome } from "./budget/recordingPolicy";
 import { StreamGuard } from "./budget/streamGuard";
 import { createCancellation } from "./cancellation/createCancellation";
 import type { CostModel } from "./cost/costModel";
@@ -37,6 +41,16 @@ export interface Deps {
   readonly signal: CancellationSignal;
   readonly referenceReader: ReferenceReaderPort;
   readonly budget?: BudgetContext;
+  /** Where usage is recorded. Needs `budget` too: the cost comes from its `CostModel`. */
+  readonly recording?: RecordingContext;
+}
+
+export interface RecordingContext {
+  readonly sink: UsageSink;
+  readonly clock: ClockPort;
+  readonly newId: () => string;
+  /** Called when recording fails; the reply and result are unaffected. */
+  readonly onError?: (error: unknown) => void;
 }
 
 export interface BudgetContext {
@@ -117,11 +131,12 @@ export async function chatHandler(
   const budget = deps.budget;
   let cancellation: ReturnType<typeof createCancellation> | undefined;
   let guard: StreamGuard | undefined;
+  let inputTokens = 0;
   if (budget !== undefined) {
     let decision: PreCheckResult;
     let inputCost: Cost;
     try {
-      const inputTokens = await countInput(model, messages, signal);
+      inputTokens = await countInput(model, messages, signal);
       const { cost } = budget.costModel.cost(model, { input: inputTokens, output: 0 });
       inputCost = cost;
       decision = preCheck({
@@ -160,25 +175,75 @@ export async function chatHandler(
       return reportFailure(deps);
     }
   }
+  // Once `sendRequest` is called, anything that goes wrong is recorded as a failed stream.
+  let outcome: RecordingOutcome | undefined;
   try {
     let stream: AsyncIterable<string>;
     try {
       stream = await model.sendRequest(messages, cancellation?.signal ?? signal);
     } catch {
+      outcome = "requestRejected";
       cancellation?.cancel();
       return reportFailure(deps, model);
     }
+    outcome = "failed";
 
     const streamed = await forwardStream(stream, output, signal, guard, cancellation?.cancel);
-    if (signal.isCancellationRequested) return result("cancelled", model);
+    if (signal.isCancellationRequested) {
+      outcome = "cancelled";
+      return result("cancelled", model);
+    }
     if (streamed.failed) return reportFailure(deps, model, streamed.hasOutput);
     if (guard?.stopped && budget !== undefined) {
+      outcome = "budgetStopped";
       output.markdown(`${streamed.hasOutput ? "\n\n" : ""}${formatStopped(budget.subject)}`);
       return { metadata: { outcome: "stopped", stopped: "budget", model: model.name } };
     }
+    outcome = "completed";
     return result("completed", model);
   } finally {
     cancellation?.dispose();
+    if (outcome !== undefined && budget !== undefined && deps.recording !== undefined) {
+      await recordUsage({ recording: deps.recording, budget, model, guard, inputTokens, outcome });
+    }
+  }
+}
+
+interface RecordUsage {
+  readonly recording: RecordingContext;
+  readonly budget: BudgetContext;
+  readonly model: ModelPort;
+  readonly guard: StreamGuard | undefined;
+  readonly inputTokens: number;
+  readonly outcome: RecordingOutcome;
+}
+
+/** Runs in `finally`: always records, and a failure here never changes the reply or result. */
+async function recordUsage(usage: RecordUsage): Promise<void> {
+  const { recording, budget, model, guard, inputTokens, outcome } = usage;
+  try {
+    const outputTokens =
+      guard === undefined || outcome === "requestRejected" ? 0 : await guard.countForRecording();
+    const at = recording.clock.now();
+    const entry = recordingPolicy({
+      outcome,
+      subject: budget.subject,
+      model: { name: model.name, family: model.family },
+      inputTokens,
+      outputTokens,
+      costModel: budget.costModel,
+      id: recording.newId(),
+      at,
+      timeZone: recording.clock.timeZone(),
+    });
+    if (entry === null) return;
+    await recording.sink.record(entry);
+  } catch (error) {
+    try {
+      recording.onError?.(error);
+    } catch {
+      // A failing error hook must not break the reply either.
+    }
   }
 }
 
