@@ -275,6 +275,15 @@ describe("Ledger.subjectsSeen", () => {
     expect(await ledger.subjectsSeen()).toEqual(["RemonStuff/Q0T4"]);
   });
 
+  it("only lists subjects with entries on or after a given day", async () => {
+    const { ledger } = setup();
+    await ledger.record(usage("org/old", "2026-07-01T08:00:00.000Z", { tokens: 1 }));
+    await ledger.record(usage("org/recent", "2026-10-01T08:00:00.000Z", { tokens: 1 }));
+    expect(await ledger.subjectsSeen("2026-09-01")).toEqual(["org/recent"]);
+    expect(await ledger.subjectsSeen("2026-06-01")).toEqual(["org/old", "org/recent"]);
+    expect(await ledger.subjectsSeen()).toEqual(["org/old", "org/recent"]);
+  });
+
   it("is empty for an empty ledger", async () => {
     expect(await setup().ledger.subjectsSeen()).toEqual([]);
   });
