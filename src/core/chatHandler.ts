@@ -16,11 +16,14 @@ import { recordingPolicy } from "./budget/recordingPolicy";
 import type { RecordingOutcome } from "./budget/recordingPolicy";
 import { StreamGuard } from "./budget/streamGuard";
 import { createCancellation } from "./cancellation/createCancellation";
+import { costAmount } from "./cost/costAmount";
 import type { CostModel } from "./cost/costModel";
 import { formatRequestError } from "./errors/formatRequestError";
+import { formatFooter } from "./format/footer";
 import { formatNoModel } from "./format/formatNoModel";
 import { formatRefusal } from "./format/formatRefusal";
 import { formatStopped } from "./format/formatStopped";
+import { formatWarning } from "./format/warnings";
 import { buildMessages } from "./messages/buildMessages";
 import { resolveModel } from "./models/resolveModel";
 import type { ModelResolution } from "./models/resolveModel";
@@ -50,6 +53,13 @@ export interface Deps {
   readonly budget?: BudgetContext;
   /** Where usage is recorded. Needs `budget` too: the cost comes from its `CostModel`. */
   readonly recording?: RecordingContext;
+  /** Appends the usage footer and warning to the reply. Needs `budget` too. */
+  readonly footer?: FooterContext;
+}
+
+export interface FooterContext {
+  /** `warnAtPercent` from the settings. */
+  readonly warnAtPercent: number;
 }
 
 export interface RecordingContext {
@@ -118,7 +128,10 @@ export async function chatHandler(
     await measureAndRecord(deps, run);
     throw error;
   }
-  return withUsage(result, deps.budget, await measureAndRecord(deps, run));
+  const usage = await measureAndRecord(deps, run);
+  const final = withUsage(result, deps.budget, usage);
+  writeFooter(deps, run, final, usage);
+  return final;
 }
 
 async function handle(
@@ -296,6 +309,50 @@ async function measureAndRecord(deps: Deps, run: Run): Promise<Usage | undefined
     }
   }
   return usage;
+}
+
+/**
+ * The footer comes after the reply and recording, so a failed write never hides it.
+ * It stays out of a cancelled chat, a slash command and a missing model: the footer
+ * needs a resolved model, and a cancelled chat should stay silent.
+ */
+function writeFooter(
+  deps: Deps,
+  run: Run,
+  result: ChatHandlerResult,
+  usage: Usage | undefined,
+): void {
+  const { budget, footer, output } = deps;
+  if (budget === undefined || footer === undefined || usage === undefined) return;
+  if (run.model === undefined || result.metadata.outcome === "cancelled") return;
+  const unit = budget.costModel.unit;
+  const used = addCost(budget.used, usage.cost, unit);
+  const answered = run.outcome !== undefined && CHARGED.includes(run.outcome);
+  output.markdown(
+    `\n\n${formatFooter({
+      subject: budget.subject,
+      unit,
+      used,
+      budget: budget.budget,
+      resetLabel: budget.resetLabel,
+      modelName: answered ? run.model.name : undefined,
+    })}`,
+  );
+  const warning = formatWarning({
+    unit,
+    used,
+    budget: budget.budget,
+    warnAtPercent: footer.warnAtPercent,
+  });
+  if (warning !== null) output.markdown(`\n\n${warning}`);
+}
+
+/** Sums two costs in the active unit; the pre-check already rejected a missing amount. */
+function addCost(a: Cost, b: Cost, unit: BudgetUnit): Cost {
+  const tokens = a.tokens + b.tokens;
+  return unit === "credits"
+    ? { tokens, credits: costAmount(a, unit) + costAmount(b, unit) }
+    : { tokens };
 }
 
 function withUsage(

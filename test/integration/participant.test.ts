@@ -1,13 +1,16 @@
 import * as assert from "node:assert/strict";
 import * as vscode from "vscode";
+import { createRequestHandler } from "../../src/extension";
 import {
   FAKE_PROVIDER_ID,
   FAKE_VENDOR,
   Q0T4_ID,
   chatRequest,
   fakeModel,
+  outcomeOf,
   participantApi,
   recordingStream,
+  replyText,
   withDeadline,
 } from "./support";
 import type { ProviderState } from "./support";
@@ -80,8 +83,8 @@ describe("@q0t4 participant", () => {
         stream,
         source.token,
       );
-      assert.equal(markdown.join(""), "Hello!");
-      assert.deepEqual(result, { metadata: { outcome: "completed", model: model.name } });
+      assert.equal(replyText(markdown), "Hello!");
+      assert.deepEqual(outcomeOf(result), { outcome: "completed", model: model.name });
       assert.equal(api.test.requests.at(-1), "hi");
     } finally {
       source.dispose();
@@ -102,7 +105,7 @@ describe("@q0t4 participant", () => {
           stream,
           source.token,
         );
-        assert.deepEqual(result, { metadata: { outcome: "completed", model: model.name } });
+        assert.deepEqual(outcomeOf(result), { outcome: "completed", model: model.name });
       }
       const state = await vscode.commands.executeCommand<ProviderState>("q0t4-test.getState");
       assert.deepEqual(
@@ -157,7 +160,7 @@ describe("@q0t4 participant", () => {
         api.test.handleRequest(chatRequest(model), { history: [] }, stream, source.token),
       );
       assert.deepEqual(markdown, ["Hel"]);
-      assert.deepEqual(result, { metadata: { outcome: "cancelled", model: model.name } });
+      assert.deepEqual(outcomeOf(result), { outcome: "cancelled", model: model.name });
       assert.equal(
         await withDeadline(vscode.commands.executeCommand("q0t4-test.waitForCancellation")),
         true,
@@ -176,13 +179,15 @@ describe("@q0t4 participant", () => {
     const { stream, markdown } = recordingStream();
     try {
       assert.deepEqual(
-        await api.test.handleRequest(
-          chatRequest(await fakeModel()),
-          { history: [] },
-          stream,
-          source.token,
+        outcomeOf(
+          await api.test.handleRequest(
+            chatRequest(await fakeModel()),
+            { history: [] },
+            stream,
+            source.token,
+          ),
         ),
-        { metadata: { outcome: "cancelled" } },
+        { outcome: "cancelled" },
       );
       assert.deepEqual(markdown, []);
       const state = await vscode.commands.executeCommand<ProviderState>("q0t4-test.getState");
@@ -228,10 +233,12 @@ describe("@q0t4 participant", () => {
     const { stream, markdown } = recordingStream();
     try {
       assert.deepEqual(
-        await api.test.handleRequest(chatRequest(model), { history: [] }, stream, source.token),
-        { metadata: { outcome: "error", model: model.name } },
+        outcomeOf(
+          await api.test.handleRequest(chatRequest(model), { history: [] }, stream, source.token),
+        ),
+        { outcome: "error", model: model.name },
       );
-      assert.deepEqual(markdown, ["Q0T4 couldn't complete this request. Please try again."]);
+      assert.equal(replyText(markdown), "Q0T4 couldn't complete this request. Please try again.");
     } finally {
       source.dispose();
     }
@@ -244,13 +251,15 @@ describe("@q0t4 participant", () => {
       const { stream, markdown } = recordingStream();
       try {
         assert.deepEqual(
-          await api.test.handleRequest(
-            chatRequest(await fakeModel(), "", command),
-            { history: [] },
-            stream,
-            source.token,
+          outcomeOf(
+            await api.test.handleRequest(
+              chatRequest(await fakeModel(), "", command),
+              { history: [] },
+              stream,
+              source.token,
+            ),
           ),
-          { metadata: { outcome: "error" } },
+          { outcome: "error" },
         );
         assert.deepEqual(markdown, [
           "Slash commands aren't available yet. Send a normal message to talk to the selected model.",
@@ -262,4 +271,89 @@ describe("@q0t4 participant", () => {
       }
     });
   }
+
+  describe("@q0t4 budget enforcement", () => {
+    type Usage = { inputTokens: number; outputTokens: number; stopped: unknown };
+
+    async function request(prompt = "hi") {
+      const api = await participantApi();
+      const source = new vscode.CancellationTokenSource();
+      const { stream, markdown } = recordingStream();
+      try {
+        const result = await api.test.handleRequest(
+          chatRequest(await fakeModel(), prompt),
+          { history: [] },
+          stream,
+          source.token,
+        );
+        return {
+          api,
+          markdown,
+          text: markdown.join(""),
+          metadata: (result as { metadata: Usage }).metadata,
+        };
+      } finally {
+        source.dispose();
+      }
+    }
+
+    before(async () => {
+      await vscode.extensions.getExtension(FAKE_PROVIDER_ID)?.activate();
+    });
+
+    beforeEach(async () => {
+      await vscode.commands.executeCommand("q0t4-test.setScript", ["Hello", " world"]);
+    });
+
+    afterEach(async () => {
+      (await participantApi()).test.setLimit(undefined);
+    });
+
+    it("handleRequest appends a footer with the usage this request", async () => {
+      const api = await participantApi();
+      const before = api.test.store.get("general").tokens;
+      const { text, metadata } = await request();
+      assert.ok(text.startsWith("Hello world\n\n<!-- q0t4:footer -->\n\n*general: "), text);
+      assert.match(text, / \/ 200k this week · resets date unavailable · /);
+      assert.equal(metadata.stopped, false);
+      assert.ok(metadata.inputTokens > 0 && metadata.outputTokens > 0);
+      assert.equal(
+        api.test.store.get("general").tokens,
+        before + metadata.inputTokens + metadata.outputTokens,
+      );
+    });
+
+    it("handleRequest stops a long fake reply with ⛔ when the budget is tiny", async () => {
+      const api = await participantApi();
+      const chunk = "x".repeat(40);
+      await vscode.commands.executeCommand("q0t4-test.setScript", Array(10).fill(chunk));
+      api.test.setLimit(api.test.store.get("general").tokens + 15);
+      const { text, metadata } = await request();
+      assert.ok(text.includes("⛔ Stopped: general weekly budget reached."), text);
+      assert.equal(metadata.stopped, "budget");
+      assert.ok(text.split(chunk).length - 1 < 10, "the whole reply was streamed");
+      assert.ok(text.includes("<!-- q0t4:footer -->"));
+    });
+
+    it("handleRequest refuses before calling the model when the total is already at the limit", async () => {
+      const api = await participantApi();
+      api.test.setLimit(api.test.store.get("general").tokens);
+      const { text, metadata } = await request();
+      assert.ok(text.includes("This request doesn't fit the budget for general."), text);
+      assert.equal(metadata.stopped, "precheck");
+      assert.equal(metadata.inputTokens, 0);
+      const state = await vscode.commands.executeCommand<ProviderState>("q0t4-test.getState");
+      assert.deepEqual(state?.requests, []);
+    });
+
+    it("usage persists across a deactivate/activate cycle", async () => {
+      const api = await participantApi();
+      const { metadata } = await request();
+      const reactivated = createRequestHandler(api.test.storage);
+      assert.equal(reactivated.store.get("general").tokens, api.test.store.get("general").tokens);
+      assert.ok(
+        reactivated.store.get("general").tokens >= metadata.inputTokens + metadata.outputTokens,
+      );
+    });
+  });
 });

@@ -1,5 +1,6 @@
 import * as assert from "node:assert/strict";
 import * as vscode from "vscode";
+import { stripFooter } from "../../src/core/messages/stripFooter";
 import type { Q0T4Exports } from "../../src/extension";
 
 export const Q0T4_ID = "RemonStuff.q0t4";
@@ -85,4 +86,18 @@ export async function withDeadline<T>(operation: T | PromiseLike<T>): Promise<T>
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** What the participant said, without the footer and warnings Q0T4 appends. */
+export function replyText(markdown: readonly string[]): string {
+  return stripFooter(markdown.join(""));
+}
+
+/** The outcome and answering model of a handler result, without the usage fields. */
+export function outcomeOf(result: unknown): { outcome?: string; model?: string } {
+  const metadata = (result as { metadata?: { outcome?: string; model?: string } } | null)?.metadata;
+  return {
+    ...(metadata?.outcome === undefined ? {} : { outcome: metadata.outcome }),
+    ...(metadata?.model === undefined ? {} : { model: metadata.model }),
+  };
 }

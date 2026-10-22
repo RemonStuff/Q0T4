@@ -2,7 +2,14 @@ import * as assert from "node:assert/strict";
 import { resolve } from "node:path";
 import * as vscode from "vscode";
 import type { Q0T4Exports } from "../../src/extension";
-import { FAKE_PROVIDER_ID, chatRequest, fakeModel, recordingStream } from "./support";
+import {
+  FAKE_PROVIDER_ID,
+  chatRequest,
+  fakeModel,
+  outcomeOf,
+  recordingStream,
+  replyText,
+} from "./support";
 import type { ProviderState } from "./support";
 
 export const contextUri = () =>
@@ -89,9 +96,9 @@ export function referenceForwardingTests(getApi: () => Promise<Q0T4Exports>) {
         { id: "file", value: vscode.Uri.joinPath(contextUri(), "does-not-exist.txt") },
       ]);
       assert.deepEqual(state.requests, []);
-      assert.deepEqual(result, { metadata: { outcome: "error" } });
+      assert.deepEqual(outcomeOf(result), { outcome: "error" });
       assert.equal(
-        output.markdown.join(""),
+        replyText(output.markdown),
         "Q0T4 couldn't read an attached reference. Check that it is accessible and try again.",
       );
     });

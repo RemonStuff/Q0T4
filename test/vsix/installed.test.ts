@@ -5,12 +5,15 @@ import * as assert from "node:assert/strict";
 import { existsSync, readdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import * as vscode from "vscode";
+import type { Q0T4Exports } from "../../src/extension";
 import {
   FAKE_PROVIDER_ID,
   FAKE_VENDOR,
   chatRequest,
   fakeModel,
+  outcomeOf,
   recordingStream,
+  replyText,
   withDeadline,
 } from "../integration/support";
 import type { ProviderState } from "../integration/support";
@@ -30,9 +33,7 @@ interface Participant {
   commands?: Command[];
 }
 
-function installed(): vscode.Extension<{
-  test: { handleRequest: vscode.ChatRequestHandler; requests: readonly string[] };
-}> {
+function installed(): vscode.Extension<Q0T4Exports> {
   const extension = vscode.extensions.getExtension(Q0T4_ID);
   assert.ok(extension, `${Q0T4_ID} is not installed`);
   return extension;
@@ -100,9 +101,36 @@ describe("installed .vsix", () => {
         stream,
         source.token,
       );
-      assert.deepEqual(markdown.join(""), "Installed model reply");
-      assert.deepEqual(result, { metadata: { outcome: "completed", model: model.name } });
+      assert.deepEqual(replyText(markdown), "Installed model reply");
+      assert.deepEqual(outcomeOf(result), { outcome: "completed", model: model.name });
       assert.deepEqual(api.test.requests.at(-1), "hi");
+    } finally {
+      source.dispose();
+    }
+  });
+
+  it("the installed participant appends the usage footer and records the usage", async () => {
+    const api = await installed().activate();
+    const before = api.test.store.get("general").tokens;
+    const { stream, markdown } = recordingStream();
+    const source = new vscode.CancellationTokenSource();
+    try {
+      const result = await api.test.handleRequest(
+        chatRequest(await fakeModel()),
+        { history: [] },
+        stream,
+        source.token,
+      );
+      const text = markdown.join("");
+      assert.ok(text.includes("<!-- q0t4:footer -->"), "no footer sentinel");
+      assert.match(text, /\*general: [^/]+ \/ 200k this week · resets date unavailable · /);
+      const metadata = (result as { metadata: { inputTokens: number; outputTokens: number } })
+        .metadata;
+      assert.ok(metadata.inputTokens > 0 && metadata.outputTokens > 0);
+      assert.equal(
+        api.test.store.get("general").tokens,
+        before + metadata.inputTokens + metadata.outputTokens,
+      );
     } finally {
       source.dispose();
     }
@@ -121,7 +149,7 @@ describe("installed .vsix", () => {
           recordingStream().stream,
           source.token,
         );
-        assert.deepEqual(result, { metadata: { outcome: "completed", model: model.name } });
+        assert.deepEqual(outcomeOf(result), { outcome: "completed", model: model.name });
       }
       const state = await vscode.commands.executeCommand<ProviderState>("q0t4-test.getState");
       assert.deepEqual(
@@ -141,10 +169,12 @@ describe("installed .vsix", () => {
     const { stream, markdown } = recordingStream(() => source.cancel());
     try {
       assert.deepEqual(
-        await withDeadline(
-          api.test.handleRequest(chatRequest(model), { history: [] }, stream, source.token),
+        outcomeOf(
+          await withDeadline(
+            api.test.handleRequest(chatRequest(model), { history: [] }, stream, source.token),
+          ),
         ),
-        { metadata: { outcome: "cancelled", model: model.name } },
+        { outcome: "cancelled", model: model.name },
       );
       assert.deepEqual(markdown, ["Installed "]);
       assert.equal(
@@ -164,13 +194,15 @@ describe("installed .vsix", () => {
     const { stream, markdown } = recordingStream();
     try {
       assert.deepEqual(
-        await api.test.handleRequest(
-          chatRequest(await fakeModel(), "", "status"),
-          { history: [] },
-          stream,
-          source.token,
+        outcomeOf(
+          await api.test.handleRequest(
+            chatRequest(await fakeModel(), "", "status"),
+            { history: [] },
+            stream,
+            source.token,
+          ),
         ),
-        { metadata: { outcome: "error" } },
+        { outcome: "error" },
       );
       assert.deepEqual(markdown, [
         "Slash commands aren't available yet. Send a normal message to talk to the selected model.",
