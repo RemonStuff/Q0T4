@@ -248,7 +248,9 @@ The `q0t4.*` settings ([#26B](https://github.com/RemonStuff/Q0T4/issues/85)) are
 
 Repo subjects are wired in ([#33A](https://github.com/RemonStuff/Q0T4/issues/86)). Before anything is sent, [`routeRequest`](src/core/subjects/routeRequest.ts) picks the subject (`/use`, the conversation's subject, the repo of the active workspace folder, else `q0t4.fallbackSubject`) and the participant shows a note such as `Subject: RemonStuff/Q0T4 (repo)`. The weekly limit is the subject's entry in `q0t4.subjects`, else `q0t4.defaultLimit`; usage, the footer and the history sent to the model follow the same subject, and `q0t4.includeHistory: false` sends no history. `/use <subject> <question>` charges one question to a known subject; `/use <subject>` alone switches the conversation (a reply with zero tokens, nothing recorded); an unknown subject lists the known ones and sends nothing. A failing Git extension or an unreadable ledger never blocks a request. The end-to-end tests with real git repos are [#33B](https://github.com/RemonStuff/Q0T4/issues/87).
 
-All 813 local unit tests pass with 100% core coverage. The pull request for #33A
+The end-to-end behaviour of repo subjects ([#33B](https://github.com/RemonStuff/Q0T4/issues/87)) is tested in real VS Code with temporary git repos as the workspace, and once in the installed `.vsix`: a prompt in a repo is charged to `owner/repo` with its own or the default limit; a follow-up stays on the conversation's subject; `/use general <question>` charges `general`; `/use general` alone switches without a model call or tokens; an unknown subject lists the known ones; an exhausted repo is refused while `/use general` still works; a changed `q0t4.subjects` applies at the next request; history is limited to the same subject and `q0t4.includeHistory: false` sends none.
+
+All 813 local unit tests pass with 100% core coverage. The pull request for #33B
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).
