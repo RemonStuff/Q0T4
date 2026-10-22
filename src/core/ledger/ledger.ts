@@ -136,9 +136,14 @@ export class Ledger implements UsageSink {
     return result;
   }
 
-  /** Every subject with entries in the stored months, once, in the spelling used last. */
-  async subjectsSeen(): Promise<readonly SubjectName[]> {
-    const { entries } = await this.read(EVERYTHING);
+  /**
+   * Every subject with entries in the stored months (or since a day), once, in the
+   * spelling used last.
+   */
+  async subjectsSeen(since?: DayKey): Promise<readonly SubjectName[]> {
+    const { entries } = await this.read(
+      since === undefined ? EVERYTHING : { from: since, to: EVERYTHING.to },
+    );
     const latest = new Map<string, SubjectName>();
     for (const entry of entries) latest.set(entry.subject.toLowerCase(), entry.subject);
     return [...latest.keys()].sort().map((key) => latest.get(key) as SubjectName);

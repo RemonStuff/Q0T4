@@ -5,6 +5,7 @@ import type { ConfigPort } from "../../src/ports/ConfigPort";
 import type { Disposable } from "../../src/ports/Disposable";
 import type { PromptReference, ReferenceReaderPort } from "../../src/ports/ReferenceReaderPort";
 import type { StatusBarState, UiPort } from "../../src/ports/UiPort";
+import type { RepoInfo, WorkspacePort } from "../../src/ports/WorkspacePort";
 
 /** A clock frozen at an instant in a given IANA zone, moved only by the test. */
 export class FixedClock implements ClockPort {
@@ -132,5 +133,21 @@ export class FakeReferenceReader implements ReferenceReaderPort {
   async read(ref: PromptReference): Promise<{ label: string; text: string } | undefined> {
     this.calls.push(ref.id);
     return this.texts[ref.id];
+  }
+}
+
+/** A workspace with a fixed answer: the repo info, or `undefined` for no open folder. */
+export class FakeWorkspace implements WorkspacePort {
+  calls = 0;
+
+  constructor(private repo: RepoInfo | undefined) {}
+
+  set(repo: RepoInfo | undefined): void {
+    this.repo = repo;
+  }
+
+  async currentRepo(): Promise<RepoInfo | undefined> {
+    this.calls++;
+    return this.repo && structuredClone(this.repo);
   }
 }

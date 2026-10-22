@@ -8,6 +8,7 @@ export {
   FakeConfig,
   FakeReferenceReader,
   FakeUi,
+  FakeWorkspace,
   FixedClock,
   RecordingOutput,
   TEST_CONFIG,
