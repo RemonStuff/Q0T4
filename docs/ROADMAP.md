@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-22, PR #103. Counts include merged work only; #15 work is not
+2026-10-22, PR #104. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, and 2, *Counting and the
@@ -23,22 +23,22 @@ and ends the reply with a footer and warning ([#17](issues/17-format-footer-and-
 which is stripped from history ([#18](issues/18-history-footer-strip-and-metadata.md)).
 Slash commands still do not call a model, and there is one subject, `general`, with no
 weekly reset yet.
-**Current work:** [#21 next reset and labels](issues/21-next-reset.md) adds `nextResetKey`, `msUntilReset`, `formatResetShort` (`Mon`) and `formatResetLong` (`Mon 19 Oct`), plus `BudgetCalendar.startOfDay`, the first instant of a local day (also for days whose midnight a DST change skipped). 580 local unit tests pass with 100% core coverage. The footer and refusal still get their label from the caller; #25 passes these real labels in.
-**Next:** the ledger: [#22](issues/22-ledger.md), then [#23](issues/23-ledger-resilience.md).
+**Current work:** [#22 ledger](issues/22-ledger.md) adds the core `Ledger` over `LedgerPort`: `record`, `markReset`, `usedInRange`, `usedThisWeek`, `usedToday` and `subjectsSeen`. Totals are date-range queries merged across writers, matched case-insensitively per subject, in tokens and in credits when entries carry them. A reset marker only affects its subject's week total. 602 local unit tests pass with 100% core coverage. The installed participant still uses `TotalsStore` until #25.
+**Next:** [#23 ledger resilience](issues/23-ledger-resilience.md), then [#24 daily pace](issues/24-daily-pace-warning.md).
 
 | Iteration | Done | State |
 |---|---|---|
 | 0 Test harness | 7 / 7 | ✅ done |
 | 1 Walking skeleton | 5 / 5 | ✅ done |
 | 2 Counting and the hard stop | 7 / 7 | ✅ done |
-| 3 Weekly storage | 2 / 6 | in progress |
+| 3 Weekly storage | 3 / 6 | in progress |
 | 4 Repo subjects | 0 / 8 | ⚪ not started |
 | 5 Visibility | 0 / 4 | ⚪ not started |
 | 6 Hardening and release (v0.1) | 0 / 4 | ⚪ not started |
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **21 / 59** | 38 to build |
+| **Total** | **22 / 59** | 37 to build |
 
 **Done:**
 
@@ -66,6 +66,7 @@ weekly reset yet.
 
 | #20 Core `BudgetCalendar`: day keys and the week window | [#103](https://github.com/RemonStuff/Q0T4/pull/103) |
 | #21 Core next reset and reset labels | [#104](https://github.com/RemonStuff/Q0T4/pull/104) |
+| #22 Core `Ledger`: append-only usage entries and totals | [#105](https://github.com/RemonStuff/Q0T4/pull/105) |
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
 **Decisions along the way:**
@@ -168,7 +169,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 ### Iteration 3: Weekly storage
 - [x] 20 `BudgetCalendar`: day keys and the week window (needs 04) · PR #103
 - [x] 21 Next reset (needs 20) · PR #104
-- [ ] 22 `Ledger`: append-only entries and totals (needs 20) ∥
+- [x] 22 `Ledger`: append-only entries and totals (needs 20) ∥ · PR #105
 - [ ] 23 Ledger resilience (needs 22)
 - [ ] 24 Daily pace warning (needs 17, 22) ∥
 - [ ] 25 Wire the ledger: file adapter and system clock (needs 19, 21, 23, 24). 🎯 **Install and try**
