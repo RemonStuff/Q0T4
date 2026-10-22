@@ -61,6 +61,27 @@ describe("TotalsStore", () => {
     expect(store.get("org/repo")).toEqual({ tokens: 20 });
   });
 
+  it("keeps its totals when the storage echoes an older value back", async () => {
+    // VS Code's globalState can replace a newer pending value with a stale echo of an earlier write.
+    const storage = new InMemoryStorage();
+    const store = new TotalsStore(storage);
+    await store.add("org/repo", { tokens: 10 });
+    await store.add("org/repo", { tokens: 5 });
+    await storage.set("q0t4.totals", { "org/repo": { tokens: 10 } });
+    expect(store.get("org/repo")).toEqual({ tokens: 15 });
+    await store.add("org/repo", { tokens: 1 });
+    expect(store.get("org/repo")).toEqual({ tokens: 16 });
+    expect(new TotalsStore(storage).get("org/repo")).toEqual({ tokens: 16 });
+  });
+
+  it("shows an increment at once, before its write has finished", async () => {
+    const store = new TotalsStore(new InMemoryStorage());
+    const writing = store.add("org/repo", { tokens: 3 });
+    await Promise.resolve();
+    await writing;
+    expect(store.get("org/repo")).toEqual({ tokens: 3 });
+  });
+
   it("persists across a new store over the same storage", async () => {
     const storage = new InMemoryStorage();
     await new TotalsStore(storage).add("org/repo", { tokens: 42 });
@@ -96,6 +117,17 @@ describe("TotalsStore", () => {
     const store = new TotalsStore(storage);
     await store.add("good", { tokens: 4 });
     expect(store.get("good")).toEqual({ tokens: 7 });
+    expect(store.get("bad")).toEqual({ tokens: 0 });
+  });
+
+  it("loads stored credits, and ignores a subject whose stored credits are damaged", () => {
+    const storage = new InMemoryStorage();
+    storage.set("q0t4.totals", {
+      good: { tokens: 3, credits: 1.5 },
+      bad: { tokens: 3, credits: "x" },
+    });
+    const store = new TotalsStore(storage);
+    expect(store.get("good")).toEqual({ tokens: 3, credits: 1.5 });
     expect(store.get("bad")).toEqual({ tokens: 0 });
   });
 

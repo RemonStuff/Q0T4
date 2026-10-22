@@ -28,7 +28,7 @@ the participant: every `@q0t4` request is counted, pre-checked, cut off by the s
 guard when needed, recorded into the totals store and followed by a footer and warning.
 Iteration 2 is complete with this PR (it still needs your manual look in the Chat view).
 Until weekly resets exist (iteration 3) every request counts against one subject,
-`general`, with a 200,000-token total that never resets. 546 local unit tests pass with
+`general`, with a 200,000-token total that never resets. 549 local unit tests pass with
 100% core coverage; hosted integration and installed-package checks cover the wiring.
 **Next:** iteration 3, *Weekly storage*, starting with
 [#20 `BudgetCalendar`](issues/20-budget-calendar-week.md).

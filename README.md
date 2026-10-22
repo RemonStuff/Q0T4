@@ -179,13 +179,15 @@ Without a budget context the metadata is unchanged.
 [`TotalsStore`](src/core/storage/totalsStore.ts) ([#19A](https://github.com/RemonStuff/Q0T4/issues/82)) keeps one
 running total per subject through `StoragePort`, and is a `UsageSink`, so the chat
 handler can record into it. It never resets; weekly totals from the ledger replace
-it in [#25](https://github.com/RemonStuff/Q0T4/issues/25). Writes are queued so
-requests that finish together lose no increment, and damaged stored data is ignored.
+it in [#25](https://github.com/RemonStuff/Q0T4/issues/25). The totals are loaded once and kept in memory, with every change written
+through, because VS Code's `globalState` can replace a newer pending value with a stale
+echo of an earlier write. Writes are queued so requests that finish together lose no
+increment, and damaged stored data is ignored.
 The [`globalStateStorage`](src/adapters/globalStateStorage.ts) adapter puts it on
 VS Code's `globalState`. The installed participant uses both since
 [#19B](https://github.com/RemonStuff/Q0T4/issues/83).
 
-All 546 local unit tests pass with 100% core coverage. The pull request for #19B
+All 549 local unit tests pass with 100% core coverage. The pull request for #19B
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).
