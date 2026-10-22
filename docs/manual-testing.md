@@ -22,6 +22,10 @@ VS Code doesn't submit chat input in a test instance without a signed-in Copilot
 What this leaves to normal use, with your own Copilot; no separate test pass is needed:
 
 - [ ] `@q0t4 …` typed in the Chat view reaches Q0T4. The participant contribution and handler are tested; only VS Code's own routing isn't.
+- [ ] Open this repo (`RemonStuff/Q0T4`) as the folder, send a message to `@q0t4`: a note "Subject: RemonStuff/Q0T4 (repo)" appears and the footer names `RemonStuff/Q0T4`. A second message in the same conversation says `(thread)`.
+- [ ] Add `"RemonStuff/Q0T4": { "weeklyLimit": 2000 }` to `q0t4.subjects` and chat until the request is refused; then `/use general hello` still answers and its footer says `general`.
+- [ ] Open a folder that isn't a git repo: the subject is the folder name. Close the folder: the subject is `general` and the note says `(fallback)`.
+- [ ] `/use general` alone replies with a confirmation, and the next message in the conversation is charged to `general`. `/use typo hi` lists the known subjects and sends nothing.
 - [ ] Open Settings and search for `Q0T4`: the section lists subjects, default limit, fallback subject, reset day, both warning levels and include history, each with its default. The defaults match the code (a unit test compares `package.json` with the core defaults); only how the Settings UI renders them isn't tested.
 - [ ] A follow-up message without `@q0t4` still goes to Q0T4 (sticky). `isSticky: true` is tested in the installed manifest; only VS Code honouring it isn't.
 - [ ] After a real chat, the footer (`*general: … / 200k this week · resets Mon · <model>*`) shows a total that grows with each reply, and it is still there after **Developer: Reload Window**. The footer text, totals and persistence are tested with the fake model; only a real Copilot tokenizer isn't.

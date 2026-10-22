@@ -42,6 +42,8 @@ export interface ChatHandlerRequest {
   readonly history: readonly HistoryTurn[];
   readonly model: ModelPort;
   readonly command?: string;
+  /** Limits which history is sent: only this subject's, or none. Without it all history is sent. */
+  readonly historyScope?: { readonly subject: SubjectName; readonly includeHistory?: boolean };
   readonly references?: readonly PromptReference[];
   readonly availability?: "available" | "unavailable";
 }
@@ -192,7 +194,7 @@ async function handle(
     output.progress("Some attached references could not be included (unsupported content).");
   }
   if (signal.isCancellationRequested) return result("cancelled");
-  const messages = buildMessages(request.prompt, request.history, references);
+  const messages = buildMessages(request.prompt, request.history, references, request.historyScope);
   const budget = deps.budget;
   let cancellation: ReturnType<typeof createCancellation> | undefined;
   let guard: StreamGuard | undefined;

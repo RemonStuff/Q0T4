@@ -481,4 +481,45 @@ describe("chatHandler", () => {
     expect(output.text).toBe("first");
     expect(close).toHaveBeenCalledOnce();
   });
+  describe("historyScope", () => {
+    const meta = (subject: string) => ({
+      v: 1,
+      subject,
+      unit: "tokens",
+      inputTokens: 1,
+      outputTokens: 1,
+      cost: { tokens: 2 },
+      stopped: false,
+    });
+    const history: HistoryTurn[] = [
+      { kind: "request", prompt: "q-a" },
+      { kind: "response", text: "a-a", metadata: meta("org/a") },
+      { kind: "request", prompt: "q-b" },
+      { kind: "response", text: "a-b", metadata: meta("org/b") },
+    ];
+
+    it("sends only the history of the scope's subject", async () => {
+      const { request, deps, model } = fixture();
+      const send = vi.spyOn(model, "sendRequest");
+      await chatHandler({ ...request, history, historyScope: { subject: "org/b" } }, deps);
+      expect(send.mock.calls[0]?.[0].map((m) => m.text)).toEqual(["q-b", "a-b", "Hello"]);
+    });
+
+    it("sends no history when includeHistory is false", async () => {
+      const { request, deps, model } = fixture();
+      const send = vi.spyOn(model, "sendRequest");
+      await chatHandler(
+        { ...request, history, historyScope: { subject: "org/b", includeHistory: false } },
+        deps,
+      );
+      expect(send.mock.calls[0]?.[0].map((m) => m.text)).toEqual(["Hello"]);
+    });
+
+    it("without a scope sends all history, as before", async () => {
+      const { request, deps, model } = fixture();
+      const send = vi.spyOn(model, "sendRequest");
+      await chatHandler({ ...request, history }, deps);
+      expect(send.mock.calls[0]?.[0]).toHaveLength(5);
+    });
+  });
 });

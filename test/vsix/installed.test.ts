@@ -16,6 +16,7 @@ import {
   replyText,
   withDeadline,
 } from "../integration/support";
+import { FakeWorkspace } from "../fakes/environment";
 import type { ProviderState } from "../integration/support";
 
 const Q0T4_ID = "RemonStuff.q0t4";
@@ -47,6 +48,15 @@ function participant(): Participant {
 }
 
 describe("installed .vsix", () => {
+  // The test window opens a folder inside the Q0T4 checkout; these tests use the fallback subject.
+  beforeEach(async () => {
+    (await installed().activate()).test.setWorkspace(new FakeWorkspace(undefined));
+  });
+
+  afterEach(async () => {
+    (await installed().activate()).test.setWorkspace(undefined);
+  });
+
   before(async () => {
     await vscode.extensions.getExtension(FAKE_PROVIDER_ID)?.activate();
   });
