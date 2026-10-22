@@ -187,7 +187,15 @@ The [`globalStateStorage`](src/adapters/globalStateStorage.ts) adapter puts it o
 VS Code's `globalState`. The installed participant uses both since
 [#19B](https://github.com/RemonStuff/Q0T4/issues/83).
 
-All 549 local unit tests pass with 100% core coverage. The pull request for #19B
+[`BudgetCalendar`](src/core/time/budgetCalendar.ts) ([#20](https://github.com/RemonStuff/Q0T4/issues/20))
+is the pure calendar for the enforced week. `dayKey(instant)` is the local calendar day
+and `weekWindow(instant)` the `[start, end)` day keys of the week that starts at local
+midnight on `resetDay`. Both use `Intl` with the IANA zone from the clock, never the
+machine's `TZ`, and do their arithmetic on `YYYY-MM-DD` keys (`addDays`, `daysBetween`),
+so a DST change, a year boundary or a far-away time zone cannot move a boundary. Nothing
+uses it yet; the ledger totals (#22) and the next-reset labels (#21) are built on it.
+
+All 569 local unit tests pass with 100% core coverage. The pull request for #20
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).
