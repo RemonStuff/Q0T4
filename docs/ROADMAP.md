@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-22, PR #109. Counts include merged work only; #15 work is not
+2026-10-22, PR #110. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, 2, *Counting and the hard
@@ -24,8 +24,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands still do not call a model, and there is one
 subject, `general`, with fixed settings.
-**Current work:** [#26B](https://github.com/RemonStuff/Q0T4/issues/85) declares the `q0t4.*` settings in `package.json` and adds the `vscodeConfig` adapter, so the weekly limit, reset day and both warning levels now come from the user's settings. A broken value falls back with a one-time warning. The settings are application-scoped, so a cloned repo cannot raise its own budget. 682 local unit tests pass with 100% core coverage.
-**Next:** the subject detection pieces: [#27 repo identifier](issues/27-repo-identifier.md), [#28 thread subject](issues/28-thread-subject.md), [#29 `/use` parsing](issues/29-use-command-parsing.md).
+**Current work:** [#27 repo identifier](issues/27-repo-identifier.md) adds `normaliseRemote` (HTTPS, SSH, `ssh://`, credentials, GitLab subgroups and Azure DevOps become `owner/repo`, never with the host) and `repoSubject` (origin, else the first readable remote, else the folder name, else nothing). Nothing calls it yet.
+**Next:** [#28 thread subject](issues/28-thread-subject.md) and [#29 `/use` parsing](issues/29-use-command-parsing.md).
 
 | Iteration | Done | State |
 |---|---|---|
@@ -33,13 +33,13 @@ subject, `general`, with fixed settings.
 | 1 Walking skeleton | 5 / 5 | ✅ done |
 | 2 Counting and the hard stop | 7 / 7 | ✅ done |
 | 3 Weekly storage | 6 / 6 | ✅ done |
-| 4 Repo subjects | 1 / 8 | in progress |
+| 4 Repo subjects | 2 / 8 | in progress |
 | 5 Visibility | 0 / 4 | ⚪ not started |
 | 6 Hardening and release (v0.1) | 0 / 4 | ⚪ not started |
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **26 / 59** | 33 to build |
+| **Total** | **27 / 59** | 32 to build |
 
 **Done:**
 
@@ -71,6 +71,7 @@ subject, `general`, with fixed settings.
 | #23 `Ledger` resilience: corrupt lines, retention, settings changes | [#106](https://github.com/RemonStuff/Q0T4/pull/106) |
 | #24 Daily pace tracking and warning | [#107](https://github.com/RemonStuff/Q0T4/pull/107) |
 | #25 Wire the ledger: file adapter and system clock | [#108](https://github.com/RemonStuff/Q0T4/pull/108) |
+| #27 Core repo identifier from git remotes | [#112](https://github.com/RemonStuff/Q0T4/pull/112) |
 | #26B Settings schema and the VS Code config adapter | [#110](https://github.com/RemonStuff/Q0T4/pull/110) |
 | #26A Core `parseConfig` and `weeklyLimitFor` | [#109](https://github.com/RemonStuff/Q0T4/pull/109) |
 **Infrastructure PRs:** CI retries a VS Code test run that never started its tests (runner startup flake), see `.github/scripts/run-vscode-tests.sh`.
@@ -186,7 +187,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 26 Settings schema, `parseConfig` and limits (needs 25) · PR #110
   - [x] 26A Core `parseConfig` and `weeklyLimitFor` · PR #109
   - [x] 26B Settings schema and the VS Code config adapter · PR #110
-- [ ] 27 Repo identifier from git remotes (needs 26)
+- [x] 27 Repo identifier from git remotes (needs 26) · PR #112
 - [ ] 28 Thread subject (needs 18, 26) ∥
 - [ ] 29 `/use` parsing (needs 26) ∥
 - [ ] 30 WorkspacePort and git workspace adapter (needs 27)
