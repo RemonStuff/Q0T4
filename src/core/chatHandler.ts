@@ -24,7 +24,14 @@ import { formatStopped } from "./format/formatStopped";
 import { buildMessages } from "./messages/buildMessages";
 import { resolveModel } from "./models/resolveModel";
 import type { ModelResolution } from "./models/resolveModel";
-import type { Cost, HistoryTurn, SubjectName } from "./types";
+import type {
+  BudgetUnit,
+  Cost,
+  HistoryTurn,
+  ResultMetadata,
+  StoppedReason,
+  SubjectName,
+} from "./types";
 
 export interface ChatHandlerRequest {
   readonly prompt: string;
@@ -62,26 +69,62 @@ export interface BudgetContext {
   readonly extraAllowance?: Cost;
 }
 
+type OutcomeMetadata =
+  | {
+      readonly outcome: "completed" | "cancelled" | "noModel" | "error";
+      readonly model?: string;
+    }
+  | {
+      readonly outcome: "refused";
+      readonly stopped: "precheck";
+    }
+  | {
+      readonly outcome: "stopped";
+      readonly stopped: "budget";
+      readonly model: string;
+    };
+
+/**
+ * With a budget context the metadata also carries the usage fields of
+ * `ResultMetadata` (docs/PLAN.md §2 step 8); without one it is the plain outcome.
+ */
 export interface ChatHandlerResult {
-  readonly metadata:
-    | {
-        readonly outcome: "completed" | "cancelled" | "noModel" | "error";
-        readonly model?: string;
-      }
-    | {
-        readonly outcome: "refused";
-        readonly stopped: "precheck";
-      }
-    | {
-        readonly outcome: "stopped";
-        readonly stopped: "budget";
-        readonly model: string;
-      };
+  readonly metadata: OutcomeMetadata & Partial<ResultMetadata>;
+}
+
+interface Usage {
+  readonly inputTokens: number;
+  readonly outputTokens: number;
+  readonly cost: Cost;
+}
+
+/** What the handler learned along the way, for recording and metadata. */
+interface Run {
+  model?: ModelPort;
+  inputTokens: number;
+  guard?: StreamGuard;
+  outcome?: RecordingOutcome;
 }
 
 export async function chatHandler(
   request: ChatHandlerRequest,
   deps: Deps,
+): Promise<ChatHandlerResult> {
+  const run: Run = { inputTokens: 0 };
+  let result: ChatHandlerResult;
+  try {
+    result = await handle(request, deps, run);
+  } catch (error) {
+    await measureAndRecord(deps, run);
+    throw error;
+  }
+  return withUsage(result, deps.budget, await measureAndRecord(deps, run));
+}
+
+async function handle(
+  request: ChatHandlerRequest,
+  deps: Deps,
+  run: Run,
 ): Promise<ChatHandlerResult> {
   const { selector, output, signal } = deps;
   if (signal.isCancellationRequested) return result("cancelled");
@@ -106,6 +149,7 @@ export async function chatHandler(
   }
 
   const model = resolution.model;
+  run.model = model;
   const references: ResolvedReference[] = [];
   let skipped = false;
   for (const ref of [...(request.references ?? [])].reverse()) {
@@ -131,13 +175,12 @@ export async function chatHandler(
   const budget = deps.budget;
   let cancellation: ReturnType<typeof createCancellation> | undefined;
   let guard: StreamGuard | undefined;
-  let inputTokens = 0;
   if (budget !== undefined) {
     let decision: PreCheckResult;
     let inputCost: Cost;
     try {
-      inputTokens = await countInput(model, messages, signal);
-      const { cost } = budget.costModel.cost(model, { input: inputTokens, output: 0 });
+      run.inputTokens = await countInput(model, messages, signal);
+      const { cost } = budget.costModel.cost(model, { input: run.inputTokens, output: 0 });
       inputCost = cost;
       decision = preCheck({
         unit: budget.costModel.unit,
@@ -170,81 +213,120 @@ export async function chatHandler(
         signal,
         cancel: cancellation.cancel,
       });
+      run.guard = guard;
     } catch {
       cancellation.dispose();
       return reportFailure(deps);
     }
   }
   // Once `sendRequest` is called, anything that goes wrong is recorded as a failed stream.
-  let outcome: RecordingOutcome | undefined;
   try {
     let stream: AsyncIterable<string>;
     try {
       stream = await model.sendRequest(messages, cancellation?.signal ?? signal);
     } catch {
-      outcome = "requestRejected";
+      run.outcome = "requestRejected";
       cancellation?.cancel();
       return reportFailure(deps, model);
     }
-    outcome = "failed";
+    run.outcome = "failed";
 
     const streamed = await forwardStream(stream, output, signal, guard, cancellation?.cancel);
     if (signal.isCancellationRequested) {
-      outcome = "cancelled";
+      run.outcome = "cancelled";
       return result("cancelled", model);
     }
     if (streamed.failed) return reportFailure(deps, model, streamed.hasOutput);
     if (guard?.stopped && budget !== undefined) {
-      outcome = "budgetStopped";
+      run.outcome = "budgetStopped";
       output.markdown(`${streamed.hasOutput ? "\n\n" : ""}${formatStopped(budget.subject)}`);
       return { metadata: { outcome: "stopped", stopped: "budget", model: model.name } };
     }
-    outcome = "completed";
+    run.outcome = "completed";
     return result("completed", model);
   } finally {
     cancellation?.dispose();
-    if (outcome !== undefined && budget !== undefined && deps.recording !== undefined) {
-      await recordUsage({ recording: deps.recording, budget, model, guard, inputTokens, outcome });
-    }
   }
 }
 
-interface RecordUsage {
-  readonly recording: RecordingContext;
-  readonly budget: BudgetContext;
-  readonly model: ModelPort;
-  readonly guard: StreamGuard | undefined;
-  readonly inputTokens: number;
-  readonly outcome: RecordingOutcome;
-}
+const CHARGED: readonly RecordingOutcome[] = ["completed", "cancelled", "failed", "budgetStopped"];
 
-/** Runs in `finally`: always records, and a failure here never changes the reply or result. */
-async function recordUsage(usage: RecordUsage): Promise<void> {
-  const { recording, budget, model, guard, inputTokens, outcome } = usage;
-  try {
-    const outputTokens =
-      guard === undefined || outcome === "requestRejected" ? 0 : await guard.countForRecording();
-    const at = recording.clock.now();
-    const entry = recordingPolicy({
-      outcome,
-      subject: budget.subject,
-      model: { name: model.name, family: model.family },
-      inputTokens,
-      outputTokens,
-      costModel: budget.costModel,
-      id: recording.newId(),
-      at,
-      timeZone: recording.clock.timeZone(),
-    });
-    if (entry === null) return;
-    await recording.sink.record(entry);
-  } catch (error) {
+/**
+ * Runs once per request, also when the handler throws: measures what was used,
+ * records it, and adds the usage fields to the metadata. A failure here never
+ * changes the reply; recording failures go to the optional `onError` hook.
+ */
+async function measureAndRecord(deps: Deps, run: Run): Promise<Usage | undefined> {
+  const { budget, recording } = deps;
+  let usage: Usage | undefined;
+  if (budget !== undefined) {
     try {
-      recording.onError?.(error);
-    } catch {
-      // A failing error hook must not break the reply either.
+      const charged = run.outcome !== undefined && CHARGED.includes(run.outcome);
+      const inputTokens = charged ? run.inputTokens : 0;
+      const outputTokens =
+        charged && run.guard !== undefined ? await run.guard.countForRecording() : 0;
+      usage = {
+        inputTokens,
+        outputTokens,
+        cost:
+          charged && run.model !== undefined
+            ? budget.costModel.cost(run.model, { input: inputTokens, output: outputTokens }).cost
+            : zeroCost(budget.costModel.unit),
+      };
+      if (recording !== undefined && run.outcome !== undefined && run.model !== undefined) {
+        const entry = recordingPolicy({
+          outcome: run.outcome,
+          subject: budget.subject,
+          model: { name: run.model.name, family: run.model.family },
+          inputTokens,
+          outputTokens,
+          costModel: budget.costModel,
+          id: recording.newId(),
+          at: recording.clock.now(),
+          timeZone: recording.clock.timeZone(),
+        });
+        if (entry !== null) await recording.sink.record(entry);
+      }
+    } catch (error) {
+      try {
+        recording?.onError?.(error);
+      } catch {
+        // A failing error hook must not break the reply either.
+      }
     }
   }
+  return usage;
+}
+
+function withUsage(
+  result: ChatHandlerResult,
+  budget: BudgetContext | undefined,
+  usage: Usage | undefined,
+): ChatHandlerResult {
+  if (budget === undefined || usage === undefined) return result;
+  const { outcome } = result.metadata;
+  const stopped: StoppedReason =
+    outcome === "refused"
+      ? "precheck"
+      : outcome === "stopped"
+        ? "budget"
+        : outcome === "cancelled"
+          ? "cancelled"
+          : false;
+  // `stopped` follows from `outcome`, which the spread cannot show the type checker.
+  const metadata = {
+    ...result.metadata,
+    v: 1,
+    subject: budget.subject,
+    unit: budget.costModel.unit,
+    ...usage,
+    stopped,
+  } as ChatHandlerResult["metadata"];
+  return { metadata };
+}
+
+function zeroCost(unit: BudgetUnit): Cost {
+  return unit === "credits" ? { tokens: 0, credits: 0 } : { tokens: 0 };
 }
 
 function result(

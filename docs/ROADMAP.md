@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-22, PR #98. Counts include merged work only; #15 work is not
+2026-10-22, PR #99. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, and 1, *Walking skeleton*, are ✅ **done**.
@@ -28,19 +28,21 @@ unimplemented slash commands do not call a model.
 [#16 recording policy](issues/16-recording-policy.md) in
 [PR #98](https://github.com/RemonStuff/Q0T4/pull/98). None is active in the
 installed participant, because it supplies no budget state yet.
-**Current work:** [#17 amounts, footer and warnings](issues/17-format-footer-and-warnings.md)
-adds the pure formatting: compact token and credit amounts, the footer behind its
-hidden sentinel, and the weekly ⚠️/⛔ warning. 489 local unit tests pass with 100%
-core coverage. Nothing is wired into the installed participant yet. Merge needs
-separate approval.
-**Next:** [#18 footer stripping and metadata](issues/18-history-footer-strip-and-metadata.md),
-then [#19 wiring](issues/19-wire-budget-enforcement.md).
+**Current work:** [#18 footer stripping and metadata](issues/18-history-footer-strip-and-metadata.md)
+strips Q0T4's footer and warnings from assistant history before it goes back to the
+model, and adds the usage fields (`v`, `subject`, `unit`, `inputTokens`,
+`outputTokens`, `cost`, `stopped`) to the handler's metadata when a budget context
+is supplied. 516 local unit tests pass with 100% core coverage. Nothing is wired
+into the installed participant yet. Merge needs separate approval.
+**Next:** [#19 wiring](issues/19-wire-budget-enforcement.md), split into
+[#19A](https://github.com/RemonStuff/Q0T4/issues/82) (storage adapter and totals store)
+and [#19B](https://github.com/RemonStuff/Q0T4/issues/83) (enforcement wiring).
 
 | Iteration | Done | State |
 |---|---|---|
 | 0 Test harness | 7 / 7 | ✅ done |
 | 1 Walking skeleton | 5 / 5 | ✅ done |
-| 2 Counting and the hard stop | 5 / 7 | in progress |
+| 2 Counting and the hard stop | 6 / 7 | in progress |
 | 3 Weekly storage | 0 / 6 | ⚪ not started |
 | 4 Repo subjects | 0 / 8 | ⚪ not started |
 | 5 Visibility | 0 / 4 | ⚪ not started |
@@ -48,7 +50,7 @@ then [#19 wiring](issues/19-wire-budget-enforcement.md).
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **17 / 59** | 42 to build |
+| **Total** | **18 / 59** | 41 to build |
 
 **Done:**
 
@@ -71,6 +73,7 @@ then [#19 wiring](issues/19-wire-budget-enforcement.md).
 | #15 Stream guard: adaptive recount and cut-off | [#81](https://github.com/RemonStuff/Q0T4/pull/81) |
 | #16 Usage recording policy | [#98](https://github.com/RemonStuff/Q0T4/pull/98) |
 | #17 Amounts, footer and warning formatting | [#99](https://github.com/RemonStuff/Q0T4/pull/99) |
+| #18 Footer stripping and result metadata | [#100](https://github.com/RemonStuff/Q0T4/pull/100) |
 
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
@@ -166,7 +169,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 15 `StreamGuard` (needs 13) ∥ · PR #81
 - [x] 16 Recording policy (needs 15) · PR #98
 - [x] 17 Amounts, footer and warning formatting (needs 03) ∥ (can start any time after iteration 0) · PR #99
-- [ ] 18 Footer stripping and metadata (needs 08, 17)
+- [x] 18 Footer stripping and metadata (needs 08, 17) · PR #100
 - [ ] 19 globalState adapter and wiring (needs 14, 15, 16, 18). 🎯 **Install and try**
 
 ### Iteration 3: Weekly storage

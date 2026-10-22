@@ -52,7 +52,7 @@ describe.each(["tokens", "credits"] as const)("stream guard handler (%s)", (unit
     const send = vi.spyOn(model, "sendRequest");
     const result = await chatHandler(request, deps);
     expect(output.text).toBe(`abcdefgh\n\n${STOP}`);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       metadata: { outcome: "stopped", stopped: "budget", model: model.name },
     });
     expect(JSON.parse(JSON.stringify(result))).toEqual(result);
@@ -92,7 +92,7 @@ describe.each(["tokens", "credits"] as const)("stream guard handler (%s)", (unit
       "mnop",
     ]);
     const budget = { ...deps.budget, extraAllowance: amount(1) };
-    expect(await chatHandler(request, { ...deps, budget })).toEqual({
+    expect(await chatHandler(request, { ...deps, budget })).toMatchObject({
       metadata: { outcome: "stopped", stopped: "budget", model: model.name },
     });
     expect(output.text).toBe(`abcdefghijkl\n\n${STOP}`);
@@ -101,7 +101,7 @@ describe.each(["tokens", "credits"] as const)("stream guard handler (%s)", (unit
   it("performs a real final count for a short affordable stream", async () => {
     const { request, deps, model, output, amount } = fixture(unit, ["short"]);
     const budget = { ...deps.budget, budget: amount(10_000) };
-    expect(await chatHandler(request, { ...deps, budget })).toEqual({
+    expect(await chatHandler(request, { ...deps, budget })).toMatchObject({
       metadata: { outcome: "completed", model: model.name },
     });
     expect(model.calls.countTokens).toEqual([{ role: "user", text: "1234" }, "short"]);
@@ -125,7 +125,7 @@ describe.each(["tokens", "credits"] as const)("stream guard handler (%s)", (unit
     );
     expect(
       await chatHandler(request, { ...deps, budget: { ...deps.budget, budget: amount(10) } }),
-    ).toEqual({ metadata: { outcome: "stopped", stopped: "budget", model: model.name } });
+    ).toMatchObject({ metadata: { outcome: "stopped", stopped: "budget", model: model.name } });
     expect(output.text).toBe(`abcd\n\n${STOP}`);
   });
 });
@@ -147,7 +147,7 @@ describe("stream guard handler cleanup and failures", () => {
       write(text);
       signal.cancel();
     });
-    expect(await chatHandler(request, deps)).toEqual({
+    expect(await chatHandler(request, deps)).toMatchObject({
       metadata: { outcome: "cancelled", model: model.name },
     });
     expect(send.mock.calls[0]?.[1].isCancellationRequested).toBe(true);
@@ -163,7 +163,7 @@ describe("stream guard handler cleanup and failures", () => {
         ? Promise.reject(new Error("private output count failure"))
         : original(input),
     );
-    expect(await chatHandler(request, deps)).toEqual({
+    expect(await chatHandler(request, deps)).toMatchObject({
       metadata: { outcome: "error", model: model.name },
     });
     expect(output.text).toBe(`abcd\n\n${ERROR}`);
@@ -206,7 +206,7 @@ describe("stream guard handler cleanup and failures", () => {
     const handling = chatHandler(request, deps);
     expect(await Promise.race([started.then(() => true), handling.then(() => false)])).toBe(true);
     signal.cancel();
-    expect(await handling).toEqual({ metadata: { outcome: "cancelled", model: model.name } });
+    expect(await handling).toMatchObject({ metadata: { outcome: "cancelled", model: model.name } });
     expect(output.text).toBe("abcd");
     expect(send.mock.calls[0]?.[1].isCancellationRequested).toBe(true);
     resolve(1);
@@ -220,7 +220,7 @@ describe("stream guard handler cleanup and failures", () => {
       return original(selected, tokens);
     });
     const send = vi.spyOn(model, "sendRequest");
-    expect(await chatHandler(request, deps)).toEqual({
+    expect(await chatHandler(request, deps)).toMatchObject({
       metadata: { outcome: "error", model: model.name },
     });
     expect(output.text).toBe(`abcd\n\n${ERROR}`);
@@ -245,7 +245,7 @@ describe("stream guard handler cleanup and failures", () => {
     const send = vi
       .spyOn(model, "sendRequest")
       .mockRejectedValue(new Error("private send failure"));
-    expect(await chatHandler(request, deps)).toEqual({
+    expect(await chatHandler(request, deps)).toMatchObject({
       metadata: { outcome: "error", model: model.name },
     });
     expect(output.text).toBe(ERROR);
@@ -276,7 +276,7 @@ describe("stream guard handler cleanup and failures", () => {
       }),
     };
     vi.spyOn(model, "sendRequest").mockResolvedValue(stream);
-    expect(await chatHandler(request, deps)).toEqual({
+    expect(await chatHandler(request, deps)).toMatchObject({
       metadata: { outcome: "error", model: model.name },
     });
     expect(output.text).toBe(`abcdabcd\n\n${ERROR}`);
@@ -369,7 +369,7 @@ describe("stream guard handler cleanup and failures", () => {
         },
       };
     });
-    expect(await chatHandler(request, { ...deps, budget })).toEqual({
+    expect(await chatHandler(request, { ...deps, budget })).toMatchObject({
       metadata: { outcome: "error" },
     });
     expect(output.text).toBe(ERROR);
@@ -381,7 +381,7 @@ describe("stream guard handler cleanup and failures", () => {
     const { request, deps, model, output } = fixture();
     const { budget, ...withoutBudget } = deps;
     const send = vi.spyOn(model, "sendRequest");
-    expect(await chatHandler(request, withoutBudget)).toEqual({
+    expect(await chatHandler(request, withoutBudget)).toMatchObject({
       metadata: { outcome: "completed", model: model.name },
     });
     expect(output.text).toBe("abcdefghijkl");
