@@ -3,7 +3,8 @@ import {
   DEFAULT_SUBJECT,
   DEFAULT_SUBJECTS,
   DEFAULT_WARN_AT_PERCENT,
-  RESET_UNAVAILABLE_LABEL,
+  DEFAULT_DAILY_PACE_WARNING,
+  DEFAULT_RESET_DAY,
 } from "../../../../src/core/subjects/defaultSubjects";
 
 describe("default subjects", () => {
@@ -12,8 +13,9 @@ describe("default subjects", () => {
     expect(DEFAULT_SUBJECTS[DEFAULT_SUBJECT]).toEqual({ weeklyLimit: 200_000 });
   });
 
-  it("warns at 80% and says honestly that no reset date exists yet", () => {
+  it("warns at 80% of the week and 30% in one day, and the week resets on Monday", () => {
     expect(DEFAULT_WARN_AT_PERCENT).toBe(80);
-    expect(RESET_UNAVAILABLE_LABEL).toBe("date unavailable");
+    expect(DEFAULT_DAILY_PACE_WARNING).toBe(30);
+    expect(DEFAULT_RESET_DAY).toBe("monday");
   });
 });

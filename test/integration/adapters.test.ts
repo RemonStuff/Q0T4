@@ -2,6 +2,7 @@ import * as assert from "node:assert/strict";
 import * as vscode from "vscode";
 import { chatStreamOutput } from "../../src/adapters/chatStreamOutput";
 import { historyAdapter } from "../../src/adapters/historyAdapter";
+import { systemClock } from "../../src/adapters/systemClock";
 import { vscodeModel } from "../../src/adapters/vscodeModel";
 import { vscodeModelSelector } from "../../src/adapters/vscodeModelSelector";
 import type { ChatMessage } from "../../src/core/types";
@@ -503,5 +504,17 @@ describe("globalStateStorage adapter", () => {
     }
     assert.equal(storage.get(key), undefined);
     assert.ok(!storage.keys().includes(key));
+  });
+});
+
+describe("systemClock adapter", () => {
+  it("returns a valid IANA time zone and the current time", () => {
+    const zone = systemClock.timeZone();
+    assert.ok(zone.length > 0);
+    // Throws a RangeError for a name that is not a known IANA zone.
+    assert.doesNotThrow(() => new Intl.DateTimeFormat("en-US", { timeZone: zone }));
+    const before = Date.now();
+    const now = systemClock.now().getTime();
+    assert.ok(now >= before && now <= Date.now());
   });
 });

@@ -1,4 +1,4 @@
-import type { SubjectConfig, SubjectName } from "../types";
+import type { ResetDay, SubjectConfig, SubjectName } from "../types";
 
 /**
  * Iteration 2 sends every prompt to one subject with a fixed limit and warning
@@ -12,5 +12,6 @@ export const DEFAULT_SUBJECTS: Readonly<Record<SubjectName, SubjectConfig>> = {
 
 export const DEFAULT_WARN_AT_PERCENT = 80;
 
-/** Shown where the footer says when the budget resets, until weekly resets exist (#20, #21). */
-export const RESET_UNAVAILABLE_LABEL = "date unavailable";
+export const DEFAULT_DAILY_PACE_WARNING = 30;
+
+export const DEFAULT_RESET_DAY: ResetDay = "monday";

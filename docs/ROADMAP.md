@@ -9,36 +9,37 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-22, PR #106. Counts include merged work only; #15 work is not
+2026-10-22, PR #107. Counts include merged work only; #15 work is not
 counted as done.*
 
-**Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, and 2, *Counting and the
-hard stop*, are ✅ **done**. `@q0t4` streams replies from the selected model, passes
-history and attached text/files/selections, and cancels the underlying request. Since
-[#19B](https://github.com/RemonStuff/Q0T4/issues/83) it also counts every request, refuses
-one that does not fit the budget ([#14](issues/14-pre-check-refusal.md)), cuts a reply off
-when the budget runs out ([#15](issues/15-stream-guard.md)), records the usage
-([#16](issues/16-recording-policy.md), [#19A](https://github.com/RemonStuff/Q0T4/issues/82))
-and ends the reply with a footer and warning ([#17](issues/17-format-footer-and-warnings.md)),
-which is stripped from history ([#18](issues/18-history-footer-strip-and-metadata.md)).
-Slash commands still do not call a model, and there is one subject, `general`, with no
-weekly reset yet.
-**Current work:** [#24 daily pace](issues/24-daily-pace-warning.md) adds `paceWarning`, which warns (without blocking) when a subject has used `dailyPaceWarning`% of its weekly budget within one local day, and `formatPaceWarning`. The handler writes it after the weekly warning when it is given today's usage and the setting. 645 local unit tests pass with 100% core coverage. #25 supplies today's usage from the ledger.
-**Next:** [#25 wiring the ledger](issues/25-wire-ledger.md), which finishes iteration 3.
+**Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, 2, *Counting and the hard
+stop*, and 3, *Weekly storage*, are ✅ **done**. `@q0t4` streams replies from the selected
+model, passes history and attached text/files/selections, and cancels the underlying
+request. It counts every request, refuses one that does not fit the weekly budget
+([#14](issues/14-pre-check-refusal.md)), cuts a reply off when the budget runs out
+([#15](issues/15-stream-guard.md)), and ends the reply with a footer, a weekly warning and
+a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
+[#24](issues/24-daily-pace-warning.md)); the footer is stripped from history
+([#18](issues/18-history-footer-strip-and-metadata.md)). Usage is an append-only ledger on
+disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
+Monday, shared by all windows. Slash commands still do not call a model, and there is one
+subject, `general`, with fixed settings.
+**Current work:** [#25 wire the ledger](issues/25-wire-ledger.md) replaces the iteration-2 `TotalsStore` with the `Ledger` over a new `fileLedger` adapter (JSON Lines files per window, `ledger/<YYYY-MM>/<sessionId>.jsonl`), so usage is weekly, survives a reload and is shared by all windows. The footer says `resets Mon`, a refusal `Mon 19 Oct`, and the pace warning is live. Activation drops the old totals key and prunes old months; an unreadable ledger stops the request instead of guessing. 653 local unit tests pass with 100% core coverage. Iteration 3 is complete with this PR; it still needs your manual look (two windows).
+**Next:** iteration 4, *Repo subjects*, starting with [#26 settings schema and config](issues/26-settings-schema-and-config.md).
 
 | Iteration | Done | State |
 |---|---|---|
 | 0 Test harness | 7 / 7 | ✅ done |
 | 1 Walking skeleton | 5 / 5 | ✅ done |
 | 2 Counting and the hard stop | 7 / 7 | ✅ done |
-| 3 Weekly storage | 5 / 6 | in progress |
+| 3 Weekly storage | 6 / 6 | ✅ done |
 | 4 Repo subjects | 0 / 8 | ⚪ not started |
 | 5 Visibility | 0 / 4 | ⚪ not started |
 | 6 Hardening and release (v0.1) | 0 / 4 | ⚪ not started |
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **24 / 59** | 35 to build |
+| **Total** | **25 / 59** | 34 to build |
 
 **Done:**
 
@@ -69,6 +70,7 @@ weekly reset yet.
 | #22 Core `Ledger`: append-only usage entries and totals | [#105](https://github.com/RemonStuff/Q0T4/pull/105) |
 | #23 `Ledger` resilience: corrupt lines, retention, settings changes | [#106](https://github.com/RemonStuff/Q0T4/pull/106) |
 | #24 Daily pace tracking and warning | [#107](https://github.com/RemonStuff/Q0T4/pull/107) |
+| #25 Wire the ledger: file adapter and system clock | [#108](https://github.com/RemonStuff/Q0T4/pull/108) |
 **Planning and design PRs:** [#42](https://github.com/RemonStuff/Q0T4/pull/42) (plan and issues), [#43](https://github.com/RemonStuff/Q0T4/pull/43) (model name in the footer), [#45](https://github.com/RemonStuff/Q0T4/pull/45) (subject = repo), [#67](https://github.com/RemonStuff/Q0T4/pull/67) (AI Credits, pools, public API).
 
 **Decisions along the way:**
@@ -174,7 +176,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 22 `Ledger`: append-only entries and totals (needs 20) ∥ · PR #105
 - [x] 23 Ledger resilience (needs 22) · PR #106
 - [x] 24 Daily pace warning (needs 17, 22) ∥ · PR #107
-- [ ] 25 Wire the ledger: file adapter and system clock (needs 19, 21, 23, 24). 🎯 **Install and try**
+- [x] 25 Wire the ledger: file adapter and system clock (needs 19, 21, 23, 24) · PR #108. 🎯 **Install and try**
 
 ### Iteration 4: Repo subjects
 - [ ] 26 Settings schema, `parseConfig` and limits (needs 25)
