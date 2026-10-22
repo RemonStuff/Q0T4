@@ -137,7 +137,17 @@ describe("@q0t4 participant", () => {
           new vscode.ChatResponseMarkdownPart("first"),
           new vscode.ChatResponseMarkdownPart("\nsecond"),
         ],
-        result: { metadata: { outcome: "completed" } },
+        result: {
+          metadata: {
+            v: 1,
+            subject: "general",
+            unit: "tokens",
+            inputTokens: 1,
+            outputTokens: 1,
+            cost: { tokens: 2 },
+            stopped: false,
+          },
+        },
         participant: "q0t4.chat",
       },
     ];

@@ -2,6 +2,7 @@ import * as assert from "node:assert/strict";
 import { resolve } from "node:path";
 import * as vscode from "vscode";
 import type { Q0T4Exports } from "../../src/extension";
+import { FakeWorkspace } from "../fakes/environment";
 import {
   FAKE_PROVIDER_ID,
   chatRequest,
@@ -23,6 +24,11 @@ export function referenceForwardingTests(getApi: () => Promise<Q0T4Exports>) {
     });
     beforeEach(async () => {
       await vscode.commands.executeCommand("q0t4-test.setScript", ["answer"]);
+      // The window's folder is inside the Q0T4 checkout; these tests use the fallback subject.
+      (await getApi()).test.setWorkspace(new FakeWorkspace(undefined));
+    });
+    afterEach(async () => {
+      (await getApi()).test.setWorkspace(undefined);
     });
 
     async function invoke(references: vscode.ChatRequest["references"]) {
@@ -42,7 +48,17 @@ export function referenceForwardingTests(getApi: () => Promise<Q0T4Exports>) {
               },
               {
                 response: [new vscode.ChatResponseMarkdownPart("old answer")],
-                result: {},
+                result: {
+                  metadata: {
+                    v: 1,
+                    subject: "general",
+                    unit: "tokens",
+                    inputTokens: 1,
+                    outputTokens: 1,
+                    cost: { tokens: 2 },
+                    stopped: false,
+                  },
+                },
                 participant: "q0t4.chat",
               },
             ],
@@ -86,6 +102,7 @@ export function referenceForwardingTests(getApi: () => Promise<Q0T4Exports>) {
         { id: "unknown", value: {} },
       ]);
       assert.deepEqual(output.progress, [
+        "Subject: general (fallback)",
         "Some attached references could not be included (unsupported content).",
       ]);
       assert.equal(state.requests[0]?.messages.length, 3);
