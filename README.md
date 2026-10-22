@@ -230,7 +230,9 @@ writing is ignored, and unreadable lines are skipped and counted ([#23](https://
 At activation Q0T4 prunes old months and removes the iteration-2 totals key. If the ledger cannot be read, the request is
 not sent and the chat says so, because the budget is unknown. `systemClock` supplies the time and the user's IANA time zone.
 
-All 653 local unit tests pass with 100% core coverage. The pull request for #25
+[`parseConfig`](src/core/subjects/parseConfig.ts) ([#26A](https://github.com/RemonStuff/Q0T4/issues/84)) validates the raw `q0t4.*` settings and never throws. A broken value falls back to its default and adds a warning; `null` means not set. `subjects` only overrides limits, keys are trimmed and keep their casing for display, two keys that differ only by case keep the first, and a `weeklyLimit` of 0 disables a subject. `defaultLimit` (150,000) applies to every repo that is not listed, `warnAtPercent` and `dailyPaceWarning` are clamped to 1-100, and an unknown `resetDay` becomes `monday`. `weeklyLimitFor(config, subject)` matches names case-insensitively. Nothing reads the settings yet; the VS Code settings and adapter are [#26B](https://github.com/RemonStuff/Q0T4/issues/85).
+
+All 677 local unit tests pass with 100% core coverage. The pull request for #26A
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).
