@@ -236,7 +236,9 @@ The `q0t4.*` settings ([#26B](https://github.com/RemonStuff/Q0T4/issues/85)) are
 
 [`normaliseRemote` and `repoSubject`](src/core/subjects/repoIdentifier.ts) ([#27](https://github.com/RemonStuff/Q0T4/issues/27)) derive the subject from the repo a folder is in. A git remote becomes `owner/repo` and never includes the host, so the same repo matches on every machine and clone: HTTPS, `git@host:owner/repo.git`, `ssh://` URLs, a trailing `.git` or slash and credentials in the URL are handled, GitLab subgroups are kept (`group/sub/repo`) and Azure DevOps becomes `org/project/repo`. `repoSubject` uses the `origin` remote, else the first remote that can be read, else the folder name, and returns nothing when no folder is open, so the caller uses the fallback subject. Nothing calls it yet; the workspace adapter is [#30](https://github.com/RemonStuff/Q0T4/issues/30).
 
-All 727 local unit tests pass with 100% core coverage. The pull request for #27
+[`threadSubject`](src/core/subjects/threadSubject.ts) ([#28](https://github.com/RemonStuff/Q0T4/issues/28)) finds the subject of the conversation so far. The chat API has no thread id, so it is the subject in the metadata of the newest response turn that carries valid Q0T4 metadata; refusals and `/use` turns count, a blank subject is ignored, and any non-empty name is accepted because a repo does not have to be configured. History already carries each response's metadata through the history adapter, so no adapter change was needed.
+
+All 738 local unit tests pass with 100% core coverage. The pull request for #28
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).
