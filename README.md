@@ -255,7 +255,7 @@ CI (GitHub Actions) runs on every push and pull request:
 
 - lint, format check and typecheck
 - unit tests with the coverage gate, on Ubuntu and Windows
-- integration tests under `xvfb`
+- integration tests under `xvfb` (a run in which VS Code never started its tests, a runner flake, is retried up to three times; a run in which tests ran and failed is not)
 - packaging, then installing the `.vsix` into a clean VS Code and smoke-testing it; every run uploads the tested `.vsix` as an artifact
 
 Branches named `docs/…` skip the test jobs.
