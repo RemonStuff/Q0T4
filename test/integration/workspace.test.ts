@@ -85,20 +85,31 @@ describe("workspaceRepo adapter", () => {
     assert.equal(fallback?.folderName, basename(first));
   });
 
-  it("returns no remotes, without throwing, when the Git API is unavailable", async () => {
+  it("falls back to `git remote -v` when the Git API is unavailable", async () => {
     const dir = await gitRepo("https://github.com/test-owner/test-repo.git");
     const repo = await workspaceRepo(
       env([folderOf(dir)], undefined, async () => undefined),
     ).currentRepo();
-    assert.deepEqual(repo, { folderName: basename(dir), remotes: [] });
+    assert.deepEqual(repo, {
+      folderName: basename(dir),
+      remotes: [{ name: "origin", url: "https://github.com/test-owner/test-repo.git" }],
+    });
   });
 
-  it("returns no remotes, without throwing, when the Git API fails", async () => {
+  it("falls back to `git remote -v` when the Git API fails, without throwing", async () => {
     const dir = await gitRepo("https://github.com/test-owner/test-repo.git");
     const failing = async () => {
       throw new Error("git extension crashed");
     };
     const repo = await workspaceRepo(env([folderOf(dir)], undefined, failing)).currentRepo();
+    assert.equal(repo?.remotes[0]?.url, "https://github.com/test-owner/test-repo.git");
+  });
+
+  it("returns no remotes when neither the Git API nor git can read the folder", async () => {
+    const dir = await tempDir();
+    const repo = await workspaceRepo(
+      env([folderOf(dir)], undefined, async () => undefined),
+    ).currentRepo();
     assert.deepEqual(repo, { folderName: basename(dir), remotes: [] });
   });
 
