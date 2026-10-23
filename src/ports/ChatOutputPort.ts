@@ -2,4 +2,6 @@
 export interface ChatOutputPort {
   markdown(text: string): void;
   progress(text: string): void;
+  /** A button that runs a VS Code command when clicked. */
+  button(commandId: string, title: string): void;
 }

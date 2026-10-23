@@ -3,6 +3,7 @@ import { chatHandler } from "../../../src/core/chatHandler";
 import type { ChatHandlerRequest, Deps } from "../../../src/core/chatHandler";
 import { buildMessages } from "../../../src/core/messages/buildMessages";
 import type { StatusRow } from "../../../src/core/format/statusTable";
+import type { SubjectListItem } from "../../../src/core/format/subjectList";
 import { threadSubject } from "../../../src/core/subjects/threadSubject";
 import type { HistoryTurn } from "../../../src/core/types";
 import {
@@ -659,6 +660,99 @@ describe("chatHandler /status", () => {
     const result = await chatHandler(
       { ...request, command: "subjects" },
       { ...deps, status: status(async () => [statusRow]) },
+    );
+    expect(result).toEqual({ metadata: { outcome: "error" } });
+    expect(output.text).toContain("Slash commands aren't available yet");
+  });
+});
+
+describe("chatHandler /subjects", () => {
+  const listItem: SubjectListItem = {
+    subject: "org/repo",
+    limit: { tokens: 50_000 },
+    limitIsDefault: false,
+    current: true,
+    fallback: false,
+    thread: false,
+  };
+  const subjects = (rows: () => Promise<readonly SubjectListItem[]>) =>
+    ({ unit: "tokens", defaultLimit: { tokens: 150_000 }, rows }) as const;
+
+  it("answers with the list and an Edit Subjects button, without a model, count or record", async () => {
+    const { request, deps, model, output, selector } = fixture();
+    const select = vi.spyOn(selector, "select");
+    const recorded: unknown[] = [];
+    const result = await chatHandler(
+      { ...request, command: "subjects" },
+      {
+        ...deps,
+        subjects: subjects(async () => [listItem]),
+        recording: {
+          sink: { record: async (e) => void recorded.push(e) },
+          clock: { now: () => new Date(0), timeZone: () => "UTC" },
+          newId: () => "id",
+        },
+      },
+    );
+    expect(result).toEqual({ metadata: { outcome: "completed" } });
+    expect(output.text).toContain("- **org/repo**: 50k a week · current repo");
+    expect(output.calls.at(-1)).toEqual({
+      kind: "button",
+      text: "Edit Subjects",
+      command: "q0t4.editSubjects",
+    });
+    expect(model.calls.sendRequest).toEqual([]);
+    expect(model.calls.countTokens).toEqual([]);
+    expect(select).not.toHaveBeenCalled();
+    expect(recorded).toEqual([]);
+  });
+
+  it("returns metadata without a subject", async () => {
+    const { request, deps } = fixture();
+    const result = await chatHandler(
+      { ...request, command: "subjects" },
+      { ...deps, subjects: subjects(async () => [listItem]) },
+    );
+    expect(result.metadata).not.toHaveProperty("subject");
+  });
+
+  it("explains a failure without a button", async () => {
+    const { request, deps, output } = fixture();
+    const result = await chatHandler(
+      { ...request, command: "subjects" },
+      {
+        ...deps,
+        subjects: subjects(async () => {
+          throw new Error("disk");
+        }),
+      },
+    );
+    expect(result).toEqual({ metadata: { outcome: "error" } });
+    expect(output.text).toBe("Q0T4 couldn't list the subjects. Try again.");
+    expect(output.calls.some((c) => c.kind === "button")).toBe(false);
+  });
+
+  it("stays silent when cancelled while loading", async () => {
+    const { request, deps, output, signal } = fixture();
+    const result = await chatHandler(
+      { ...request, command: "subjects" },
+      {
+        ...deps,
+        subjects: subjects(async () => {
+          signal.cancel();
+          return [listItem];
+        }),
+      },
+    );
+    expect(result).toEqual({ metadata: { outcome: "cancelled" } });
+    expect(output.calls).toEqual([]);
+  });
+
+  it("/use stays unimplemented in the handler even when subjects is wired", async () => {
+    const { request, deps, output } = fixture();
+    const result = await chatHandler(
+      { ...request, command: "use" },
+      { ...deps, subjects: subjects(async () => [listItem]) },
     );
     expect(result).toEqual({ metadata: { outcome: "error" } });
     expect(output.text).toContain("Slash commands aren't available yet");

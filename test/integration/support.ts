@@ -43,6 +43,7 @@ export function recordingStream(onMarkdown?: () => void) {
   const markdown: string[] = [];
   const progress: string[] = [];
   const calls: { kind: "markdown" | "progress"; text: string }[] = [];
+  const buttons: { command: string; title: string }[] = [];
   const unexpected = () => {
     throw new Error("Unexpected non-text chat output");
   };
@@ -58,12 +59,14 @@ export function recordingStream(onMarkdown?: () => void) {
       calls.push({ kind: "progress", text });
     },
     anchor: unexpected,
-    button: unexpected,
+    button(command) {
+      buttons.push({ command: command.command, title: command.title });
+    },
     filetree: unexpected,
     reference: unexpected,
     push: unexpected,
   };
-  return { stream, markdown, progress, calls };
+  return { stream, markdown, progress, calls, buttons };
 }
 
 export interface ProviderState {

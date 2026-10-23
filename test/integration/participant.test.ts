@@ -265,7 +265,7 @@ describe("@q0t4 participant", () => {
     }
   });
 
-  for (const command of ["subjects"]) {
+  for (const command of ["unknown"]) {
     it(`does not send the unimplemented /${command} command to a model`, async () => {
       const api = await participantApi();
       const source = new vscode.CancellationTokenSource();

@@ -3,6 +3,7 @@ import {
   DEFAULT_CONFIG,
   parseConfig,
   hasOwnWeeklyLimit,
+  subjectDescription,
   weeklyLimitFor,
 } from "../../../../src/core/subjects/parseConfig";
 
@@ -224,5 +225,21 @@ describe("hasOwnWeeklyLimit", () => {
   it("is false for an unlisted subject and for a listed one without a limit", () => {
     expect(hasOwnWeeklyLimit(config, "acme/web-app")).toBe(false);
     expect(hasOwnWeeklyLimit(config, "plain")).toBe(false);
+  });
+});
+
+describe("subjectDescription", () => {
+  const { config } = parse({
+    subjects: { "Org/Repo": { description: "Main repo" }, plain: {} },
+  });
+
+  it("returns the description of a configured subject, in any case", () => {
+    expect(subjectDescription(config, "Org/Repo")).toBe("Main repo");
+    expect(subjectDescription(config, "org/repo")).toBe("Main repo");
+  });
+
+  it("is undefined without a description or for an unlisted subject", () => {
+    expect(subjectDescription(config, "plain")).toBeUndefined();
+    expect(subjectDescription(config, "other/x")).toBeUndefined();
   });
 });

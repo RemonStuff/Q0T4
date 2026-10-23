@@ -233,7 +233,7 @@ describe("installed .vsix", () => {
       assert.deepEqual(
         outcomeOf(
           await api.test.handleRequest(
-            chatRequest(await fakeModel(), "", "subjects"),
+            chatRequest(await fakeModel(), "", "unknown"),
             { history: [] },
             stream,
             source.token,
@@ -272,6 +272,35 @@ describe("installed .vsix", () => {
       const text = markdown.join("");
       assert.ok(text.startsWith("| Subject | Used | Weekly budget | % | Today | Requests |"), text);
       assert.match(text, /Weekly budgets reset on /);
+      const state = await vscode.commands.executeCommand<ProviderState>("q0t4-test.getState");
+      assert.equal(state?.requests.length, before);
+    } finally {
+      source.dispose();
+    }
+  });
+
+  it("the installed participant answers /subjects with the list and an Edit Subjects button", async () => {
+    const api = await installed().activate();
+    const source = new vscode.CancellationTokenSource();
+    const { stream, markdown, buttons } = recordingStream();
+    try {
+      const before = (await vscode.commands.executeCommand<ProviderState>("q0t4-test.getState"))
+        ?.requests.length;
+      assert.deepEqual(
+        outcomeOf(
+          await api.test.handleRequest(
+            chatRequest(await fakeModel(), "", "subjects"),
+            { history: [] },
+            stream,
+            source.token,
+          ),
+        ),
+        { outcome: "completed" },
+      );
+      const text = markdown.join("");
+      assert.ok(text.startsWith("**Known subjects**"), text);
+      assert.match(text, /Any other repo gets the default limit of 150k a week\./);
+      assert.deepEqual(buttons, [{ command: "q0t4.editSubjects", title: "Edit Subjects" }]);
       const state = await vscode.commands.executeCommand<ProviderState>("q0t4-test.getState");
       assert.equal(state?.requests.length, before);
     } finally {

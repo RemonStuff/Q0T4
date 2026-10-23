@@ -442,6 +442,12 @@ describe("VS Code adapters", () => {
     ]);
   });
 
+  it("chatStreamOutput turns a button into a command button", () => {
+    const { stream, buttons } = recordingStream();
+    chatStreamOutput(stream).button("q0t4.editSubjects", "Edit Subjects");
+    assert.deepEqual(buttons, [{ command: "q0t4.editSubjects", title: "Edit Subjects" }]);
+  });
+
   it("historyAdapter maps commands, metadata and markdown parts in order without separators", () => {
     const metadata = Object.freeze({ outcome: "completed", model: "old model" });
     const history: vscode.ChatContext["history"] = Object.freeze([
