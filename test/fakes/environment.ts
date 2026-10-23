@@ -73,7 +73,11 @@ export class FakeConfig implements ConfigPort {
 
 /** Records everything written to the chat, in order. */
 export class RecordingOutput implements ChatOutputPort {
-  readonly calls: { readonly kind: "markdown" | "progress"; readonly text: string }[] = [];
+  readonly calls: {
+    readonly kind: "markdown" | "progress" | "button";
+    readonly text: string;
+    readonly command?: string;
+  }[] = [];
 
   markdown(text: string): void {
     this.calls.push({ kind: "markdown", text });
@@ -81,6 +85,10 @@ export class RecordingOutput implements ChatOutputPort {
 
   progress(text: string): void {
     this.calls.push({ kind: "progress", text });
+  }
+
+  button(commandId: string, title: string): void {
+    this.calls.push({ kind: "button", text: title, command: commandId });
   }
 
   /** The reply as the user reads it: markdown parts only. */

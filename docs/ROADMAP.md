@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-23, PR #119. Counts include merged work only; #15 work is not
+2026-10-23, PR #120. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, 2, *Counting and the hard
@@ -23,8 +23,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 ([#18](issues/18-history-footer-strip-and-metadata.md)). Usage is an append-only ledger on
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands never call a model.
-**Current work:** [#34 `/status`](issues/34-status-command.md) answers with a table of every known subject (configured, used this week, or the current repo): used, weekly budget, percent, today and requests, with the current repo first and the reset date below. It reads the ledger only and calls no model. 845 local unit tests pass with 100% core coverage. Manual: check how the table renders in the Chat view, in a light and a dark theme.
-**Next:** iteration 5 continues with [#35 `/subjects`](issues/35-subjects-command.md) and [#36 the status bar](issues/36-status-bar.md), which can run in parallel.
+**Current work:** [#35 `/subjects`](issues/35-subjects-command.md) lists every known subject with its weekly limit, where the limit comes from, its description and whether it is the current repo, the fallback or this conversation's subject, plus the default limit for new repos and `/use` and settings hints. It ends with an Edit Subjects button whose command arrives in #37. It calls no model. 870 local unit tests pass with 100% core coverage.
+**Next:** [#36 the status bar](issues/36-status-bar.md), then [#37 commands](issues/37-commands.md), which finishes iteration 5.
 
 | Iteration | Done | State |
 |---|---|---|
@@ -33,12 +33,12 @@ Monday, shared by all windows. Slash commands never call a model.
 | 2 Counting and the hard stop | 7 / 7 | ✅ done |
 | 3 Weekly storage | 6 / 6 | ✅ done |
 | 4 Repo subjects | 8 / 8 | ✅ done |
-| 5 Visibility | 1 / 4 | in progress |
+| 5 Visibility | 2 / 4 | in progress |
 | 6 Hardening and release (v0.1) | 0 / 4 | ⚪ not started |
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **34 / 59** | 25 to build |
+| **Total** | **35 / 59** | 24 to build |
 
 **Done:**
 
@@ -77,6 +77,7 @@ Monday, shared by all windows. Slash commands never call a model.
 | #31 Core `resolveSubject` pipeline | [#116](https://github.com/RemonStuff/Q0T4/pull/116) |
 | #32 Same-subject history filter and `includeHistory` | [#117](https://github.com/RemonStuff/Q0T4/pull/117) |
 | #34 `/status` table | [#120](https://github.com/RemonStuff/Q0T4/pull/120) |
+| #35 `/subjects` list | [#121](https://github.com/RemonStuff/Q0T4/pull/121) |
 | #33B Wire repo subjects end to end | [#119](https://github.com/RemonStuff/Q0T4/pull/119) |
 | #33A Wire subject resolution into the participant | [#118](https://github.com/RemonStuff/Q0T4/pull/118) |
 | #26B Settings schema and the VS Code config adapter | [#110](https://github.com/RemonStuff/Q0T4/pull/110) |
@@ -206,7 +207,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 
 ### Iteration 5: Visibility
 - [x] 34 `/status` (needs 33) · PR #120
-- [ ] 35 `/subjects` (needs 33) ∥
+- [x] 35 `/subjects` (needs 33) ∥ · PR #121
 - [ ] 36 Status bar (needs 33) ∥
 - [ ] 37 Commands (needs 36). 🎯 **Install and try**
 

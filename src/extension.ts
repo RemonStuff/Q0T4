@@ -17,6 +17,8 @@ import { formatLedgerError } from "./core/errors/formatLedgerError";
 import { Ledger } from "./core/ledger/ledger";
 import type { StatusRow } from "./core/format/statusTable";
 import { hasOwnWeeklyLimit, weeklyLimitFor } from "./core/subjects/parseConfig";
+import { subjectItems } from "./core/subjects/subjectItems";
+import { threadSubject } from "./core/subjects/threadSubject";
 import { knownSubjects } from "./core/subjects/knownSubjects";
 import { repoSubject } from "./core/subjects/repoIdentifier";
 import { routeRequest } from "./core/subjects/routeRequest";
@@ -120,6 +122,35 @@ export function createRequestHandler({
     requests.push(request.prompt);
     const settings = config.get();
     const history = historyAdapter(chatContext.history);
+    if (request.command === "subjects") {
+      // Settings and the ledger only: no subject is chosen and no model is called.
+      return chatHandler(
+        { prompt: request.prompt, history, model: vscodeModel(request.model), command: "subjects" },
+        {
+          selector: vscodeModelSelector,
+          output: chatStreamOutput(stream),
+          signal: token,
+          referenceReader,
+          subjects: {
+            unit: "tokens",
+            defaultLimit: { tokens: limitOverride ?? settings.defaultLimit },
+            rows: async () =>
+              subjectItems({
+                config: settings,
+                // An unreadable ledger only means fewer suggestions, as for `/use`.
+                seen: await ledger
+                  .subjectsSeen(addDays(calendar.dayKey(clock.now()), -RECENT_DAYS))
+                  .catch(() => []),
+                currentRepo: repoSubject(
+                  await currentWorkspace.currentRepo().catch(() => undefined),
+                ),
+                thread: threadSubject(history),
+                limitOverride,
+              }),
+          },
+        },
+      );
+    }
     if (request.command === "status") {
       // Reads the ledger only: no subject is chosen and no model is called.
       const reset = nextResetKey(calendar, clock.now());

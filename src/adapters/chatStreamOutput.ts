@@ -6,5 +6,6 @@ export function chatStreamOutput(stream: vscode.ChatResponseStream): ChatOutputP
   return {
     markdown: (text) => stream.markdown(text),
     progress: (text) => stream.progress(text),
+    button: (commandId, title) => stream.button({ command: commandId, title }),
   };
 }

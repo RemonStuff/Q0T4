@@ -21,12 +21,15 @@ import { costAmount } from "./cost/costAmount";
 import type { CostModel } from "./cost/costModel";
 import { formatRequestError } from "./errors/formatRequestError";
 import { formatStatusError } from "./errors/formatStatusError";
+import { formatSubjectsError } from "./errors/formatSubjectsError";
 import { formatFooter } from "./format/footer";
 import { formatNoModel } from "./format/formatNoModel";
 import { formatRefusal } from "./format/formatRefusal";
 import { formatStopped } from "./format/formatStopped";
 import { formatStatusTable } from "./format/statusTable";
 import type { StatusRow } from "./format/statusTable";
+import { formatSubjectList } from "./format/subjectList";
+import type { SubjectListItem } from "./format/subjectList";
 import { formatPaceWarning, formatWarning } from "./format/warnings";
 import { buildMessages } from "./messages/buildMessages";
 import { resolveModel } from "./models/resolveModel";
@@ -63,6 +66,19 @@ export interface Deps {
   readonly footer?: FooterContext;
   /** Answers `/status`. Without it the command is reported as not available. */
   readonly status?: StatusContext;
+  /** Answers `/subjects`. Without it the command is reported as not available. */
+  readonly subjects?: SubjectsContext;
+}
+
+/** The command the "Edit Subjects" button runs; it is registered in #37. */
+export const EDIT_SUBJECTS_COMMAND = "q0t4.editSubjects";
+
+export interface SubjectsContext {
+  readonly unit: BudgetUnit;
+  /** What any repo without a limit of its own gets. */
+  readonly defaultLimit: Cost;
+  /** The known subjects with their limits. May throw. */
+  readonly rows: () => Promise<readonly SubjectListItem[]>;
 }
 
 export interface StatusContext {
@@ -167,7 +183,29 @@ async function handle(
   const { selector, output, signal } = deps;
   if (signal.isCancellationRequested) return result("cancelled");
   if (request.command === "status" && deps.status !== undefined) {
-    return handleStatus(deps.status, deps);
+    const status = deps.status;
+    return answerCommand(deps, formatStatusError(), async () =>
+      formatStatusTable({
+        unit: status.unit,
+        rows: await status.rows(),
+        resetLabelLong: status.resetLabelLong,
+        warnAtPercent: status.warnAtPercent,
+      }),
+    );
+  }
+  if (request.command === "subjects" && deps.subjects !== undefined) {
+    const subjects = deps.subjects;
+    return answerCommand(
+      deps,
+      formatSubjectsError(),
+      async () =>
+        formatSubjectList({
+          unit: subjects.unit,
+          subjects: await subjects.rows(),
+          defaultLimit: subjects.defaultLimit,
+        }),
+      () => deps.output.button(EDIT_SUBJECTS_COMMAND, "Edit Subjects"),
+    );
   }
   if (request.command !== undefined) {
     output.markdown(
@@ -291,25 +329,27 @@ async function handle(
 }
 
 /**
- * `/status` reads the ledger and nothing else: no model is selected, nothing is counted
- * or recorded, and the metadata has no subject, so the conversation keeps its own.
+ * Informational commands (`/status`, `/subjects`) read the ledger and settings and nothing
+ * else: no model is selected, nothing is counted or recorded, and the metadata has no
+ * subject, so the conversation keeps its own.
  */
-async function handleStatus(status: StatusContext, deps: Deps): Promise<ChatHandlerResult> {
-  let table: string;
+async function answerCommand(
+  deps: Deps,
+  errorText: string,
+  build: () => Promise<string>,
+  after?: () => void,
+): Promise<ChatHandlerResult> {
+  let text: string;
   try {
-    table = formatStatusTable({
-      unit: status.unit,
-      rows: await status.rows(),
-      resetLabelLong: status.resetLabelLong,
-      warnAtPercent: status.warnAtPercent,
-    });
+    text = await build();
   } catch {
     if (deps.signal.isCancellationRequested) return result("cancelled");
-    deps.output.markdown(formatStatusError());
+    deps.output.markdown(errorText);
     return result("error");
   }
   if (deps.signal.isCancellationRequested) return result("cancelled");
-  deps.output.markdown(table);
+  deps.output.markdown(text);
+  after?.();
   return result("completed");
 }
 

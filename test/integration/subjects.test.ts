@@ -16,6 +16,7 @@ import type { ProviderState } from "./support";
 interface Reply {
   readonly text: string;
   readonly progress: string[];
+  readonly buttons: { command: string; title: string }[];
   readonly metadata: Record<string, unknown>;
   readonly result: unknown;
 }
@@ -46,7 +47,7 @@ async function send(
   history: vscode.ChatContext["history"] = [],
 ): Promise<Reply> {
   const source = new vscode.CancellationTokenSource();
-  const { stream, markdown, progress } = recordingStream();
+  const { stream, markdown, progress, buttons } = recordingStream();
   try {
     const result = await api.test.handleRequest(
       chatRequest(await fakeModel(), prompt, command),
@@ -57,6 +58,7 @@ async function send(
     return {
       text: markdown.join(""),
       progress,
+      buttons,
       metadata: (result as { metadata: Record<string, unknown> }).metadata,
       result,
     };
@@ -324,5 +326,66 @@ describe("@q0t4 /status", () => {
       },
     ]);
     assert.equal(next.metadata.subject, subjectOf("thread-keeps"));
+  });
+});
+
+describe("@q0t4 /subjects", () => {
+  const settings = () => vscode.workspace.getConfiguration("q0t4");
+  const bold = (subject: string) => `- **${markdownLiteral(subject)}**: `;
+
+  before(async () => {
+    await vscode.extensions.getExtension(FAKE_PROVIDER_ID)?.activate();
+  });
+
+  afterEach(async () => {
+    (await participantApi()).test.setWorkspace(undefined);
+    await settings().update("subjects", undefined, vscode.ConfigurationTarget.Global);
+  });
+
+  after(removeTempDirs);
+
+  it("lists configured and current subjects with limits, description and an Edit Subjects button, without calling the model", async () => {
+    const api = await participantApi();
+    api.test.setWorkspace(await workspaceWithOrigin(origin("list-repo")));
+    const listed = subjectOf("listed-desc");
+    await settings().update(
+      "subjects",
+      { [listed]: { weeklyLimit: 50_000, description: "Docs repo" } },
+      vscode.ConfigurationTarget.Global,
+    );
+    const providerBefore = (await providerState())?.requests.length ?? 0;
+    const reply = await send(api, "", "subjects");
+
+    assert.ok(reply.text.startsWith("**Known subjects**\n\n"), reply.text);
+    assert.ok(
+      reply.text.includes(`${bold(subjectOf("list-repo"))}150k (default) a week · current repo`),
+      reply.text,
+    );
+    assert.ok(reply.text.includes(`${bold(listed)}50k a week — Docs repo`), reply.text);
+    assert.ok(reply.text.includes(`${bold("general")}200k a week · fallback subject`), reply.text);
+    assert.match(reply.text, /Any other repo gets the default limit of 150k a week\./);
+    assert.deepEqual(reply.buttons, [{ command: "q0t4.editSubjects", title: "Edit Subjects" }]);
+    assert.equal(reply.metadata.outcome, "completed");
+    assert.equal("subject" in reply.metadata, false);
+    assert.deepEqual(reply.progress, []);
+    assert.equal((await providerState())?.requests.length ?? 0, providerBefore);
+  });
+
+  it("marks the subject of the conversation", async () => {
+    const api = await participantApi();
+    api.test.setWorkspace(await workspaceWithOrigin(origin("thread-a")));
+    const first = await send(api, "one");
+    api.test.setWorkspace(await workspaceWithOrigin(origin("thread-b")));
+    const reply = await send(api, "", "subjects", historyAfter("one", "Hello!", first));
+    assert.ok(
+      reply.text.includes(
+        `${bold(subjectOf("thread-a"))}150k (default) a week · this conversation`,
+      ),
+      reply.text,
+    );
+    assert.ok(
+      reply.text.includes(`${bold(subjectOf("thread-b"))}150k (default) a week · current repo`),
+      reply.text,
+    );
   });
 });
