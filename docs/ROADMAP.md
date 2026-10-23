@@ -23,7 +23,7 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 ([#18](issues/18-history-footer-strip-and-metadata.md)). Usage is an append-only ledger on
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands never call a model.
-**Current work:** [#35 `/subjects`](issues/35-subjects-command.md) lists every known subject with its weekly limit, where the limit comes from, its description and whether it is the current repo, the fallback or this conversation's subject, plus the default limit for new repos and `/use` and settings hints. It ends with an Edit Subjects button whose command arrives in #37. It calls no model. 870 local unit tests pass with 100% core coverage.
+**Current work:** [#35 `/subjects`](issues/35-subjects-command.md) lists every known subject with its weekly limit, where the limit comes from, its description and whether it is the current repo, the fallback or this conversation's subject, plus the default limit for new repos and `/use` and settings hints. It ends with an Edit Subjects button whose command arrives in #37. It calls no model. 871 local unit tests pass with 100% core coverage.
 **Next:** [#36 the status bar](issues/36-status-bar.md), then [#37 commands](issues/37-commands.md), which finishes iteration 5.
 
 | Iteration | Done | State |

@@ -254,7 +254,7 @@ The end-to-end behaviour of repo subjects ([#33B](https://github.com/RemonStuff/
 
 `/subjects` ([#35](https://github.com/RemonStuff/Q0T4/issues/35)) lists the subjects `/use` accepts, plus the conversation's own: each with its weekly limit (marked `(default)` when it comes from `q0t4.defaultLimit`), its description, and marks for the current repo, the fallback subject and this conversation. [`subjectItems`](src/core/subjects/subjectItems.ts) builds the rows and [`formatSubjectList`](src/core/format/subjectList.ts) the text, which ends with the default limit for new repos and hints for `/use` and the `q0t4.subjects` setting. `ChatOutputPort` gained `button(commandId, title)` for the closing **Edit Subjects** button; the command it runs is registered in #37, so the button is inert until then. The command reads settings and the ledger only: no model call, nothing counted or recorded.
 
-All 870 local unit tests pass with 100% core coverage. The pull request for #35
+All 871 local unit tests pass with 100% core coverage. The pull request for #35
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).
