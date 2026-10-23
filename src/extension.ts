@@ -8,6 +8,7 @@ import { historyAdapter } from "./adapters/historyAdapter";
 import { referenceReader } from "./adapters/referenceReader";
 import { systemClock } from "./adapters/systemClock";
 import { vscodeModel } from "./adapters/vscodeModel";
+import { vscodeUi } from "./adapters/vscodeUi";
 import { vscodeConfig } from "./adapters/vscodeConfig";
 import { workspaceRepo } from "./adapters/workspaceRepo";
 import { vscodeModelSelector } from "./adapters/vscodeModelSelector";
@@ -15,11 +16,12 @@ import { chatHandler } from "./core/chatHandler";
 import { TokenCostModel } from "./core/cost/tokenCostModel";
 import { formatLedgerError } from "./core/errors/formatLedgerError";
 import { Ledger } from "./core/ledger/ledger";
-import type { StatusRow } from "./core/format/statusTable";
-import { hasOwnWeeklyLimit, weeklyLimitFor } from "./core/subjects/parseConfig";
+import { StatusBarController } from "./core/statusBar";
+import type { TimerPort } from "./core/statusBar";
+import { buildStatusRows } from "./core/statusRows";
+import { weeklyLimitFor } from "./core/subjects/parseConfig";
 import { subjectItems } from "./core/subjects/subjectItems";
 import { threadSubject } from "./core/subjects/threadSubject";
-import { knownSubjects } from "./core/subjects/knownSubjects";
 import { repoSubject } from "./core/subjects/repoIdentifier";
 import { routeRequest } from "./core/subjects/routeRequest";
 import { BudgetCalendar, addDays } from "./core/time/budgetCalendar";
@@ -27,6 +29,7 @@ import { formatResetLong, formatResetShort, nextResetKey } from "./core/time/res
 import type { Cost } from "./core/types";
 import type { ClockPort } from "./ports/ClockPort";
 import type { ConfigPort } from "./ports/ConfigPort";
+import type { StatusBarState, UiPort } from "./ports/UiPort";
 import type { WorkspacePort } from "./ports/WorkspacePort";
 import type { LedgerPort } from "./ports/LedgerPort";
 import type { StoragePort } from "./ports/StoragePort";
@@ -55,6 +58,8 @@ export interface Q0T4TestHooks {
   readonly sessionId: string;
   /** Resolves when the activation housekeeping (legacy key, pruning) has finished. */
   readonly ready: Promise<void>;
+  /** The status bar item: what it shows now (VS Code can't read it back), and a forced refresh. */
+  readonly statusBar: { state(): StatusBarState | undefined; refresh(): Promise<void> };
   /** Overrides the limit of the default subject, in tokens; `undefined` restores it. */
   setLimit(limit: number | undefined): void;
   /** Replaces the workspace the participant reads its repo from; `undefined` restores the real one. */
@@ -73,7 +78,16 @@ export interface RequestHandlerOptions {
   readonly config: ConfigPort;
   readonly workspace: WorkspacePort;
   readonly clock?: ClockPort;
+  /** The status bar item. Without `ui` and `storage` there is none. */
+  readonly ui?: Pick<UiPort, "setStatusBar">;
+  readonly storage?: StoragePort;
+  readonly timers?: TimerPort;
 }
+
+const realTimers: TimerPort = {
+  set: (callback, ms) => setTimeout(callback, ms),
+  clear: (handle) => clearTimeout(handle as ReturnType<typeof setTimeout>),
+};
 
 /** Builds the participant's request handler over a ledger and a clock. */
 export function createRequestHandler({
@@ -81,6 +95,9 @@ export function createRequestHandler({
   config,
   workspace,
   clock = systemClock,
+  ui,
+  storage,
+  timers = realTimers,
 }: RequestHandlerOptions) {
   const requests: string[] = [];
   const calendar = new BudgetCalendar(clock, () => config.get().resetDay);
@@ -94,29 +111,29 @@ export function createRequestHandler({
   };
 
   /** One row per known subject: configured, used this week, or the current repo. */
-  const statusRows = async (): Promise<StatusRow[]> => {
-    const settings = config.get();
-    const current = repoSubject(await currentWorkspace.currentRepo().catch(() => undefined));
-    const seen = await ledger.subjectsSeen(calendar.weekWindow(clock.now()).start);
-    const subjects = knownSubjects({ config: settings, seen, currentRepo: current });
-    return Promise.all(
-      subjects.map(async (subject) => {
-        const [{ used, requests: count }, today] = await Promise.all([
-          ledger.weekUsage(subject),
-          ledger.usedToday(subject),
-        ]);
-        return {
-          subject,
-          used,
-          today,
-          requests: count,
-          budget: { tokens: limitOverride ?? weeklyLimitFor(settings, subject) },
-          limitIsDefault: limitOverride === undefined && !hasOwnWeeklyLimit(settings, subject),
-          current: current !== undefined && current.toLowerCase() === subject.toLowerCase(),
-        };
-      }),
-    );
-  };
+  const statusRows = async () =>
+    buildStatusRows({
+      config: config.get(),
+      ledger,
+      weekStart: calendar.weekWindow(clock.now()).start,
+      currentRepo: repoSubject(await currentWorkspace.currentRepo().catch(() => undefined)),
+      limitOverride,
+    });
+
+  const statusBar =
+    ui !== undefined && storage !== undefined
+      ? new StatusBarController({
+          ui,
+          ledger,
+          calendar,
+          clock,
+          config,
+          workspace: currentWorkspace,
+          storage,
+          timers,
+          limitOverride: () => limitOverride,
+        })
+      : undefined;
 
   const handleRequest: vscode.ChatRequestHandler = async (request, chatContext, stream, token) => {
     requests.push(request.prompt);
@@ -181,6 +198,7 @@ export function createRequestHandler({
     });
     if (route.kind === "reply") {
       stream.markdown(route.text);
+      if ("subject" in route.metadata) void statusBar?.afterRequest(route.metadata.subject);
       return { metadata: route.metadata };
     }
     const subject = route.subject;
@@ -201,50 +219,56 @@ export function createRequestHandler({
     }
     const reset = nextResetKey(calendar, clock.now());
 
-    return chatHandler(
-      {
-        prompt: route.prompt,
-        history,
-        historyScope: { subject, includeHistory: settings.includeHistory },
-        references: request.references,
-        model: vscodeModel(request.model),
-        // `/use` was handled by the router; any other command is not implemented yet.
-        ...(request.command === undefined || request.command === "use"
-          ? {}
-          : { command: request.command }),
-      },
-      {
-        selector: vscodeModelSelector,
-        output: chatStreamOutput(stream),
-        signal: token,
-        referenceReader,
-        budget: {
-          subject,
-          costModel: new TokenCostModel(),
-          used,
-          usedToday,
-          budget: { tokens: limit },
-          resetLabel: formatResetShort(reset),
-          resetLabelLong: formatResetLong(reset),
+    try {
+      return await chatHandler(
+        {
+          prompt: route.prompt,
+          history,
+          historyScope: { subject, includeHistory: settings.includeHistory },
+          references: request.references,
+          model: vscodeModel(request.model),
+          // `/use` was handled by the router; any other command is not implemented yet.
+          ...(request.command === undefined || request.command === "use"
+            ? {}
+            : { command: request.command }),
         },
-        recording: {
-          sink: ledger,
-          clock,
-          newId: randomUUID,
-          onError: (error) => console.error("Q0T4: couldn't record usage.", error),
+        {
+          selector: vscodeModelSelector,
+          output: chatStreamOutput(stream),
+          signal: token,
+          referenceReader,
+          budget: {
+            subject,
+            costModel: new TokenCostModel(),
+            used,
+            usedToday,
+            budget: { tokens: limit },
+            resetLabel: formatResetShort(reset),
+            resetLabelLong: formatResetLong(reset),
+          },
+          recording: {
+            sink: ledger,
+            clock,
+            newId: randomUUID,
+            onError: (error) => console.error("Q0T4: couldn't record usage.", error),
+          },
+          footer: {
+            warnAtPercent: settings.warnAtPercent,
+            dailyPaceWarning: settings.dailyPaceWarning,
+          },
         },
-        footer: {
-          warnAtPercent: settings.warnAtPercent,
-          dailyPaceWarning: settings.dailyPaceWarning,
-        },
-      },
-    );
+      );
+    } finally {
+      // Also after a refusal, an error or a thrown failure: the ledger may have changed.
+      void statusBar?.afterRequest(subject);
+    }
   };
 
   return {
     handleRequest,
     requests,
     ledger,
+    statusBar,
     setLimit(limit: number | undefined) {
       limitOverride = limit;
     },
@@ -280,12 +304,23 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
   const config = vscodeConfig((warnings) =>
     vscode.window.showWarningMessage(`Q0T4 settings: ${warnings.join(" ")}`),
   );
-  const { handleRequest, requests, ledger, setLimit, setWorkspace } = createRequestHandler({
-    ledgerPort: fileLedger(ledgerRoot, sessionId),
-    config,
-    workspace: workspaceRepo(),
-  });
-  const ready = housekeeping(ledger, storage);
+  const ui = vscodeUi();
+  const { handleRequest, requests, ledger, setLimit, setWorkspace, statusBar } =
+    createRequestHandler({
+      ledgerPort: fileLedger(ledgerRoot, sessionId),
+      config,
+      workspace: workspaceRepo(),
+      ui,
+      storage,
+    });
+  const bar = statusBar as StatusBarController; // `ui` and `storage` are given, so it exists
+  const ready = housekeeping(ledger, storage).then(() => bar.start());
+  context.subscriptions.push(
+    ui,
+    bar,
+    vscode.window.onDidChangeActiveTextEditor(() => void bar.refresh()),
+    vscode.workspace.onDidChangeWorkspaceFolders(() => void bar.refresh()),
+  );
 
   const participant = vscode.chat.createChatParticipant(PARTICIPANT_ID, handleRequest);
   participant.iconPath = new vscode.ThemeIcon("pulse");
@@ -302,6 +337,7 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
       ready,
       setLimit,
       setWorkspace,
+      statusBar: { state: () => ui.lastStatusBar(), refresh: () => bar.refresh() },
     },
   };
 }

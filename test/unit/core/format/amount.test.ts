@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatAmount, formatCredits, formatTokens } from "../../../../src/core/format/amount";
+import {
+  formatAmount,
+  formatAmountCompact,
+  formatCredits,
+  formatCreditsCompact,
+  formatTokens,
+} from "../../../../src/core/format/amount";
 
 describe("formatTokens", () => {
   it.each([
@@ -68,5 +74,24 @@ describe("formatAmount", () => {
 
   it("rejects a missing credits amount rather than inventing zero", () => {
     expect(() => formatAmount({ tokens: 10 }, "credits")).toThrow(TypeError);
+  });
+});
+
+describe("compact amounts", () => {
+  it("formatCreditsCompact keeps small amounts and shortens thousands", () => {
+    expect(formatCreditsCompact(7.24, "up")).toBe("7.3");
+    expect(formatCreditsCompact(950)).toBe("950");
+    expect(formatCreditsCompact(2050, "up")).toBe("2.1k");
+    expect(formatCreditsCompact(3390, "down")).toBe("3.3k");
+    expect(formatCreditsCompact(3000)).toBe("3k");
+  });
+
+  it("formatAmountCompact follows the unit", () => {
+    expect(formatAmountCompact({ tokens: 112_400 }, "tokens", "up")).toBe("113k");
+    expect(formatAmountCompact({ tokens: 1, credits: 2050 }, "credits", "up")).toBe("2.1k");
+  });
+
+  it("formatAmountCompact throws for a missing credits amount", () => {
+    expect(() => formatAmountCompact({ tokens: 5 }, "credits")).toThrow();
   });
 });
