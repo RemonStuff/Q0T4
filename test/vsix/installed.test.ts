@@ -233,7 +233,7 @@ describe("installed .vsix", () => {
       assert.deepEqual(
         outcomeOf(
           await api.test.handleRequest(
-            chatRequest(await fakeModel(), "", "status"),
+            chatRequest(await fakeModel(), "", "subjects"),
             { history: [] },
             stream,
             source.token,
@@ -246,6 +246,34 @@ describe("installed .vsix", () => {
       ]);
       const state = await vscode.commands.executeCommand<ProviderState>("q0t4-test.getState");
       assert.deepEqual(state?.requests, []);
+    } finally {
+      source.dispose();
+    }
+  });
+
+  it("the installed participant answers /status from the ledger without calling a model", async () => {
+    const api = await installed().activate();
+    const source = new vscode.CancellationTokenSource();
+    const { stream, markdown } = recordingStream();
+    try {
+      const before = (await vscode.commands.executeCommand<ProviderState>("q0t4-test.getState"))
+        ?.requests.length;
+      assert.deepEqual(
+        outcomeOf(
+          await api.test.handleRequest(
+            chatRequest(await fakeModel(), "", "status"),
+            { history: [] },
+            stream,
+            source.token,
+          ),
+        ),
+        { outcome: "completed" },
+      );
+      const text = markdown.join("");
+      assert.ok(text.startsWith("| Subject | Used | Weekly budget | % | Today | Requests |"), text);
+      assert.match(text, /Weekly budgets reset on /);
+      const state = await vscode.commands.executeCommand<ProviderState>("q0t4-test.getState");
+      assert.equal(state?.requests.length, before);
     } finally {
       source.dispose();
     }

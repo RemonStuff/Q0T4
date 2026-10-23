@@ -244,3 +244,85 @@ describe("@q0t4 repo subjects", () => {
     );
   });
 });
+
+describe("@q0t4 /status", () => {
+  const settings = () => vscode.workspace.getConfiguration("q0t4");
+  const rowFor = (text: string, subject: string) =>
+    text.split("\n").find((line) => line.startsWith(`| ${markdownLiteral(subject)} |`));
+
+  before(async () => {
+    await vscode.extensions.getExtension(FAKE_PROVIDER_ID)?.activate();
+  });
+
+  beforeEach(async () => {
+    await vscode.commands.executeCommand("q0t4-test.setScript", ["Hel", "lo", "!"]);
+  });
+
+  afterEach(async () => {
+    (await participantApi()).test.setWorkspace(undefined);
+    await settings().update("subjects", undefined, vscode.ConfigurationTarget.Global);
+  });
+
+  after(removeTempDirs);
+
+  it("shows the current repo first with this week's usage, without calling the model", async () => {
+    const api = await participantApi();
+    api.test.setWorkspace(await workspaceWithOrigin(origin("status-repo")));
+    const subject = subjectOf("status-repo");
+    const chat = await send(api, "hi");
+    const used = (chat.metadata.inputTokens as number) + (chat.metadata.outputTokens as number);
+    assert.ok(used > 0);
+
+    const providerBefore = (await providerState())?.requests.length ?? 0;
+    const ledgerBefore = (await api.test.ledger.usedThisWeek(subject)).tokens;
+    const status = await send(api, "", "status");
+
+    const lines = status.text.split("\n");
+    assert.equal(lines[0], "| Subject | Used | Weekly budget | % | Today | Requests |");
+    assert.ok(lines[2]?.startsWith(`| ${markdownLiteral(subject)} |`), status.text);
+    assert.match(lines[2] ?? "", /\(default\) \| \d+% \| \S+ \| [1-9]\d* \|$/);
+    assert.match(status.text, /Weekly budgets reset on [A-Z][a-z]{2} \d{1,2} [A-Z][a-z]{2}\.$/);
+    assert.equal(status.metadata.outcome, "completed");
+    assert.equal("subject" in status.metadata, false);
+    assert.deepEqual(status.progress, []);
+    assert.equal((await providerState())?.requests.length ?? 0, providerBefore);
+    assert.equal((await api.test.ledger.usedThisWeek(subject)).tokens, ledgerBefore);
+  });
+
+  it("lists a configured subject without usage, with its own limit and no default marker", async () => {
+    const api = await participantApi();
+    api.test.setWorkspace(await workspaceWithOrigin(origin("status-other")));
+    const idle = subjectOf("configured-idle");
+    await settings().update(
+      "subjects",
+      { [idle]: { weeklyLimit: 50_000 } },
+      vscode.ConfigurationTarget.Global,
+    );
+    const row = rowFor((await send(api, "", "status")).text, idle);
+    assert.ok(row, "the configured subject has a row");
+    assert.match(row, /\| 0 \| 50k \| 0% \| 0 \| 0 \|$/);
+  });
+
+  it("does not change the subject of the conversation", async () => {
+    const api = await participantApi();
+    api.test.setWorkspace(await workspaceWithOrigin(origin("thread-keeps")));
+    const first = await send(api, "one");
+    const status = await send(api, "", "status", historyAfter("one", "Hello!", first));
+    const next = await send(api, "two", undefined, [
+      ...historyAfter("one", "Hello!", first),
+      {
+        prompt: "",
+        command: "status",
+        participant: "q0t4.chat",
+        references: [],
+        toolReferences: [],
+      },
+      {
+        response: [new vscode.ChatResponseMarkdownPart(status.text)],
+        result: status.result as vscode.ChatResult,
+        participant: "q0t4.chat",
+      },
+    ]);
+    assert.equal(next.metadata.subject, subjectOf("thread-keeps"));
+  });
+});

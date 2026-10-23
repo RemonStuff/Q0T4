@@ -27,7 +27,7 @@ Q0T4 is a VS Code extension that adds a chat participant, **`@q0t4`**, to the Co
    - A request that does not fit the remaining budget is refused before any model is called. A reply that reaches the limit is cut off with `⛔ Stopped: general weekly budget reached.`
    - The footer is hidden from the model: it is stripped from the history that is sent back.
 4. Send another message without typing `@q0t4`: it still goes to Q0T4, because the participant is sticky. Pick a different model for the next request or use Stop to cancel an answer.
-5. `/status`, `/subjects` and `/use` appear in the UI but report that slash commands are not available yet. They do not call a model.
+5. `/status` shows a table of every known subject with its usage this week, weekly budget, percent, usage today and request count, and when the budgets reset. It reads the ledger only, so it costs no tokens and does not call a model. `/use` charges a question to another subject. `/subjects` appears in the UI but reports that it is not available yet.
 6. Attach a file with `#file` or a text selection to include its content. File references use the current editor text, including unsaved edits; selections include only their range. Unsupported attachments produce one progress note. An unreadable attached file stops the request before calling a model.
 
 To remove it, uninstall **Q0T4** from the Extensions view.
@@ -111,7 +111,7 @@ The installed participant supplies a budget context since
 [#19B](https://github.com/RemonStuff/Q0T4/issues/83), with the real reset labels
 (`Mon`, and `Mon 19 Oct` in a refusal) since
 [#25](https://github.com/RemonStuff/Q0T4/issues/25). The command hints do not
-activate the unimplemented slash commands.
+activate the slash commands that are not implemented yet.
 
 [`StreamGuard`](src/core/budget/streamGuard.ts) is implemented and unit-tested
 locally for [#15](https://github.com/RemonStuff/Q0T4/issues/15). It uses the same
@@ -250,7 +250,9 @@ Repo subjects are wired in ([#33A](https://github.com/RemonStuff/Q0T4/issues/86)
 
 The end-to-end behaviour of repo subjects ([#33B](https://github.com/RemonStuff/Q0T4/issues/87)) is tested in real VS Code with temporary git repos as the workspace, and once in the installed `.vsix`: a prompt in a repo is charged to `owner/repo` with its own or the default limit; a follow-up stays on the conversation's subject; `/use general <question>` charges `general`; `/use general` alone switches without a model call or tokens; an unknown subject lists the known ones; an exhausted repo is refused while `/use general` still works; a changed `q0t4.subjects` applies at the next request; history is limited to the same subject and `q0t4.includeHistory: false` sends none.
 
-All 813 local unit tests pass with 100% core coverage. The pull request for #33B
+`/status` ([#34](https://github.com/RemonStuff/Q0T4/issues/34)) answers with a table of every known subject: the configured ones, those with usage this week and the repo of the open folder. Each row shows used, weekly budget (marked `(default)` when it comes from `q0t4.defaultLimit`), percent, usage today and the number of requests this week, with `⚠️` from `q0t4.warnAtPercent` and `⛔` at the limit; the current repo is first, then subjects by usage, and the reset date is below the table. [`formatStatusTable`](src/core/format/statusTable.ts) builds it, `Ledger.weekUsage` supplies the week's total and request count in one read, and the chat handler answers the command without selecting a model, counting or recording anything. Its metadata has no subject, so the conversation keeps its own.
+
+All 845 local unit tests pass with 100% core coverage. The pull request for #34
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).

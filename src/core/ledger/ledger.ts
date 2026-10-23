@@ -103,16 +103,25 @@ export class Ledger implements UsageSink {
 
   /** Usage of a subject in the current budget week, after its latest reset marker. */
   async usedThisWeek(subject: SubjectName): Promise<Cost> {
+    return (await this.weekUsage(subject)).used;
+  }
+
+  /**
+   * This week's total and the number of requests behind it, after the subject's latest
+   * reset marker. One read, so `/status` shows a total that matches its request count.
+   */
+  async weekUsage(
+    subject: SubjectName,
+  ): Promise<{ readonly used: Cost; readonly requests: number }> {
     const { start, end } = this.calendar.weekWindow(this.clock.now());
     const { entries } = await this.read({ from: start, to: end });
     const mine = entries.filter((e) => same(e.subject, subject));
     const lastReset = mine.filter((e) => e.kind === "reset").at(-1);
-    return sum(
-      mine.filter(
-        (e): e is UsageEntry =>
-          e.kind === "usage" && (lastReset === undefined || e.at > lastReset.at),
-      ),
+    const counted = mine.filter(
+      (e): e is UsageEntry =>
+        e.kind === "usage" && (lastReset === undefined || e.at > lastReset.at),
     );
+    return { used: sum(counted), requests: counted.length };
   }
 
   /** Usage of a subject on today's local day. */

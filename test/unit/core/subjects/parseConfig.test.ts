@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_CONFIG,
   parseConfig,
+  hasOwnWeeklyLimit,
   weeklyLimitFor,
 } from "../../../../src/core/subjects/parseConfig";
 
@@ -202,5 +203,26 @@ describe("parseConfig scalar settings", () => {
     expect(parse({ defaultLimit: 1, resetDay: "friday", includeHistory: true }).warnings).toEqual(
       [],
     );
+  });
+});
+
+describe("hasOwnWeeklyLimit", () => {
+  const { config } = parse({
+    subjects: {
+      "RemonStuff/Q0T4": { weeklyLimit: 50_000 },
+      "org/zero": { weeklyLimit: 0 },
+      plain: {},
+    },
+  });
+
+  it("is true for a listed subject with a limit, also 0 and in any case", () => {
+    expect(hasOwnWeeklyLimit(config, "RemonStuff/Q0T4")).toBe(true);
+    expect(hasOwnWeeklyLimit(config, "remonstuff/q0t4")).toBe(true);
+    expect(hasOwnWeeklyLimit(config, "org/zero")).toBe(true);
+  });
+
+  it("is false for an unlisted subject and for a listed one without a limit", () => {
+    expect(hasOwnWeeklyLimit(config, "acme/web-app")).toBe(false);
+    expect(hasOwnWeeklyLimit(config, "plain")).toBe(false);
   });
 });

@@ -449,3 +449,46 @@ describe("Ledger and a changed resetDay", () => {
     expect(everything).toEqual({ tokens: 63 });
   });
 });
+
+describe("Ledger.weekUsage", () => {
+  it("returns this week's total and the number of requests", async () => {
+    const { ledger } = setup();
+    await ledger.record(usage("org/repo", "2026-10-11T22:00:00.000Z", { tokens: 100 }));
+    await ledger.record(usage("org/repo", "2026-10-12T00:00:00.000Z", { tokens: 1 }));
+    await ledger.record(usage("org/repo", "2026-10-14T08:00:00.000Z", { tokens: 2 }));
+    await ledger.record(usage("org/other", "2026-10-14T08:00:00.000Z", { tokens: 50 }));
+    expect(await ledger.weekUsage("org/repo")).toEqual({ used: { tokens: 3 }, requests: 2 });
+  });
+
+  it("is zero without entries", async () => {
+    const { ledger } = setup();
+    expect(await ledger.weekUsage("org/none")).toEqual({ used: { tokens: 0 }, requests: 0 });
+  });
+
+  it("counts only requests after the latest reset marker", async () => {
+    const { ledger } = setup();
+    await ledger.record(usage("org/repo", "2026-10-12T08:00:00.000Z", { tokens: 10 }));
+    await ledger.markReset("org/repo");
+    expect(await ledger.weekUsage("org/repo")).toEqual({ used: { tokens: 0 }, requests: 0 });
+    await ledger.record(usage("org/repo", "2026-10-14T10:00:00.000Z", { tokens: 4 }));
+    expect(await ledger.weekUsage("org/repo")).toEqual({ used: { tokens: 4 }, requests: 1 });
+  });
+
+  it("matches subjects case-insensitively and sums credits when present", async () => {
+    const { ledger } = setup();
+    await ledger.record(usage("Org/Repo", "2026-10-14T08:00:00.000Z", { tokens: 1, credits: 2.5 }));
+    await ledger.record(usage("org/repo", "2026-10-14T09:00:00.000Z", { tokens: 1, credits: 1 }));
+    expect(await ledger.weekUsage("ORG/REPO")).toEqual({
+      used: { tokens: 2, credits: 3.5 },
+      requests: 2,
+    });
+  });
+
+  it("usedThisWeek returns the same total", async () => {
+    const { ledger } = setup();
+    await ledger.record(usage("org/repo", "2026-10-14T08:00:00.000Z", { tokens: 9 }));
+    expect(await ledger.usedThisWeek("org/repo")).toEqual(
+      (await ledger.weekUsage("org/repo")).used,
+    );
+  });
+});

@@ -20,10 +20,13 @@ import { createCancellation } from "./cancellation/createCancellation";
 import { costAmount } from "./cost/costAmount";
 import type { CostModel } from "./cost/costModel";
 import { formatRequestError } from "./errors/formatRequestError";
+import { formatStatusError } from "./errors/formatStatusError";
 import { formatFooter } from "./format/footer";
 import { formatNoModel } from "./format/formatNoModel";
 import { formatRefusal } from "./format/formatRefusal";
 import { formatStopped } from "./format/formatStopped";
+import { formatStatusTable } from "./format/statusTable";
+import type { StatusRow } from "./format/statusTable";
 import { formatPaceWarning, formatWarning } from "./format/warnings";
 import { buildMessages } from "./messages/buildMessages";
 import { resolveModel } from "./models/resolveModel";
@@ -58,6 +61,18 @@ export interface Deps {
   readonly recording?: RecordingContext;
   /** Appends the usage footer and warning to the reply. Needs `budget` too. */
   readonly footer?: FooterContext;
+  /** Answers `/status`. Without it the command is reported as not available. */
+  readonly status?: StatusContext;
+}
+
+export interface StatusContext {
+  readonly unit: BudgetUnit;
+  /** E.g. `Mon 19 Oct`. */
+  readonly resetLabelLong: string;
+  /** `warnAtPercent` from the settings. */
+  readonly warnAtPercent: number;
+  /** One row per known subject, read from the ledger. May throw when the ledger is unreadable. */
+  readonly rows: () => Promise<readonly StatusRow[]>;
 }
 
 export interface FooterContext {
@@ -151,6 +166,9 @@ async function handle(
 ): Promise<ChatHandlerResult> {
   const { selector, output, signal } = deps;
   if (signal.isCancellationRequested) return result("cancelled");
+  if (request.command === "status" && deps.status !== undefined) {
+    return handleStatus(deps.status, deps);
+  }
   if (request.command !== undefined) {
     output.markdown(
       "Slash commands aren't available yet. Send a normal message to talk to the selected model.",
@@ -270,6 +288,29 @@ async function handle(
   } finally {
     cancellation?.dispose();
   }
+}
+
+/**
+ * `/status` reads the ledger and nothing else: no model is selected, nothing is counted
+ * or recorded, and the metadata has no subject, so the conversation keeps its own.
+ */
+async function handleStatus(status: StatusContext, deps: Deps): Promise<ChatHandlerResult> {
+  let table: string;
+  try {
+    table = formatStatusTable({
+      unit: status.unit,
+      rows: await status.rows(),
+      resetLabelLong: status.resetLabelLong,
+      warnAtPercent: status.warnAtPercent,
+    });
+  } catch {
+    if (deps.signal.isCancellationRequested) return result("cancelled");
+    deps.output.markdown(formatStatusError());
+    return result("error");
+  }
+  if (deps.signal.isCancellationRequested) return result("cancelled");
+  deps.output.markdown(table);
+  return result("completed");
 }
 
 const CHARGED: readonly RecordingOutcome[] = ["completed", "cancelled", "failed", "budgetStopped"];
