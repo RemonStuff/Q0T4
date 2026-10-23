@@ -104,11 +104,11 @@ describe("status bar item", () => {
   it("refreshes after a refusal and turns red when the budget is exhausted", async () => {
     const api = await participantApi();
     api.test.setWorkspace(await workspaceWithOrigin(origin("refused")));
-    api.test.setLimit(1);
-    await chat("this does not fit in a budget of one token");
+    api.test.setLimit(0);
+    await chat("this does not fit in a budget of nothing");
     const state = await until(
       () => api.test.statusBar.state(),
-      (s) => /refused 0\/1$/.test(s?.text ?? ""),
+      (s) => /refused 0\/0$/.test(s?.text ?? ""),
       "the status bar to show the refusal",
     );
     assert.equal(state?.level, "error");
