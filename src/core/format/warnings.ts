@@ -11,12 +11,24 @@ export interface WarningInput {
   readonly warnAtPercent: number;
 }
 
-/** The weekly-usage warning, or `null` below `warnAtPercent`. Pace and price warnings come later. */
-export function formatWarning(input: WarningInput): string | null {
+export type UsageLevel = "ok" | "warn" | "exhausted";
+
+/** How close a subject is to its weekly budget: exhausted at 100%, a warning from `warnAtPercent`. */
+export function usageLevel(input: WarningInput): UsageLevel {
   const used = costAmount(input.used, input.unit);
   const budget = costAmount(input.budget, input.unit);
-  if (used >= budget) return "⛔ Weekly budget reached.";
-  if (used * 100 >= input.warnAtPercent * budget) {
+  if (used >= budget) return "exhausted";
+  if (used * 100 >= input.warnAtPercent * budget) return "warn";
+  return "ok";
+}
+
+/** The weekly-usage warning, or `null` below `warnAtPercent`. Pace and price warnings come later. */
+export function formatWarning(input: WarningInput): string | null {
+  const level = usageLevel(input);
+  if (level === "exhausted") return "⛔ Weekly budget reached.";
+  if (level === "warn") {
+    const used = costAmount(input.used, input.unit);
+    const budget = costAmount(input.budget, input.unit);
     return `⚠️ ${Math.floor((used * 100) / budget)}% of the weekly budget used.`;
   }
   return null;

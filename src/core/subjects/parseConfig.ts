@@ -156,9 +156,18 @@ function parseSubjects(
   return subjects;
 }
 
-/** The weekly limit of a subject: its own, else `defaultLimit`. Names match case-insensitively. */
-export function weeklyLimitFor(config: Q0T4Config, subject: SubjectName): number {
+function ownWeeklyLimit(config: Q0T4Config, subject: SubjectName): number | undefined {
   const wanted = subject.trim().toLowerCase();
   const key = Object.keys(config.subjects).find((k) => k.toLowerCase() === wanted);
-  return (key === undefined ? undefined : config.subjects[key]?.weeklyLimit) ?? config.defaultLimit;
+  return key === undefined ? undefined : config.subjects[key]?.weeklyLimit;
+}
+
+/** The weekly limit of a subject: its own, else `defaultLimit`. Names match case-insensitively. */
+export function weeklyLimitFor(config: Q0T4Config, subject: SubjectName): number {
+  return ownWeeklyLimit(config, subject) ?? config.defaultLimit;
+}
+
+/** Whether the subject has a `weeklyLimit` of its own (`0` counts) instead of `defaultLimit`. */
+export function hasOwnWeeklyLimit(config: Q0T4Config, subject: SubjectName): boolean {
+  return ownWeeklyLimit(config, subject) !== undefined;
 }

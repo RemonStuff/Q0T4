@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { chatHandler } from "../../../src/core/chatHandler";
 import type { ChatHandlerRequest, Deps } from "../../../src/core/chatHandler";
 import { buildMessages } from "../../../src/core/messages/buildMessages";
+import type { StatusRow } from "../../../src/core/format/statusTable";
+import { threadSubject } from "../../../src/core/subjects/threadSubject";
 import type { HistoryTurn } from "../../../src/core/types";
 import {
   FakeCancellation,
@@ -521,5 +523,144 @@ describe("chatHandler", () => {
       await chatHandler({ ...request, history }, deps);
       expect(send.mock.calls[0]?.[0]).toHaveLength(5);
     });
+  });
+});
+
+describe("chatHandler /status", () => {
+  const statusRow: StatusRow = {
+    subject: "org/repo",
+    used: { tokens: 1000 },
+    budget: { tokens: 10_000 },
+    today: { tokens: 100 },
+    requests: 2,
+    limitIsDefault: false,
+    current: true,
+  };
+  const status = (rows: () => Promise<readonly StatusRow[]>) =>
+    ({ unit: "tokens", resetLabelLong: "Mon 19 Oct", warnAtPercent: 80, rows }) as const;
+
+  it("answers with the table and does not call the model or record usage", async () => {
+    const { request, deps, model, output, selector } = fixture();
+    const select = vi.spyOn(selector, "select");
+    const recorded: unknown[] = [];
+    const rows = vi.fn(async () => [statusRow]);
+    const result = await chatHandler(
+      { ...request, command: "status" },
+      {
+        ...deps,
+        status: status(rows),
+        recording: {
+          sink: { record: async (e) => void recorded.push(e) },
+          clock: { now: () => new Date(0), timeZone: () => "UTC" },
+          newId: () => "id",
+        },
+      },
+    );
+    expect(result).toEqual({ metadata: { outcome: "completed" } });
+    expect(output.text).toContain("| org/repo | 1k | 10k | 10% | 100 | 2 |");
+    expect(output.text.endsWith("Weekly budgets reset on Mon 19 Oct.")).toBe(true);
+    expect(rows).toHaveBeenCalledTimes(1);
+    expect(model.calls.sendRequest).toEqual([]);
+    expect(model.calls.countTokens).toEqual([]);
+    expect(select).not.toHaveBeenCalled();
+    expect(recorded).toEqual([]);
+  });
+
+  it("returns metadata without a subject, so the thread subject does not change", async () => {
+    const { request, deps } = fixture();
+    const result = await chatHandler(
+      { ...request, command: "status" },
+      { ...deps, status: status(async () => [statusRow]) },
+    );
+    expect(result.metadata).not.toHaveProperty("subject");
+    const history: HistoryTurn[] = [
+      { kind: "request", prompt: "Earlier" },
+      {
+        kind: "response",
+        text: "Answer",
+        metadata: {
+          v: 1,
+          subject: "org/earlier",
+          unit: "tokens",
+          inputTokens: 1,
+          outputTokens: 1,
+          cost: { tokens: 2 },
+          stopped: false,
+        },
+      },
+      { kind: "request", prompt: "", command: "status" },
+      { kind: "response", text: "table", metadata: result.metadata },
+    ];
+    expect(threadSubject(history)).toBe("org/earlier");
+  });
+
+  it("writes no footer and no warning", async () => {
+    const { request, deps, output } = fixture();
+    await chatHandler(
+      { ...request, command: "status" },
+      { ...deps, status: status(async () => [statusRow]) },
+    );
+    expect(output.text).not.toContain("q0t4:footer");
+    expect(output.calls.every((c) => c.kind === "markdown")).toBe(true);
+  });
+
+  it("explains an unreadable ledger and reports an error", async () => {
+    const { request, deps, output, model } = fixture();
+    const result = await chatHandler(
+      { ...request, command: "status" },
+      {
+        ...deps,
+        status: status(async () => {
+          throw new Error("disk");
+        }),
+      },
+    );
+    expect(result).toEqual({ metadata: { outcome: "error" } });
+    expect(output.text).toBe(
+      "Q0T4 couldn't read its usage record, so it can't show the status. Check that the extension's storage folder is readable and try again.",
+    );
+    expect(model.calls.sendRequest).toEqual([]);
+  });
+
+  it("stays silent when the request is cancelled while the rows load", async () => {
+    const { request, deps, output, signal } = fixture();
+    const result = await chatHandler(
+      { ...request, command: "status" },
+      {
+        ...deps,
+        status: status(async () => {
+          signal.cancel();
+          return [statusRow];
+        }),
+      },
+    );
+    expect(result).toEqual({ metadata: { outcome: "cancelled" } });
+    expect(output.calls).toEqual([]);
+  });
+
+  it("stays silent when the rows fail because the request was cancelled", async () => {
+    const { request, deps, output, signal } = fixture();
+    const result = await chatHandler(
+      { ...request, command: "status" },
+      {
+        ...deps,
+        status: status(async () => {
+          signal.cancel();
+          throw new Error("aborted");
+        }),
+      },
+    );
+    expect(result).toEqual({ metadata: { outcome: "cancelled" } });
+    expect(output.calls).toEqual([]);
+  });
+
+  it("other commands stay unimplemented even when status is wired", async () => {
+    const { request, deps, output } = fixture();
+    const result = await chatHandler(
+      { ...request, command: "subjects" },
+      { ...deps, status: status(async () => [statusRow]) },
+    );
+    expect(result).toEqual({ metadata: { outcome: "error" } });
+    expect(output.text).toContain("Slash commands aren't available yet");
   });
 });

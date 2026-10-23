@@ -15,7 +15,10 @@ import { chatHandler } from "./core/chatHandler";
 import { TokenCostModel } from "./core/cost/tokenCostModel";
 import { formatLedgerError } from "./core/errors/formatLedgerError";
 import { Ledger } from "./core/ledger/ledger";
-import { weeklyLimitFor } from "./core/subjects/parseConfig";
+import type { StatusRow } from "./core/format/statusTable";
+import { hasOwnWeeklyLimit, weeklyLimitFor } from "./core/subjects/parseConfig";
+import { knownSubjects } from "./core/subjects/knownSubjects";
+import { repoSubject } from "./core/subjects/repoIdentifier";
 import { routeRequest } from "./core/subjects/routeRequest";
 import { BudgetCalendar, addDays } from "./core/time/budgetCalendar";
 import { formatResetLong, formatResetShort, nextResetKey } from "./core/time/reset";
@@ -88,10 +91,54 @@ export function createRequestHandler({
     currentRepo: () => (workspaceOverride ?? workspace).currentRepo(),
   };
 
+  /** One row per known subject: configured, used this week, or the current repo. */
+  const statusRows = async (): Promise<StatusRow[]> => {
+    const settings = config.get();
+    const current = repoSubject(await currentWorkspace.currentRepo().catch(() => undefined));
+    const seen = await ledger.subjectsSeen(calendar.weekWindow(clock.now()).start);
+    const subjects = knownSubjects({ config: settings, seen, currentRepo: current });
+    return Promise.all(
+      subjects.map(async (subject) => {
+        const [{ used, requests: count }, today] = await Promise.all([
+          ledger.weekUsage(subject),
+          ledger.usedToday(subject),
+        ]);
+        return {
+          subject,
+          used,
+          today,
+          requests: count,
+          budget: { tokens: limitOverride ?? weeklyLimitFor(settings, subject) },
+          limitIsDefault: limitOverride === undefined && !hasOwnWeeklyLimit(settings, subject),
+          current: current !== undefined && current.toLowerCase() === subject.toLowerCase(),
+        };
+      }),
+    );
+  };
+
   const handleRequest: vscode.ChatRequestHandler = async (request, chatContext, stream, token) => {
     requests.push(request.prompt);
     const settings = config.get();
     const history = historyAdapter(chatContext.history);
+    if (request.command === "status") {
+      // Reads the ledger only: no subject is chosen and no model is called.
+      const reset = nextResetKey(calendar, clock.now());
+      return chatHandler(
+        { prompt: request.prompt, history, model: vscodeModel(request.model), command: "status" },
+        {
+          selector: vscodeModelSelector,
+          output: chatStreamOutput(stream),
+          signal: token,
+          referenceReader,
+          status: {
+            unit: "tokens",
+            resetLabelLong: formatResetLong(reset),
+            warnAtPercent: settings.warnAtPercent,
+            rows: statusRows,
+          },
+        },
+      );
+    }
     const route = await routeRequest({
       prompt: request.prompt,
       command: request.command,
