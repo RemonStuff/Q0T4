@@ -1,0 +1,59 @@
+name: Release
+
+# A tag like v0.1.0 runs the full CI, packages the .vsix and creates a GitHub Release with it.
+# A tag with a suffix (v0.1.0-rc.1) becomes a pre-release. Run it by hand to dry-run the
+# packaging: it builds the .vsix and uploads it as an artifact, and creates no release.
+# Distribution for v0.1 is the .vsix on GitHub Releases only: nothing is published to a marketplace.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: Full CI
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Package and release
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Check the tag matches package.json
+        if: ${{ github.ref_type == 'tag' }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          tag="${GITHUB_REF_NAME#v}"
+          base="${tag%%-*}"
+          if [ "$base" != "$version" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package.json version $version" >&2
+            exit 1
+          fi
+      - run: npx vsce package --no-dependencies
+      - uses: actions/upload-artifact@v4
+        with:
+          name: q0t4-release-vsix
+          path: q0t4-*.vsix
+          if-no-files-found: error
+      - name: Create the GitHub Release
+        if: ${{ github.ref_type == 'tag' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flags=""
+          case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
+          gh release create "$GITHUB_REF_NAME" q0t4-*.vsix \
+            --title "Q0T4 $GITHUB_REF_NAME" \
+            --generate-notes $flags
