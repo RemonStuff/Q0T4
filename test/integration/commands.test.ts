@@ -14,7 +14,13 @@ import {
 } from "./support";
 
 const origin = (name: string) => `https://github.com/test-owner/${name}.git`;
-const COMMANDS = ["q0t4.showUsage", "q0t4.resetWeek", "q0t4.editSubjects", "q0t4.refreshPrices"];
+const COMMANDS = [
+  "q0t4.showUsage",
+  "q0t4.resetWeek",
+  "q0t4.editSubjects",
+  "q0t4.refreshPrices",
+  "q0t4.logModels",
+];
 
 async function chat(prompt = "hi"): Promise<void> {
   const api = await participantApi();
