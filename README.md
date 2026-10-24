@@ -50,23 +50,24 @@ None of these call a model or cost tokens.
 - **Q0T4: Show Usage**: opens the `/status` table in a tab. The status bar item (current subject and its usage, yellow near the limit, red when used up) runs it when clicked.
 - **Q0T4: Reset This Week**: asks for confirmation, then restarts this week's count for every subject. Nothing is deleted; earlier weeks are unchanged.
 - **Q0T4: Edit Subjects**: opens Settings filtered to `q0t4.subjects`.
-- **Q0T4: Refresh Model Prices**: fetches GitHub's published model prices now. Prices only matter in credits mode, which is planned for v1.0; in v0.1 budgets count tokens.
+- **Q0T4: Refresh Model Prices**: fetches GitHub's published model prices now. Prices only matter when `q0t4.budgetUnit` is `credits`.
 - **Q0T4: Log Copilot Models**: a diagnostic. Writes the name, family, id and vendor of every Copilot model to the **Q0T4** output channel, which is how model names are checked against the price table.
 
 ## Settings
 
-| Setting                 | Default                                    | What it does                                                                                                                                                                              |
-| ----------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `q0t4.subjects`         | `{ "general": { "weeklyLimit": 200000 } }` | Per-subject overrides. Keys are `owner/repo` (case-insensitive) or a plain name. Each value is `{ "weeklyLimit": 50000, "description": "…" }`. A `weeklyLimit` of `0` disables a subject. |
-| `q0t4.defaultLimit`     | `150000`                                   | Weekly token limit for every repo not listed in `q0t4.subjects`.                                                                                                                          |
-| `q0t4.fallbackSubject`  | `general`                                  | The subject when no folder is open.                                                                                                                                                       |
-| `q0t4.resetDay`         | `monday`                                   | The day the weekly budget resets, at local midnight.                                                                                                                                      |
-| `q0t4.warnAtPercent`    | `80`                                       | Show a warning under the reply from this percentage of the week.                                                                                                                          |
-| `q0t4.dailyPaceWarning` | `30`                                       | Warn when this percentage of the week is used within one day.                                                                                                                             |
-| `q0t4.includeHistory`   | `true`                                     | Send earlier messages of the same subject to the model. When off, only the current prompt is sent.                                                                                        |
-| `q0t4.priceSource`      | `auto`                                     | Credits mode (planned for v1.0). `auto` fetches GitHub's price list once a day; `manual` never fetches and uses only `q0t4.modelPrices`.                                                  |
-| `q0t4.modelPrices`      | `{}`                                       | Credits mode. Your own prices in USD per 1M tokens by model name, e.g. `{ "GPT-5 mini": { "input": 0.25, "output": 2 } }`.                                                                |
-| `q0t4.priceMaxAgeHours` | `48`                                       | Credits mode. Warn when the price list is older than this many hours.                                                                                                                     |
+| Setting                 | Default                                    | What it does                                                                                                                                                                                                  |
+| ----------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `q0t4.subjects`         | `{ "general": { "weeklyLimit": 200000 } }` | Per-subject overrides. Keys are `owner/repo` (case-insensitive) or a plain name. Each value is `{ "weeklyLimit": 50000, "description": "…" }`. A `weeklyLimit` of `0` disables a subject.                     |
+| `q0t4.defaultLimit`     | `150000`                                   | Weekly token limit for every repo not listed in `q0t4.subjects`.                                                                                                                                              |
+| `q0t4.fallbackSubject`  | `general`                                  | The subject when no folder is open.                                                                                                                                                                           |
+| `q0t4.resetDay`         | `monday`                                   | The day the weekly budget resets, at local midnight.                                                                                                                                                          |
+| `q0t4.warnAtPercent`    | `80`                                       | Show a warning under the reply from this percentage of the week.                                                                                                                                              |
+| `q0t4.dailyPaceWarning` | `30`                                       | Warn when this percentage of the week is used within one day.                                                                                                                                                 |
+| `q0t4.includeHistory`   | `true`                                     | Send earlier messages of the same subject to the model. When off, only the current prompt is sent.                                                                                                            |
+| `q0t4.budgetUnit`       | `tokens`                                   | What budgets count. `credits` costs each request from GitHub's published model prices (1 credit = US$0.01) and then `q0t4.subjects` and `q0t4.defaultLimit` are in credits. Switching doesn't convert limits. |
+| `q0t4.priceSource`      | `auto`                                     | Credits mode. `auto` fetches GitHub's price list once a day; `manual` never fetches and uses only `q0t4.modelPrices`.                                                                                         |
+| `q0t4.modelPrices`      | `{}`                                       | Credits mode. Your own prices in USD per 1M tokens by model name, e.g. `{ "GPT-5 mini": { "input": 0.25, "output": 2 } }`.                                                                                    |
+| `q0t4.priceMaxAgeHours` | `48`                                       | Credits mode. Warn when the price list is older than this many hours.                                                                                                                                         |
 
 An invalid value falls back to its default and shows one warning; the extension keeps working.
 
@@ -77,7 +78,7 @@ An invalid value falls back to its default and shows one warning; the extension 
 - **The cut-off can overshoot** by up to one recount interval of streamed output.
 - **Subjects come from the git remote** (`owner/repo`), falling back to the folder name, so a folder copied without `.git` gets its own budget.
 - **Usage is stored per machine,** under the extension's global storage folder. It is not synced between machines.
-- **Tokens only in v0.1.** AI Credits, monthly pools and a public API are planned for v1.0.
+- **Credits are new.** `q0t4.budgetUnit: credits` costs requests from GitHub's published prices; it is in the pre-release and not yet checked against real billing. Monthly pools and a public API are planned for v1.0.
 
 ## Privacy
 

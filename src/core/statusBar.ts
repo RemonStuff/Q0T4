@@ -38,7 +38,7 @@ export interface StatusBarDeps {
 /**
  * Keeps the status bar item current: after each request, on a settings change, at the
  * weekly reset and on start. It shows the open folder's repo, else the last-used subject,
- * else the fallback subject. Tokens only until credits are wired (#53).
+ * else the fallback subject, in the active budget unit.
  */
 export class StatusBarController implements Disposable {
   private seq = 0;
@@ -96,7 +96,7 @@ export class StatusBarController implements Disposable {
       if (id !== this.seq) return;
       ui.setStatusBar(
         formatStatusBar({
-          unit: "tokens",
+          unit: config.budgetUnit,
           shown,
           rows,
           warnAtPercent: config.warnAtPercent,

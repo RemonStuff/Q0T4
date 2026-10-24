@@ -6,6 +6,7 @@ import type { UiPort } from "../ports/UiPort";
 import type { WorkspacePort } from "../ports/WorkspacePort";
 import { formatStatusError } from "./errors/formatStatusError";
 import { formatStatusTable } from "./format/statusTable";
+import type { PriceInfo } from "./format/statusTable";
 import type { PriceRefresher } from "./pricing/priceRefresher";
 import { buildStatusRows } from "./statusRows";
 import type { StatusLedger } from "./statusRows";
@@ -42,6 +43,8 @@ export interface CommandDeps {
   readonly limitOverride?: () => number | undefined;
   /** Fetches the model prices on demand. Without it the refresh command says it isn't available. */
   readonly prices?: Pick<PriceRefresher, "refreshNow">;
+  /** The price table in use, shown under the usage table in credits mode. */
+  readonly priceInfo?: () => PriceInfo | undefined;
   /** For the diagnostic command that lists the Copilot models and where it writes them. */
   readonly models?: ModelSelectorPort;
   readonly log?: Pick<LogPort, "info" | "error">;
@@ -78,11 +81,13 @@ export function createCommands(deps: CommandDeps): Commands {
           currentRepo: repoSubject(await workspace.currentRepo().catch(() => undefined)),
           limitOverride: deps.limitOverride?.(),
         });
+        const priceInfo = settings.budgetUnit === "credits" ? deps.priceInfo?.() : undefined;
         text = formatStatusTable({
-          unit: "tokens",
+          unit: settings.budgetUnit,
           rows,
           resetLabelLong: formatResetLong(nextResetKey(calendar, now)),
           warnAtPercent: settings.warnAtPercent,
+          ...(priceInfo === undefined ? {} : { prices: priceInfo }),
         });
       } catch {
         ui.showInfo(formatStatusError());

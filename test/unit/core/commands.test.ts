@@ -103,6 +103,29 @@ describe("showUsage", () => {
     expect(ui.documents[0]).toContain("| org/b | 30k |");
   });
 
+  it("in credits mode shows credits and the price table in use", async () => {
+    const priceInfo = {
+      source: "github-docs-yaml" as const,
+      fetchedAt: "2026-10-20T06:00:00.000Z",
+      overrides: 1,
+      stale: false,
+    };
+    const { commands, ui, config } = setup([], { priceInfo: () => priceInfo });
+    config.update({ budgetUnit: "credits" });
+    await commands.showUsage();
+    expect(ui.documents[0]).toContain("Weekly budget (credits)");
+    expect(ui.documents[0]).toContain(
+      "Prices: GitHub docs data file, fetched 2026-10-20, 1 override.",
+    );
+  });
+
+  it("in credits mode without a price table shows no price line", async () => {
+    const { commands, ui, config } = setup([], { priceInfo: () => undefined });
+    config.update({ budgetUnit: "credits" });
+    await commands.showUsage();
+    expect(ui.documents[0]).not.toContain("Prices:");
+  });
+
   it("puts the current repo first", async () => {
     const { commands, ui, workspace, record } = setup();
     await record("org/big", 90_000, "2026-10-13T10:00:00.000Z");

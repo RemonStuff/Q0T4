@@ -1,3 +1,4 @@
+import { limitCost } from "./cost/limitCost";
 import type { StatusRow } from "./format/statusTable";
 import { knownSubjects } from "./subjects/knownSubjects";
 import { hasOwnWeeklyLimit, weeklyLimitFor } from "./subjects/parseConfig";
@@ -31,18 +32,22 @@ export async function buildStatusRows(input: StatusRowsInput): Promise<StatusRow
   const { config, ledger, currentRepo, limitOverride } = input;
   const seen = [...(await ledger.subjectsSeen(input.weekStart)), ...(input.extra ?? [])];
   const subjects = knownSubjects({ config, seen, currentRepo });
+  // A week of token-only entries has no credits yet: in credits mode that is 0, not missing.
+  const inUnit = (cost: Cost): Cost =>
+    config.budgetUnit === "credits" ? { ...cost, credits: cost.credits ?? 0 } : cost;
   return Promise.all(
     subjects.map(async (subject) => {
       const [{ used, requests }, today] = await Promise.all([
         ledger.weekUsage(subject),
         ledger.usedToday(subject),
       ]);
+      const limit = limitOverride ?? weeklyLimitFor(config, subject);
       return {
         subject,
-        used,
-        today,
+        used: inUnit(used),
+        today: inUnit(today),
         requests,
-        budget: { tokens: limitOverride ?? weeklyLimitFor(config, subject) },
+        budget: limitCost(config.budgetUnit, limit),
         limitIsDefault: limitOverride === undefined && !hasOwnWeeklyLimit(config, subject),
         current: currentRepo !== undefined && currentRepo.toLowerCase() === subject.toLowerCase(),
       };

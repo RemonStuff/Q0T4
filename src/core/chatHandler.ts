@@ -28,9 +28,10 @@ import { formatNoModel } from "./format/formatNoModel";
 import { formatRefusal } from "./format/formatRefusal";
 import { formatStopped } from "./format/formatStopped";
 import { formatStatusTable } from "./format/statusTable";
-import type { StatusRow } from "./format/statusTable";
+import type { PriceInfo, StatusRow } from "./format/statusTable";
 import { formatSubjectList } from "./format/subjectList";
 import type { SubjectListItem } from "./format/subjectList";
+import { formatUnknownPrice } from "./format/priceNotices";
 import { formatPaceWarning, formatWarning } from "./format/warnings";
 import { buildMessages } from "./messages/buildMessages";
 import { contextLimit, trimToWindow } from "./messages/trimToWindow";
@@ -93,6 +94,8 @@ export interface StatusContext {
   readonly warnAtPercent: number;
   /** One row per known subject, read from the ledger. May throw when the ledger is unreadable. */
   readonly rows: () => Promise<readonly StatusRow[]>;
+  /** The price table in use (credits mode), shown under the table. */
+  readonly prices?: PriceInfo;
 }
 
 export interface FooterContext {
@@ -122,6 +125,8 @@ export interface BudgetContext {
   readonly extraAllowance?: Cost;
   /** What the subject used today before this request; enables the daily pace warning. */
   readonly usedToday?: Cost;
+  /** Lines shown after the footer on every reply, e.g. that the prices may be out of date. */
+  readonly notices?: readonly string[];
 }
 
 type OutcomeMetadata =
@@ -159,6 +164,8 @@ interface Run {
   inputTokens: number;
   guard?: StreamGuard;
   outcome?: RecordingOutcome;
+  /** The model had no price: the request was costed at the highest rate. */
+  unknownPrice?: { readonly auto: boolean };
 }
 
 export async function chatHandler(
@@ -194,6 +201,7 @@ async function handle(
         rows: await status.rows(),
         resetLabelLong: status.resetLabelLong,
         warnAtPercent: status.warnAtPercent,
+        ...(status.prices === undefined ? {} : { prices: status.prices }),
       }),
     );
   }
@@ -451,11 +459,16 @@ async function measureAndRecord(deps: Deps, run: Run): Promise<Usage | undefined
       usage = {
         inputTokens,
         outputTokens,
-        cost:
-          charged && run.model !== undefined
-            ? budget.costModel.cost(run.model, { input: inputTokens, output: outputTokens }).cost
-            : zeroCost(budget.costModel.unit),
+        cost: zeroCost(budget.costModel.unit),
       };
+      if (charged && run.model !== undefined) {
+        const priced = budget.costModel.cost(run.model, {
+          input: inputTokens,
+          output: outputTokens,
+        });
+        usage = { ...usage, cost: priced.cost };
+        if (priced.unknownPrice === true) run.unknownPrice = { auto: priced.autoModel === true };
+      }
       if (recording !== undefined && run.outcome !== undefined && run.model !== undefined) {
         const entry = recordingPolicy({
           outcome: run.outcome,
@@ -523,6 +536,10 @@ function writeFooter(
       percent: footer.dailyPaceWarning,
     });
     if (pace !== null) output.markdown(`\n\n${formatPaceWarning({ unit, pace })}`);
+  }
+  for (const notice of budget.notices ?? []) output.markdown(`\n\n${notice}`);
+  if (run.unknownPrice !== undefined) {
+    output.markdown(`\n\n${formatUnknownPrice(run.model.name, run.unknownPrice.auto)}`);
   }
 }
 

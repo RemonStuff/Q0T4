@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-24, PR #131. Counts include merged work only; #15 work is not
+2026-10-24, PR #132. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, 2, *Counting and the hard
@@ -23,8 +23,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 ([#18](issues/18-history-footer-strip-and-metadata.md)). Usage is an append-only ledger on
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands never call a model.
-**Current work:** [#52 model matching](issues/52-model-name-mapping.md) prices a VS Code model by display name, then by family and id slug, with overrides by name, family or id; the Auto model and variants such as a fast-mode preview are never matched to the wrong entry. The diagnostic command **Q0T4: Log Copilot Models** lists real model names. 1256 local unit tests pass with 100% core coverage. Your manual check: run the command and compare your models with the price list.
-**Next:** [#53 wire credits mode end to end](issues/53-wire-credits-mode.md), which finishes iteration 7.
+**Current work:** [#53 credits mode](issues/53-wire-credits-mode.md) is wired end to end: set `q0t4.budgetUnit` to `credits` and budgets, the footer, status bar, `/status`, `/subjects` and Show Usage count credits from live GitHub prices, with stale-price and unknown-model warnings and a refusal when no prices exist. 1282 local unit tests pass with 100% core coverage. Your manual check: the credits item in `docs/manual-testing.md`.
+**Next:** Iteration 8, after your approval.
 
 | Iteration | Done | State |
 |---|---|---|
@@ -35,10 +35,10 @@ Monday, shared by all windows. Slash commands never call a model.
 | 4 Repo subjects | 8 / 8 | ✅ done |
 | 5 Visibility | 4 / 4 | ✅ done |
 | 6 Hardening and release (v0.1) | 4 / 4 | ✅ done |
-| 7 Live pricing | 5 / 6 | in progress |
+| 7 Live pricing | 6 / 6 | ✅ done |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **46 / 59** | 13 to build |
+| **Total** | **47 / 59** | 12 to build |
 
 **Done:**
 
@@ -89,6 +89,7 @@ Monday, shared by all windows. Slash commands never call a model.
 | #50 Price source and price-table store adapters | [#130](https://github.com/RemonStuff/Q0T4/pull/130) |
 | #51 Core PriceRefresher, price settings and the refresh command | [#131](https://github.com/RemonStuff/Q0T4/pull/131) |
 | #52 Map VS Code models to price-table entries | [#132](https://github.com/RemonStuff/Q0T4/pull/132) |
+| #53 Wire credits mode end to end | [#133](https://github.com/RemonStuff/Q0T4/pull/133) |
 | #33B Wire repo subjects end to end | [#119](https://github.com/RemonStuff/Q0T4/pull/119) |
 | #33A Wire subject resolution into the participant | [#118](https://github.com/RemonStuff/Q0T4/pull/118) |
 | #26B Settings schema and the VS Code config adapter | [#110](https://github.com/RemonStuff/Q0T4/pull/110) |
@@ -234,7 +235,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 50 Price source and price-table store adapters (needs 25, 49) · PR #130
 - [x] 51 `PriceRefresher`, price settings and refresh command (needs 26, 48, 49) ∥ · PR #131
 - [x] 52 Map VS Code models to price-table entries (needs 48, 49) ∥ · PR #132
-- [ ] 53 Wire credits mode end to end (needs 34, 36, 50, 51, 52). 🎯 **Install and try**
+- [x] 53 Wire credits mode end to end (needs 34, 36, 50, 51, 52) · PR #133. 🎯 **Install and try**
 
 ### Iteration 8: Pool, reserve and sync
 - [ ] 54 `BudgetCalendar`: billing cycle level (needs 20, 21)

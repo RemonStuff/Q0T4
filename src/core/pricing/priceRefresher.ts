@@ -1,6 +1,7 @@
 import type { ClockPort } from "../../ports/ClockPort";
 import type { PriceSourcePort, PriceTableStorePort } from "../../ports/PriceSourcePort";
 import type { Diagnostics } from "../diagnostics/diagnostics";
+import type { PriceInfo } from "../format/statusTable";
 import type { TimerPort } from "../statusBar";
 import type { Q0T4Config } from "../types";
 import { loadStoredPrices } from "./loadStoredPrices";
@@ -46,6 +47,7 @@ export class PriceRefresher {
   private fetched: PriceTable | undefined;
   private timer: unknown;
   private running: Promise<RefreshOutcome> | undefined;
+  private started: Promise<void> | undefined;
   private readonly startedAt: string;
 
   constructor(private readonly deps: PriceRefresherDeps) {
@@ -57,6 +59,21 @@ export class PriceRefresher {
     this.fetched = await loadStoredPrices(this.deps.store, this.deps.diagnostics);
     await this.refreshNow();
     this.schedule();
+  }
+
+  /**
+   * Starts once, for credits mode: loads the stored table and schedules the daily check. With
+   * a stored table it refreshes in the background; without one (first run) it waits for the
+   * fetch, because there is nothing to cost with until it is done.
+   */
+  ensureStarted(): Promise<void> {
+    this.started ??= (async () => {
+      this.fetched = await loadStoredPrices(this.deps.store, this.deps.diagnostics);
+      if (this.fetched === undefined) await this.refreshNow();
+      else void this.refreshNow();
+      this.schedule();
+    })();
+    return this.started;
   }
 
   /** Fetches now, even if the table was fetched today. */
@@ -86,6 +103,18 @@ export class PriceRefresher {
       })),
     ];
     return models.length === 0 ? undefined : { ...base, models };
+  }
+
+  /** What `/status` shows about the prices in use, or `undefined` when there is no table. */
+  info(): PriceInfo | undefined {
+    const table = this.currentTable();
+    if (table === undefined) return undefined;
+    return {
+      source: table.source,
+      fetchedAt: table.fetchedAt,
+      overrides: this.overrideCount(),
+      stale: this.isStale(),
+    };
   }
 
   /** How many `modelPrices` overrides are active. */

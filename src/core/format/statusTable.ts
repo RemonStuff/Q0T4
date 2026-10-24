@@ -2,6 +2,7 @@ import { costAmount } from "../cost/costAmount";
 import type { BudgetUnit, Cost, SubjectName } from "../types";
 import { formatAmount } from "./amount";
 import { markdownLiteral } from "./markdownLiteral";
+import { formatStalePrices } from "./priceNotices";
 import { usageLevel } from "./warnings";
 
 export interface StatusRow {
@@ -19,6 +20,16 @@ export interface StatusRow {
   readonly current: boolean;
 }
 
+/** The price table behind a credits-mode table. */
+export interface PriceInfo {
+  readonly source: "github-docs-yaml" | "github-docs-article" | "manual";
+  /** ISO 8601 instant. */
+  readonly fetchedAt: string;
+  /** How many `q0t4.modelPrices` overrides are active. */
+  readonly overrides: number;
+  readonly stale: boolean;
+}
+
 export interface StatusTableInput {
   readonly unit: BudgetUnit;
   readonly rows: readonly StatusRow[];
@@ -26,6 +37,8 @@ export interface StatusTableInput {
   readonly resetLabelLong: string;
   /** `warnAtPercent` from the settings. */
   readonly warnAtPercent: number;
+  /** Credits mode: where the prices come from, when they were fetched and how many overrides apply. */
+  readonly prices?: PriceInfo;
 }
 
 const NO_SUBJECTS = "No subjects yet. Send a question to start tracking usage.";
@@ -66,9 +79,26 @@ function percentCell(row: StatusRow, input: StatusTableInput): string {
  * and then by usage this week, and the reset date below. Amounts round like the footer:
  * used up, budgets down. Pool columns and the reserve line join in #61.
  */
+const SOURCE_LABEL: Readonly<Record<PriceInfo["source"], string>> = {
+  "github-docs-yaml": "GitHub docs data file",
+  "github-docs-article": "GitHub docs article",
+  manual: "manual prices (q0t4.modelPrices)",
+};
+
+function priceLines(prices: PriceInfo): string {
+  const count =
+    prices.overrides === 0
+      ? "no overrides"
+      : `${prices.overrides} override${prices.overrides === 1 ? "" : "s"}`;
+  const line = `Prices: ${SOURCE_LABEL[prices.source]}, ${prices.source === "manual" ? "" : `fetched ${prices.fetchedAt.slice(0, 10)}, `}${count}.`;
+  return prices.stale ? `${line}\n\n${formatStalePrices(prices.fetchedAt)}` : line;
+}
+
 export function formatStatusTable(input: StatusTableInput): string {
   const { unit } = input;
-  const reset = `Weekly budgets reset on ${markdownLiteral(input.resetLabelLong)}.`;
+  const reset =
+    `Weekly budgets reset on ${markdownLiteral(input.resetLabelLong)}.` +
+    (input.prices === undefined ? "" : `\n\n${priceLines(input.prices)}`);
   if (input.rows.length === 0) return `${NO_SUBJECTS}\n\n${reset}`;
 
   const suffix = unit === "credits" ? " (credits)" : "";

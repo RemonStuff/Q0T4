@@ -119,6 +119,16 @@
           "markdownDescription": "Send earlier messages of the same subject to the model. When off, only the current prompt is sent.",
           "scope": "application"
         },
+        "q0t4.budgetUnit": {
+          "type": "string",
+          "enum": [
+            "tokens",
+            "credits"
+          ],
+          "default": "tokens",
+          "scope": "application",
+          "markdownDescription": "What budgets are counted in. `tokens` counts tokens and needs no prices. `credits` costs each request from GitHub's published model prices (1 credit = US$0.01); the limits (`q0t4.subjects`, `q0t4.defaultLimit`) are then in credits. Switching does not convert existing limits."
+        },
         "q0t4.priceSource": {
           "type": "string",
           "enum": [

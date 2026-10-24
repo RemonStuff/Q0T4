@@ -1,3 +1,4 @@
+import { limitCost } from "../cost/limitCost";
 import type { SubjectListItem } from "../format/subjectList";
 import type { Q0T4Config, SubjectName } from "../types";
 import { knownSubjects } from "./knownSubjects";
@@ -29,7 +30,7 @@ export function subjectItems(input: SubjectItemsInput): SubjectListItem[] {
     const description = subjectDescription(config, subject);
     return {
       subject,
-      limit: { tokens: limitOverride ?? weeklyLimitFor(config, subject) },
+      limit: limitCost(config.budgetUnit, limitOverride ?? weeklyLimitFor(config, subject)),
       limitIsDefault: limitOverride === undefined && !hasOwnWeeklyLimit(config, subject),
       ...(description === undefined || description.trim() === "" ? {} : { description }),
       current: same(subject, currentRepo),

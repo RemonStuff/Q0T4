@@ -32,6 +32,7 @@ const SETTINGS = [
   "warnAtPercent",
   "dailyPaceWarning",
   "includeHistory",
+  "budgetUnit",
   "priceSource",
   "modelPrices",
   "priceMaxAgeHours",
@@ -82,6 +83,10 @@ describe("package.json configuration", () => {
       expect(properties[`q0t4.${key}`]).toMatchObject({ type: "number", minimum: 1, maximum: 100 });
     }
     expect(properties["q0t4.defaultLimit"]).toMatchObject({ type: "number", minimum: 0 });
+    expect(properties["q0t4.budgetUnit"]).toMatchObject({
+      enum: ["tokens", "credits"],
+      default: "tokens",
+    });
     expect(properties["q0t4.priceSource"]?.enum).toEqual(["auto", "manual"]);
     expect(properties["q0t4.priceMaxAgeHours"]).toMatchObject({ type: "number", minimum: 1 });
     expect(properties["q0t4.modelPrices"]?.type).toBe("object");
