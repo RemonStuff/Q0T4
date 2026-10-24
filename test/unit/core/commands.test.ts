@@ -57,6 +57,7 @@ describe("command ids", () => {
       showUsage: "q0t4.showUsage",
       resetWeek: "q0t4.resetWeek",
       editSubjects: "q0t4.editSubjects",
+      refreshPrices: "q0t4.refreshPrices",
     });
   });
 });
@@ -265,5 +266,58 @@ describe("resetWeek", () => {
       "Reset 1 of 2 subjects, then hit an error. Run Reset This Week again to finish.",
     );
     expect(s.statusBar.refresh).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("refreshPrices", () => {
+  const table = {
+    fetchedAt: "2026-10-14T09:00:00.000Z",
+    source: "github-docs-yaml",
+    models: [{ model: "A", provider: "x", tiers: [] }],
+  } as const;
+  const run = async (
+    outcome: Awaited<ReturnType<NonNullable<CommandDeps["prices"]>["refreshNow"]>>,
+  ) => {
+    const t = setup([], { prices: { refreshNow: async () => outcome } });
+    await t.commands.refreshPrices();
+    return t.ui.infos;
+  };
+
+  it("says how many models were updated and when", async () => {
+    expect(await run({ status: "updated", table })).toEqual([
+      "Model prices updated: 1 models, fetched 2026-10-14.",
+    ]);
+  });
+
+  it("says when nothing changed", async () => {
+    expect(await run({ status: "unchanged" })).toEqual(["Model prices are already up to date."]);
+  });
+
+  it("says that manual prices are not fetched", async () => {
+    expect((await run({ status: "manual" }))[0]).toMatch(/priceSource is manual/);
+  });
+
+  it("names the reasons of a failed fetch and says the last table is kept", async () => {
+    const [message] = await run({
+      status: "failed",
+      reasons: ["YAML: HTTP 500", "article: timed out"],
+    });
+    expect(message).toContain("YAML: HTTP 500; article: timed out");
+    expect(message).toMatch(/keeps using the last table/);
+  });
+
+  it("names the failing checks of a rejected table", async () => {
+    const [message] = await run({
+      status: "invalid",
+      failures: ["GPT-5 mini: input rate changed more than 3×"],
+    });
+    expect(message).toContain("rejected");
+    expect(message).toContain("GPT-5 mini");
+  });
+
+  it("says it can't refresh when there is no price refresher", async () => {
+    const t = setup();
+    await t.commands.refreshPrices();
+    expect(t.ui.infos).toEqual(["Q0T4 can't refresh model prices here."]);
   });
 });

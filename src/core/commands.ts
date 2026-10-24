@@ -4,6 +4,7 @@ import type { UiPort } from "../ports/UiPort";
 import type { WorkspacePort } from "../ports/WorkspacePort";
 import { formatStatusError } from "./errors/formatStatusError";
 import { formatStatusTable } from "./format/statusTable";
+import type { PriceRefresher } from "./pricing/priceRefresher";
 import { buildStatusRows } from "./statusRows";
 import type { StatusLedger } from "./statusRows";
 import { repoSubject } from "./subjects/repoIdentifier";
@@ -17,6 +18,7 @@ export const COMMAND_IDS = {
   showUsage: "q0t4.showUsage",
   resetWeek: "q0t4.resetWeek",
   editSubjects: "q0t4.editSubjects",
+  refreshPrices: "q0t4.refreshPrices",
 } as const;
 
 /** What the commands read from and write to the ledger; `Ledger` implements it. */
@@ -35,12 +37,15 @@ export interface CommandDeps {
   readonly statusBar: { refresh(): Promise<void> };
   /** Replaces every limit, in tokens; the integration tests use it. */
   readonly limitOverride?: () => number | undefined;
+  /** Fetches the model prices on demand. Without it the refresh command says it isn't available. */
+  readonly prices?: Pick<PriceRefresher, "refreshNow">;
 }
 
 export interface Commands {
   showUsage(): Promise<void>;
   resetWeek(): Promise<void>;
   editSubjects(): Promise<void>;
+  refreshPrices(): Promise<void>;
 }
 
 const READ_ERROR_ON_RESET = "Q0T4 couldn't read its usage record, so nothing was reset.";
@@ -121,6 +126,40 @@ export function createCommands(deps: CommandDeps): Commands {
 
     async editSubjects() {
       await ui.openSettings("q0t4.subjects");
+    },
+
+    /** Fetches the model prices now, even if they were fetched today, and says what happened. */
+    async refreshPrices() {
+      if (deps.prices === undefined) {
+        ui.showInfo("Q0T4 can't refresh model prices here.");
+        return;
+      }
+      const outcome = await deps.prices.refreshNow();
+      switch (outcome.status) {
+        case "updated":
+          ui.showInfo(
+            `Model prices updated: ${outcome.table.models.length} models, fetched ${outcome.table.fetchedAt.slice(0, 10)}.`,
+          );
+          break;
+        case "unchanged":
+          ui.showInfo("Model prices are already up to date.");
+          break;
+        case "manual":
+          ui.showInfo(
+            "Prices come from q0t4.modelPrices because q0t4.priceSource is manual, so there is nothing to fetch.",
+          );
+          break;
+        case "failed":
+          ui.showInfo(
+            `Q0T4 couldn't update the model prices: ${outcome.reasons.join("; ")}. It keeps using the last table.`,
+          );
+          break;
+        case "invalid":
+          ui.showInfo(
+            `Q0T4 rejected the new model prices: ${outcome.failures.join("; ")}. It keeps using the last table.`,
+          );
+          break;
+      }
     },
   };
 }

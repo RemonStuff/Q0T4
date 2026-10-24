@@ -32,6 +32,9 @@ const SETTINGS = [
   "warnAtPercent",
   "dailyPaceWarning",
   "includeHistory",
+  "priceSource",
+  "modelPrices",
+  "priceMaxAgeHours",
 ] as const;
 
 describe("package.json configuration", () => {
@@ -79,15 +82,19 @@ describe("package.json configuration", () => {
       expect(properties[`q0t4.${key}`]).toMatchObject({ type: "number", minimum: 1, maximum: 100 });
     }
     expect(properties["q0t4.defaultLimit"]).toMatchObject({ type: "number", minimum: 0 });
+    expect(properties["q0t4.priceSource"]?.enum).toEqual(["auto", "manual"]);
+    expect(properties["q0t4.priceMaxAgeHours"]).toMatchObject({ type: "number", minimum: 1 });
+    expect(properties["q0t4.modelPrices"]?.type).toBe("object");
   });
 });
 
 describe("palette commands in package.json", () => {
-  it("declares the three commands with the Q0T4 category", () => {
+  it("declares the four commands with the Q0T4 category", () => {
     expect(manifest.contributes.commands).toEqual([
       { command: COMMAND_IDS.showUsage, title: "Show Usage", category: "Q0T4" },
       { command: COMMAND_IDS.resetWeek, title: "Reset This Week", category: "Q0T4" },
       { command: COMMAND_IDS.editSubjects, title: "Edit Subjects", category: "Q0T4" },
+      { command: COMMAND_IDS.refreshPrices, title: "Refresh Model Prices", category: "Q0T4" },
     ]);
   });
 });

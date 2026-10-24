@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import * as vscode from "vscode";
 import { chatStreamOutput } from "./adapters/chatStreamOutput";
 import { fileLedger } from "./adapters/fileLedger";
+import { githubDocsPriceSource } from "./adapters/githubDocsPriceSource";
+import { priceTableFile } from "./adapters/priceTableFile";
 import { outputChannelLog } from "./adapters/outputChannelLog";
 import { Diagnostics } from "./core/diagnostics/diagnostics";
 import { globalStateStorage } from "./adapters/globalStateStorage";
@@ -18,6 +20,7 @@ import { chatHandler } from "./core/chatHandler";
 import { TokenCostModel } from "./core/cost/tokenCostModel";
 import { formatLedgerError } from "./core/errors/formatLedgerError";
 import { Ledger } from "./core/ledger/ledger";
+import { PriceRefresher } from "./core/pricing/priceRefresher";
 import { COMMAND_IDS, createCommands } from "./core/commands";
 import type { Commands } from "./core/commands";
 import { StatusBarController } from "./core/statusBar";
@@ -94,6 +97,8 @@ export interface RequestHandlerOptions {
   readonly timers?: TimerPort;
   /** Where failures outside the model go. Without it they are only logged to the console. */
   readonly diagnostics?: Diagnostics;
+  /** Fetches model prices for the refresh command. Credits mode starts it (#53). */
+  readonly prices?: PriceRefresher;
 }
 
 const consoleLog: LogPort = {
@@ -117,6 +122,7 @@ export function createRequestHandler({
   storage,
   timers = realTimers,
   diagnostics = new Diagnostics(consoleLog, () => undefined),
+  prices,
 }: RequestHandlerOptions) {
   const requests: string[] = [];
   const calendar = new BudgetCalendar(clock, () => config.get().resetDay);
@@ -165,6 +171,7 @@ export function createRequestHandler({
           workspace: currentWorkspace,
           statusBar,
           limitOverride: () => limitOverride,
+          ...(prices === undefined ? {} : { prices }),
         })
       : undefined;
 
@@ -346,6 +353,15 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
     ...ui,
     confirm: (message) => (confirmOverride ?? ui.confirm)(message),
   };
+  // Prices are only fetched on request until credits mode starts the refresher (#53).
+  const prices = new PriceRefresher({
+    source: githubDocsPriceSource(),
+    store: priceTableFile(ledgerRoot),
+    clock: systemClock,
+    timers: realTimers,
+    diagnostics,
+    settings: () => config.get(),
+  });
   const { handleRequest, requests, ledger, setLimit, setWorkspace, statusBar, commands } =
     createRequestHandler({
       ledgerPort: fileLedger(ledgerRoot, sessionId),
@@ -354,6 +370,7 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
       ui: uiPort,
       storage,
       diagnostics,
+      prices,
     });
   // `ui` and `storage` are given, so both exist.
   const bar = statusBar as StatusBarController;
@@ -365,6 +382,8 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
     vscode.commands.registerCommand(COMMAND_IDS.showUsage, () => palette.showUsage()),
     vscode.commands.registerCommand(COMMAND_IDS.resetWeek, () => palette.resetWeek()),
     vscode.commands.registerCommand(COMMAND_IDS.editSubjects, () => palette.editSubjects()),
+    vscode.commands.registerCommand(COMMAND_IDS.refreshPrices, () => palette.refreshPrices()),
+    { dispose: () => prices.dispose() },
     vscode.window.onDidChangeActiveTextEditor(() => void bar.refresh()),
     vscode.workspace.onDidChangeWorkspaceFolders(() => void bar.refresh()),
   );

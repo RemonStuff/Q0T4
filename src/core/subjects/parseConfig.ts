@@ -1,5 +1,13 @@
 import { BUDGET_UNITS } from "../types";
-import type { BudgetUnit, Q0T4Config, ResetDay, SubjectConfig, SubjectName } from "../types";
+import type {
+  BudgetUnit,
+  PriceOverride,
+  PriceSource,
+  Q0T4Config,
+  ResetDay,
+  SubjectConfig,
+  SubjectName,
+} from "../types";
 
 const RESET_DAYS: readonly ResetDay[] = [
   "monday",
@@ -21,6 +29,9 @@ export const DEFAULT_CONFIG: Q0T4Config = {
   warnAtPercent: 80,
   dailyPaceWarning: 30,
   includeHistory: true,
+  priceSource: "auto",
+  modelPrices: {},
+  priceMaxAgeHours: 48,
 };
 
 export interface ParsedConfig {
@@ -96,6 +107,21 @@ export function parseConfig(raw: unknown): ParsedConfig {
     return clamped;
   };
 
+  const sourceRaw = input["priceSource"];
+  let priceSource: PriceSource = DEFAULT_CONFIG.priceSource;
+  if (!unset(sourceRaw)) {
+    if (sourceRaw === "auto" || sourceRaw === "manual") priceSource = sourceRaw;
+    else warn(`q0t4.priceSource must be "auto" or "manual"; using ${priceSource}.`);
+  }
+
+  const ageRaw = input["priceMaxAgeHours"];
+  let priceMaxAgeHours = DEFAULT_CONFIG.priceMaxAgeHours;
+  if (!unset(ageRaw)) {
+    if (typeof ageRaw === "number" && Number.isFinite(ageRaw) && ageRaw >= 1)
+      priceMaxAgeHours = ageRaw;
+    else warn(`q0t4.priceMaxAgeHours must be a number of 1 or more; using ${priceMaxAgeHours}.`);
+  }
+
   return {
     config: {
       budgetUnit,
@@ -106,9 +132,47 @@ export function parseConfig(raw: unknown): ParsedConfig {
       warnAtPercent: percent("warnAtPercent"),
       dailyPaceWarning: percent("dailyPaceWarning"),
       includeHistory,
+      priceSource,
+      modelPrices: parseModelPrices(input["modelPrices"], warn),
+      priceMaxAgeHours,
     },
     warnings,
   };
+}
+
+function parseModelPrices(
+  raw: unknown,
+  warn: (message: string) => void,
+): Readonly<Record<string, PriceOverride>> {
+  if (raw === undefined || raw === null) return {};
+  if (!isRecord(raw)) {
+    warn("q0t4.modelPrices must be an object of model names; using none.");
+    return {};
+  }
+  const prices: Record<string, PriceOverride> = {};
+  const seen = new Set<string>();
+  for (const [rawKey, value] of Object.entries(raw)) {
+    const key = rawKey.trim();
+    if (key === "") {
+      warn("q0t4.modelPrices has an entry with an empty name; it is ignored.");
+      continue;
+    }
+    if (seen.has(key.toLowerCase().replace(/\s+/g, " "))) {
+      warn(
+        `q0t4.modelPrices has "${key}" twice (names differ only by case or spacing); the first one is used.`,
+      );
+      continue;
+    }
+    seen.add(key.toLowerCase().replace(/\s+/g, " "));
+    if (!isRecord(value) || !isAmount(value["input"]) || !isAmount(value["output"])) {
+      warn(
+        `q0t4.modelPrices["${key}"] must be like { "input": 2.5, "output": 10 } with rates of 0 or more (USD per 1M tokens); it is ignored.`,
+      );
+      continue;
+    }
+    prices[key] = { input: value["input"], output: value["output"] };
+  }
+  return prices;
 }
 
 function parseSubjects(

@@ -8,6 +8,7 @@ import {
   FakeConfig,
   FakeUi,
   FakeWorkspace,
+  FakeTimers,
   FixedClock,
   InMemoryLedger,
   InMemoryStorage,
@@ -19,28 +20,6 @@ const repo = (name: string) => ({
   folderName: name,
   remotes: [{ name: "origin", url: `https://github.com/org/${name}.git` }],
 });
-
-class FakeTimers {
-  readonly scheduled: { fn: () => void; ms: number; id: number; cleared: boolean }[] = [];
-  set(fn: () => void, ms: number) {
-    const timer = { fn, ms, id: this.scheduled.length, cleared: false };
-    this.scheduled.push(timer);
-    return timer.id;
-  }
-  clear(id: unknown) {
-    const timer = this.scheduled[id as number];
-    if (timer) timer.cleared = true;
-  }
-  /** Fires a timer once, like the real one. */
-  fire(id: number) {
-    const timer = this.scheduled[id] as (typeof this.scheduled)[number];
-    timer.cleared = true;
-    timer.fn();
-  }
-  get active() {
-    return this.scheduled.filter((t) => !t.cleared);
-  }
-}
 
 function setup(overrides: Partial<StatusBarDeps> = {}, folder = "app") {
   const clock = new FixedClock(NOW, "UTC");
