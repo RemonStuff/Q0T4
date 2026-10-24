@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-24, PR #124. Counts include merged work only; #15 work is not
+2026-10-24, PR #125. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, 2, *Counting and the hard
@@ -23,8 +23,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 ([#18](issues/18-history-footer-strip-and-metadata.md)). Usage is an append-only ledger on
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands never call a model.
-**Current work:** [#39 context-window trimming](issues/39-context-window-trimming.md) drops the oldest history pairs that do not fit the model's window (90% of `maxInputTokens`), tells the user how many messages were left out, and refuses with a clear message when the references and prompt alone are too large. The pre-check and the ledger use the trimmed count. 996 local unit tests pass with 100% core coverage. [#38](issues/38-model-error-handling.md) is done.
-**Next:** [#40 storage and config failures](issues/40-storage-and-config-failures.md), then #41, the README and the v0.1 release.
+**Current work:** [#40 storage and config failure paths](issues/40-storage-and-config-failures.md) keeps a chat working when storage or settings misbehave: a failed usage write keeps the reply and warns once, unreadable ledger lines or files are skipped, counted and warned once, an unreadable price table counts as missing, and invalid settings fall back to defaults with one warning. Everything is logged to a new **Q0T4** output channel. 1015 local unit tests pass with 100% core coverage.
+**Next:** [#41 README and the v0.1 release](issues/41-readme-and-release.md), which needs your Marketplace account and your manual checks of iterations 5 and 6.
 
 | Iteration | Done | State |
 |---|---|---|
@@ -34,11 +34,11 @@ Monday, shared by all windows. Slash commands never call a model.
 | 3 Weekly storage | 6 / 6 | ✅ done |
 | 4 Repo subjects | 8 / 8 | ✅ done |
 | 5 Visibility | 4 / 4 | ✅ done |
-| 6 Hardening and release (v0.1) | 2 / 4 | in progress |
+| 6 Hardening and release (v0.1) | 3 / 4 | in progress |
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **39 / 59** | 20 to build |
+| **Total** | **40 / 59** | 19 to build |
 
 **Done:**
 
@@ -82,6 +82,7 @@ Monday, shared by all windows. Slash commands never call a model.
 | #37 Commands: Show Usage, Reset This Week, Edit Subjects | [#123](https://github.com/RemonStuff/Q0T4/pull/123) |
 | #38 Model error mapping: consent, missing model, quota | [#124](https://github.com/RemonStuff/Q0T4/pull/124) |
 | #39 Context-window trimming | [#125](https://github.com/RemonStuff/Q0T4/pull/125) |
+| #40 Storage and config failure paths | [#126](https://github.com/RemonStuff/Q0T4/pull/126) |
 | #33B Wire repo subjects end to end | [#119](https://github.com/RemonStuff/Q0T4/pull/119) |
 | #33A Wire subject resolution into the participant | [#118](https://github.com/RemonStuff/Q0T4/pull/118) |
 | #26B Settings schema and the VS Code config adapter | [#110](https://github.com/RemonStuff/Q0T4/pull/110) |
@@ -218,7 +219,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 ### Iteration 6: Hardening and release
 - [x] 38 Model error mapping (needs 33) · PR #124
 - [x] 39 Context-window trimming (needs 33) ∥ · PR #125
-- [ ] 40 Storage and config failures (needs 25, 26) ∥
+- [x] 40 Storage and config failures (needs 25, 26) ∥ · PR #126
 - [ ] 41 README and release v0.1 (needs 38, 39, 40). 🎯 **v0.1 release**
 
 ### Iteration 7: Live pricing

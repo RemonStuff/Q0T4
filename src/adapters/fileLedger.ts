@@ -77,7 +77,13 @@ export function fileLedger(root: string, writerId: string): LedgerPort {
           throw error;
         }
         for (const name of files) {
-          const file = await readFileCached(join(dir, name));
+          let file: Cached | undefined;
+          try {
+            file = await readFileCached(join(dir, name));
+          } catch {
+            corrupt += 1; // an unreadable file is skipped and counted, never thrown
+            continue;
+          }
           if (file === undefined) continue;
           corrupt += file.corrupt;
           for (const entry of file.entries) {

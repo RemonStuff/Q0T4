@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import * as vscode from "vscode";
 import { chatStreamOutput } from "./adapters/chatStreamOutput";
 import { fileLedger } from "./adapters/fileLedger";
+import { outputChannelLog } from "./adapters/outputChannelLog";
+import { Diagnostics } from "./core/diagnostics/diagnostics";
 import { globalStateStorage } from "./adapters/globalStateStorage";
 import { historyAdapter } from "./adapters/historyAdapter";
 import { referenceReader } from "./adapters/referenceReader";
@@ -34,6 +36,7 @@ import type { ConfigPort } from "./ports/ConfigPort";
 import type { StatusBarState, UiPort } from "./ports/UiPort";
 import type { WorkspacePort } from "./ports/WorkspacePort";
 import type { LedgerPort } from "./ports/LedgerPort";
+import type { LogPort } from "./ports/LogPort";
 import type { StoragePort } from "./ports/StoragePort";
 
 export const PARTICIPANT_ID = "q0t4.chat";
@@ -85,11 +88,19 @@ export interface RequestHandlerOptions {
   /** The status bar item and the palette commands. Without `ui` and `storage` there are none. */
   readonly ui?: Pick<
     UiPort,
-    "setStatusBar" | "confirm" | "openSettings" | "showInfo" | "showDocument"
+    "setStatusBar" | "confirm" | "openSettings" | "showInfo" | "showWarning" | "showDocument"
   >;
   readonly storage?: StoragePort;
   readonly timers?: TimerPort;
+  /** Where failures outside the model go. Without it they are only logged to the console. */
+  readonly diagnostics?: Diagnostics;
 }
+
+const consoleLog: LogPort = {
+  info: (message) => console.info(`Q0T4: ${message}`),
+  warn: (message) => console.warn(`Q0T4: ${message}`),
+  error: (message, error) => console.error(`Q0T4: ${message}`, error),
+};
 
 const realTimers: TimerPort = {
   set: (callback, ms) => setTimeout(callback, ms),
@@ -105,11 +116,12 @@ export function createRequestHandler({
   ui,
   storage,
   timers = realTimers,
+  diagnostics = new Diagnostics(consoleLog, () => undefined),
 }: RequestHandlerOptions) {
   const requests: string[] = [];
   const calendar = new BudgetCalendar(clock, () => config.get().resetDay);
   const ledger = new Ledger(ledgerPort, clock, calendar, randomUUID, {
-    onCorrupt: (count) => console.warn(`Q0T4: skipped ${count} unreadable usage ledger line(s).`),
+    onCorrupt: (count) => diagnostics.ledgerSkipped(count),
   });
   let limitOverride: number | undefined;
   let workspaceOverride: WorkspacePort | undefined;
@@ -271,7 +283,7 @@ export function createRequestHandler({
             sink: ledger,
             clock,
             newId: randomUUID,
-            onError: (error) => console.error("Q0T4: couldn't record usage.", error),
+            onError: (error) => diagnostics.recordFailed(error),
           },
           footer: {
             warnAtPercent: settings.warnAtPercent,
@@ -323,10 +335,11 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
   const storage = globalStateStorage(context.globalState);
   const ledgerRoot = context.globalStorageUri.fsPath;
   const sessionId = vscode.env.sessionId;
-  const config = vscodeConfig((warnings) =>
-    vscode.window.showWarningMessage(`Q0T4 settings: ${warnings.join(" ")}`),
-  );
+  const channel = vscode.window.createOutputChannel("Q0T4");
+  context.subscriptions.push(channel);
   const ui = vscodeUi({ statusBarCommand: COMMAND_IDS.showUsage });
+  const diagnostics = new Diagnostics(outputChannelLog(channel), (text) => ui.showWarning(text));
+  const config = vscodeConfig((warnings) => diagnostics.configWarnings(warnings));
   // Integration tests answer the modal confirmation through `setConfirm`.
   let confirmOverride: ((message: string) => Promise<boolean>) | undefined;
   const uiPort: UiPort = {
@@ -340,6 +353,7 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
       workspace: workspaceRepo(),
       ui: uiPort,
       storage,
+      diagnostics,
     });
   // `ui` and `storage` are given, so both exist.
   const bar = statusBar as StatusBarController;

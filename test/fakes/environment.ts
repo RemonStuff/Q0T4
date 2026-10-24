@@ -106,6 +106,7 @@ export class FakeUi implements UiPort {
   readonly confirmations: string[] = [];
   readonly settingsOpened: string[] = [];
   readonly infos: string[] = [];
+  readonly warnings: string[] = [];
   readonly documents: string[] = [];
   private readonly answers: boolean[];
 
@@ -128,6 +129,10 @@ export class FakeUi implements UiPort {
 
   showInfo(text: string): void {
     this.infos.push(text);
+  }
+
+  showWarning(text: string): void {
+    this.warnings.push(text);
   }
 
   async showDocument(markdown: string): Promise<void> {

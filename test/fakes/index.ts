@@ -1,4 +1,6 @@
 export { FakeCancellation } from "./FakeCancellation";
+export { FakeLog } from "./FakeLog";
+export type { LogLine } from "./FakeLog";
 export { FakeModel, FakeModelSelector } from "./FakeModel";
 export type { FakeModelOptions } from "./FakeModel";
 export { InMemoryLedger, InMemoryPriceTableStore, InMemoryStorage } from "./InMemoryStorage";
