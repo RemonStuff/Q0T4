@@ -133,7 +133,11 @@ export function createRequestHandler({
   log,
 }: RequestHandlerOptions) {
   const requests: string[] = [];
-  const calendar = new BudgetCalendar(clock, () => config.get().resetDay);
+  const calendar = new BudgetCalendar(
+    clock,
+    () => config.get().resetDay,
+    () => config.get().cycleStartDay,
+  );
   const ledger = new Ledger(ledgerPort, clock, calendar, randomUUID, {
     onCorrupt: (count) => diagnostics.ledgerSkipped(count),
   });

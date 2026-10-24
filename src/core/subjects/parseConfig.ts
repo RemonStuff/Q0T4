@@ -26,6 +26,7 @@ export const DEFAULT_CONFIG: Q0T4Config = {
   defaultLimit: 150_000,
   fallbackSubject: "general",
   resetDay: "monday",
+  cycleStartDay: 1,
   warnAtPercent: 80,
   dailyPaceWarning: 30,
   includeHistory: true,
@@ -80,6 +81,19 @@ export function parseConfig(raw: unknown): ParsedConfig {
     else warn(`q0t4.resetDay must be a weekday from monday to sunday; using ${resetDay}.`);
   }
 
+  const cycleRaw = input["cycleStartDay"];
+  let cycleStartDay = DEFAULT_CONFIG.cycleStartDay;
+  if (!unset(cycleRaw)) {
+    if (
+      typeof cycleRaw === "number" &&
+      Number.isInteger(cycleRaw) &&
+      cycleRaw >= 1 &&
+      cycleRaw <= 31
+    )
+      cycleStartDay = cycleRaw;
+    else warn(`q0t4.cycleStartDay must be a whole number from 1 to 31; using ${cycleStartDay}.`);
+  }
+
   const unitRaw = input["budgetUnit"];
   let budgetUnit: BudgetUnit = DEFAULT_CONFIG.budgetUnit;
   if (!unset(unitRaw)) {
@@ -129,6 +143,7 @@ export function parseConfig(raw: unknown): ParsedConfig {
       defaultLimit,
       fallbackSubject,
       resetDay,
+      cycleStartDay,
       warnAtPercent: percent("warnAtPercent"),
       dailyPaceWarning: percent("dailyPaceWarning"),
       includeHistory,

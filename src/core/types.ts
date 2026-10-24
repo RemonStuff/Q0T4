@@ -69,6 +69,8 @@ export interface Q0T4Config {
   readonly defaultLimit: number;
   readonly fallbackSubject: SubjectName;
   readonly resetDay: ResetDay;
+  /** Day of the month a billing cycle starts, 1 to 31; short months use their last day. */
+  readonly cycleStartDay: number;
   readonly warnAtPercent: number;
   readonly dailyPaceWarning: number;
   readonly includeHistory: boolean;

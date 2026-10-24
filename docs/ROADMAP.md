@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-24, PR #132. Counts include merged work only; #15 work is not
+2026-10-24, PR #133. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, 2, *Counting and the hard
@@ -23,8 +23,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 ([#18](issues/18-history-footer-strip-and-metadata.md)). Usage is an append-only ledger on
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands never call a model.
-**Current work:** [#53 credits mode](issues/53-wire-credits-mode.md) is wired end to end: set `q0t4.budgetUnit` to `credits` and budgets, the footer, status bar, `/status`, `/subjects` and Show Usage count credits from live GitHub prices, with stale-price and unknown-model warnings and a refusal when no prices exist. 1282 local unit tests pass with 100% core coverage. Your manual check: the credits item in `docs/manual-testing.md`.
-**Next:** Iteration 8, after your approval.
+**Current work:** [#54 the billing cycle](issues/54-budget-calendar-cycle.md): `BudgetCalendar` knows the monthly cycle (`q0t4.cycleStartDay`, clamped in short months) and how a week splits across a cycle boundary. 1301 local tests pass with 100% core coverage. Nothing uses it until #55.
+**Next:** [#55 rolling weekly budget](issues/55-rolling-weekly-budget.md).
 
 | Iteration | Done | State |
 |---|---|---|
@@ -36,9 +36,9 @@ Monday, shared by all windows. Slash commands never call a model.
 | 5 Visibility | 4 / 4 | ✅ done |
 | 6 Hardening and release (v0.1) | 4 / 4 | ✅ done |
 | 7 Live pricing | 6 / 6 | ✅ done |
-| 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
+| 8 Pool, reserve and sync | 1 / 8 | in progress |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **47 / 59** | 12 to build |
+| **Total** | **48 / 59** | 11 to build |
 
 **Done:**
 
@@ -90,6 +90,7 @@ Monday, shared by all windows. Slash commands never call a model.
 | #51 Core PriceRefresher, price settings and the refresh command | [#131](https://github.com/RemonStuff/Q0T4/pull/131) |
 | #52 Map VS Code models to price-table entries | [#132](https://github.com/RemonStuff/Q0T4/pull/132) |
 | #53 Wire credits mode end to end | [#133](https://github.com/RemonStuff/Q0T4/pull/133) |
+| #54 BudgetCalendar billing cycle level | [#134](https://github.com/RemonStuff/Q0T4/pull/134) |
 | #33B Wire repo subjects end to end | [#119](https://github.com/RemonStuff/Q0T4/pull/119) |
 | #33A Wire subject resolution into the participant | [#118](https://github.com/RemonStuff/Q0T4/pull/118) |
 | #26B Settings schema and the VS Code config adapter | [#110](https://github.com/RemonStuff/Q0T4/pull/110) |
@@ -238,7 +239,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 53 Wire credits mode end to end (needs 34, 36, 50, 51, 52) · PR #133. 🎯 **Install and try**
 
 ### Iteration 8: Pool, reserve and sync
-- [ ] 54 `BudgetCalendar`: billing cycle level (needs 20, 21)
+- [x] 54 `BudgetCalendar`: billing cycle level (needs 20, 21) · PR #134
 - [ ] 55 Rolling weekly budget from a monthly share (needs 22, 54)
 - [ ] 56 Pool, share and reserve settings (needs 26, 55)
 - [ ] 57 Reserve borrowing: auto, ask, off (needs 14, 15, 56)

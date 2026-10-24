@@ -75,19 +75,51 @@ export function daysBetween(from: DayKey, to: DayKey): number {
   return Math.round((utcMs(to) - utcMs(from)) / DAY_MS);
 }
 
+/** A billing cycle as local day keys: `start` is included, `end` is not. */
+export interface CycleWindow {
+  readonly start: DayKey;
+  readonly end: DayKey;
+}
+
+/** The part of a week that falls in one cycle, in days. */
+export interface WeekPart {
+  readonly cycle: CycleWindow;
+  readonly days: number;
+}
+
+function daysInMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+const pad = (n: number, width = 2) => String(n).padStart(width, "0");
+
+/** The cycle start of a month: `startDay`, or the month's last day if it is shorter. */
+function cycleStartOf(year: number, month: number, startDay: number): DayKey {
+  return `${pad(year, 4)}-${pad(month)}-${pad(Math.min(startDay, daysInMonth(year, month)))}`;
+}
+
+function shiftMonth(year: number, month: number, by: number): [number, number] {
+  const index = year * 12 + (month - 1) + by;
+  return [Math.floor(index / 12), (index % 12) + 1];
+}
+
 /**
- * The enforced week (docs/PLAN.md §9.2). It starts at local midnight on `resetDay`.
- * The billing-cycle level joins this class in #54.
+ * The two time levels (docs/PLAN.md §9.2). A week starts at local midnight on `resetDay`;
+ * a billing cycle starts at local midnight on `cycleStartDay`, clamped to the last day of
+ * short months. Everything is calendar-day arithmetic on day keys.
  */
 export class BudgetCalendar {
   private readonly resetDay: () => ResetDay;
+  private readonly cycleStartDay: () => number;
 
-  /** `resetDay` may be a function, so a changed setting applies without a new calendar. */
+  /** The settings may be functions, so a changed setting applies without a new calendar. */
   constructor(
     private readonly clock: ClockPort,
     resetDay: ResetDay | (() => ResetDay),
+    cycleStartDay: number | (() => number) = 1,
   ) {
     this.resetDay = typeof resetDay === "function" ? resetDay : () => resetDay;
+    this.cycleStartDay = typeof cycleStartDay === "function" ? cycleStartDay : () => cycleStartDay;
   }
 
   /** The local calendar day of an instant, in the clock's time zone. */
@@ -119,5 +151,51 @@ export class BudgetCalendar {
     const weekday = new Date(utcMs(today)).getUTCDay();
     const start = addDays(today, -((weekday - WEEKDAY[this.resetDay()] + 7) % 7));
     return { start, end: addDays(start, 7) };
+  }
+
+  /** The `[start, end)` day keys of the billing cycle that contains the instant. */
+  cycleWindow(instant: Date): CycleWindow {
+    return this.cycleOfDay(this.dayKey(instant));
+  }
+
+  private cycleOfDay(day: DayKey): CycleWindow {
+    const [year, month] = day.split("-").map(Number) as [number, number];
+    const startDay = this.cycleStartDay();
+    const thisMonth = cycleStartOf(year, month, startDay);
+    const [startYear, startMonth] = day >= thisMonth ? [year, month] : shiftMonth(year, month, -1);
+    const [endYear, endMonth] = shiftMonth(startYear, startMonth, 1);
+    return {
+      start: cycleStartOf(startYear, startMonth, startDay),
+      end: cycleStartOf(endYear, endMonth, startDay),
+    };
+  }
+
+  /** The number of days in a cycle. */
+  cycleDays(cycle: CycleWindow): number {
+    return daysBetween(cycle.start, cycle.end);
+  }
+
+  /** The days from `fromDay` to the end of its cycle, counting `fromDay` itself. */
+  daysRemainingInCycle(fromDay: DayKey): number {
+    return daysBetween(fromDay, this.cycleOfDay(fromDay).end);
+  }
+
+  /** How many days of the week fall inside the cycle. */
+  daysOfWeekInsideCycle(week: WeekWindow, cycle: CycleWindow): number {
+    const start = week.start > cycle.start ? week.start : cycle.start;
+    const end = week.end < cycle.end ? week.end : cycle.end;
+    return Math.max(0, daysBetween(start, end));
+  }
+
+  /** The cycles a week touches, in order, with the days it spends in each. */
+  splitWeekAtCycleBoundary(week: WeekWindow): readonly WeekPart[] {
+    const parts: WeekPart[] = [];
+    let day = week.start;
+    while (day < week.end) {
+      const cycle = this.cycleOfDay(day);
+      parts.push({ cycle, days: this.daysOfWeekInsideCycle(week, cycle) });
+      day = cycle.end;
+    }
+    return parts;
   }
 }

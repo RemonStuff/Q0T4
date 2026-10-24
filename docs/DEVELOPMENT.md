@@ -234,7 +234,9 @@ Model matching ([#52](https://github.com/RemonStuff/Q0T4/issues/52)): [`resolveP
 
 Credits mode ([#53](https://github.com/RemonStuff/Q0T4/issues/53)): with `q0t4.budgetUnit: credits`, `costModelFor` builds a `CreditCostModel` from the refresher's table (fetched plus overrides) and the extension starts the refresher on the first credits request (`ensureStarted`: it waits for the first fetch only when there is no stored table, otherwise it serves the stored one and refreshes in the background). With no table at all, [`refuseWithoutPrices`](../src/core/pricing/costModelFor.ts) refuses before the model is called, with a Refresh Model Prices button, because Q0T4 never guesses a cost. A stale table (older than `q0t4.priceMaxAgeHours`) adds a notice after the footer; an unpriced model is costed at the highest rate and gets a warning, and Auto gets its own wording. The footer, status bar, `/status`, `/subjects` and Show Usage all use the active unit (a token-only week reads as 0 credits), and `/status` shows the price source, date and override count. Every ledger entry keeps its rates, so changing prices later never reprices history.
 
-All 1282 local unit tests pass with 100% core coverage. The pull request for #53
+Billing cycle ([#54](https://github.com/RemonStuff/Q0T4/issues/54)): `BudgetCalendar` now has the monthly level next to the week. `cycleWindow(instant)` returns the `[start, end)` days of the cycle for `q0t4.cycleStartDay` (1 to 31, default 1), clamped to the last day of short months (31 gives 30 April and 28 or 29 February). `cycleDays`, `daysRemainingInCycle`, `daysOfWeekInsideCycle` and `splitWeekAtCycleBoundary` give the pool formula (#55) its day counts. All of it is calendar-day arithmetic on day keys in the clock's IANA zone, never milliseconds. Nothing uses the cycle yet.
+
+All 1301 local unit tests pass with 100% core coverage. The pull request for #54
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).
