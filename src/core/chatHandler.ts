@@ -9,7 +9,7 @@ import type {
   ResolvedReference,
 } from "../ports/ReferenceReaderPort";
 import type { UsageSink } from "../ports/UsageSink";
-import { countInput } from "./budget/countInput";
+import { countTokens } from "./budget/countTokens";
 import { paceWarning } from "./budget/paceWarning";
 import { preCheck } from "./budget/preCheck";
 import type { PreCheckResult } from "./budget/preCheck";
@@ -33,6 +33,8 @@ import { formatSubjectList } from "./format/subjectList";
 import type { SubjectListItem } from "./format/subjectList";
 import { formatPaceWarning, formatWarning } from "./format/warnings";
 import { buildMessages } from "./messages/buildMessages";
+import { contextLimit, trimToWindow } from "./messages/trimToWindow";
+import { formatContextTooLong } from "./errors/formatContextTooLong";
 import { findFallbackModel, resolveModel } from "./models/resolveModel";
 import type { ModelResolution } from "./models/resolveModel";
 import type {
@@ -253,7 +255,8 @@ async function handle(
   }
   if (signal.isCancellationRequested) return result("cancelled");
   const messages = buildMessages(request.prompt, request.history, references, request.historyScope);
-  const first = await sendOnce(deps, run, model, messages);
+  const keepLast = buildMessages(request.prompt, [], references).length;
+  const first = await sendOnce(deps, run, model, messages, keepLast);
   if (first !== NOT_FOUND) return first;
   // The model vanished: try one other Copilot model, then give up.
   let fallback: ModelPort | undefined;
@@ -263,7 +266,8 @@ async function handle(
     return reportFailure(deps, model, false, error);
   }
   if (signal.isCancellationRequested) return result("cancelled");
-  const second = fallback === undefined ? NOT_FOUND : await sendOnce(deps, run, fallback, messages);
+  const second =
+    fallback === undefined ? NOT_FOUND : await sendOnce(deps, run, fallback, messages, keepLast);
   if (second !== NOT_FOUND) return second;
   output.markdown(formatNoModel());
   return result("noModel", run.model);
@@ -279,21 +283,51 @@ async function sendOnce(
   deps: Deps,
   run: Run,
   model: ModelPort,
-  messages: readonly ChatMessage[],
+  fullMessages: readonly ChatMessage[],
+  keepLast: number,
 ): Promise<ChatHandlerResult | typeof NOT_FOUND> {
   const { output, signal } = deps;
   run.model = model;
   run.inputTokens = 0;
   delete run.guard;
   delete run.outcome;
+  // With a budget context the input is counted anyway, so the same per-message counts also
+  // drop the oldest history pairs that do not fit this model's window. Without one nothing
+  // is counted.
+  let messages = fullMessages;
+  let counted = 0;
   const budget = deps.budget;
+  if (budget !== undefined) {
+    let trimmed: Awaited<ReturnType<typeof trimToWindow>>;
+    try {
+      trimmed = await trimToWindow({
+        messages: fullMessages,
+        keepLast,
+        limit: contextLimit(model.maxInputTokens),
+        count: (message) => countTokens(model, [message], signal, "input"),
+      });
+    } catch (error) {
+      return reportFailure(deps, undefined, false, error);
+    }
+    if (!trimmed.fits) {
+      output.markdown(formatContextTooLong());
+      return { metadata: { outcome: "refused", stopped: "precheck" } };
+    }
+    if (trimmed.dropped > 0) {
+      output.progress(
+        `${trimmed.dropped} earlier messages were left out to fit the model's context window.`,
+      );
+    }
+    messages = trimmed.messages;
+    counted = trimmed.tokens;
+  }
   let cancellation: ReturnType<typeof createCancellation> | undefined;
   let guard: StreamGuard | undefined;
   if (budget !== undefined) {
     let decision: PreCheckResult;
     let inputCost: Cost;
     try {
-      run.inputTokens = await countInput(model, messages, signal);
+      run.inputTokens = counted;
       const { cost } = budget.costModel.cost(model, { input: run.inputTokens, output: 0 });
       inputCost = cost;
       decision = preCheck({
