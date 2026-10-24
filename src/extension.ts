@@ -17,9 +17,11 @@ import { vscodeConfig } from "./adapters/vscodeConfig";
 import { workspaceRepo } from "./adapters/workspaceRepo";
 import { vscodeModelSelector } from "./adapters/vscodeModelSelector";
 import { chatHandler } from "./core/chatHandler";
-import { TokenCostModel } from "./core/cost/tokenCostModel";
+import { limitCost } from "./core/cost/limitCost";
 import { formatLedgerError } from "./core/errors/formatLedgerError";
 import { Ledger } from "./core/ledger/ledger";
+import { costModelFor, refuseWithoutPrices } from "./core/pricing/costModelFor";
+import type { PriceInfo } from "./core/format/statusTable";
 import { PriceRefresher } from "./core/pricing/priceRefresher";
 import { COMMAND_IDS, createCommands } from "./core/commands";
 import type { Commands } from "./core/commands";
@@ -177,7 +179,7 @@ export function createRequestHandler({
           workspace: currentWorkspace,
           statusBar,
           limitOverride: () => limitOverride,
-          ...(prices === undefined ? {} : { prices }),
+          ...(prices === undefined ? {} : { prices, priceInfo: () => prices.info() }),
           ...(models === undefined ? {} : { models }),
           ...(log === undefined ? {} : { log }),
         })
@@ -197,8 +199,8 @@ export function createRequestHandler({
           signal: token,
           referenceReader,
           subjects: {
-            unit: "tokens",
-            defaultLimit: { tokens: limitOverride ?? settings.defaultLimit },
+            unit: settings.budgetUnit,
+            defaultLimit: limitCost(settings.budgetUnit, limitOverride ?? settings.defaultLimit),
             rows: async () =>
               subjectItems({
                 config: settings,
@@ -227,10 +229,13 @@ export function createRequestHandler({
           signal: token,
           referenceReader,
           status: {
-            unit: "tokens",
+            unit: settings.budgetUnit,
             resetLabelLong: formatResetLong(reset),
             warnAtPercent: settings.warnAtPercent,
             rows: statusRows,
+            ...(settings.budgetUnit === "credits" && prices?.info() !== undefined
+              ? { prices: prices.info() as PriceInfo }
+              : {}),
           },
         },
       );
@@ -251,6 +256,10 @@ export function createRequestHandler({
     }
     const subject = route.subject;
     stream.progress(route.note);
+    // Credits need prices; the first run waits for the first fetch (docs/PLAN.md §9.1).
+    if (settings.budgetUnit === "credits") await prices?.ensureStarted();
+    const costSetup = costModelFor(settings, prices);
+    if (costSetup.kind === "noPrices") return refuseWithoutPrices(chatStreamOutput(stream));
     const limit = limitOverride ?? weeklyLimitFor(settings, subject);
 
     let used: Cost;
@@ -287,10 +296,11 @@ export function createRequestHandler({
           referenceReader,
           budget: {
             subject,
-            costModel: new TokenCostModel(),
+            costModel: costSetup.costModel,
             used,
             usedToday,
-            budget: { tokens: limit },
+            budget: limitCost(settings.budgetUnit, limit),
+            notices: costSetup.notices,
             resetLabel: formatResetShort(reset),
             resetLabelLong: formatResetLong(reset),
           },

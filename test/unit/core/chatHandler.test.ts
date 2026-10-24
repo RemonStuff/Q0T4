@@ -567,6 +567,26 @@ describe("chatHandler /status", () => {
     expect(recorded).toEqual([]);
   });
 
+  it("shows the price table when the status has one", async () => {
+    const { request, deps, output } = fixture();
+    await chatHandler(
+      { ...request, command: "status" },
+      {
+        ...deps,
+        status: {
+          ...status(async () => [statusRow]),
+          prices: {
+            source: "github-docs-article",
+            fetchedAt: "2026-10-20T06:00:00.000Z",
+            overrides: 0,
+            stale: false,
+          },
+        },
+      },
+    );
+    expect(output.text).toContain("Prices: GitHub docs article, fetched 2026-10-20, no overrides.");
+  });
+
   it("returns metadata without a subject, so the thread subject does not change", async () => {
     const { request, deps } = fixture();
     const result = await chatHandler(

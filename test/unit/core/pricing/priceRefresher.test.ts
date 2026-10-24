@@ -291,6 +291,57 @@ describe("PriceRefresher", () => {
     t.refresher.dispose();
   });
 
+  describe("ensureStarted", () => {
+    it("waits for the first fetch when there is no stored table", async () => {
+      const t = setup([ok(tableAt(NOW))]);
+      await t.refresher.ensureStarted();
+      expect(t.refresher.currentTable()?.fetchedAt).toBe(NOW);
+      expect(t.timers.active).toHaveLength(1);
+    });
+
+    it("serves the stored table at once and refreshes in the background", async () => {
+      const stored = tableAt("2026-10-22T09:00:00.000Z", 2, '"v1"');
+      const t = setup([], { stored });
+      await t.ready;
+      let release: (result: PriceFetchResult) => void = () => undefined;
+      t.source.fetch = () => new Promise<PriceFetchResult>((resolve) => (release = resolve));
+      await t.refresher.ensureStarted();
+      expect(t.refresher.currentTable()?.models[0]?.tiers[0]?.input).toBe(2);
+      release(ok(tableAt(NOW, 3, '"v2"')));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(t.refresher.currentTable()?.models[0]?.tiers[0]?.input).toBe(3);
+    });
+
+    it("starts only once however often it is called", async () => {
+      const t = setup([ok(tableAt(NOW))]);
+      await Promise.all([t.refresher.ensureStarted(), t.refresher.ensureStarted()]);
+      await t.refresher.ensureStarted();
+      expect(t.source.calls).toHaveLength(1);
+      expect(t.timers.scheduled).toHaveLength(1);
+    });
+  });
+
+  describe("info", () => {
+    it("describes the table in use", async () => {
+      const t = setup([ok(tableAt(NOW))], {
+        settings: { modelPrices: { A: { input: 1, output: 1 } } },
+      });
+      await t.refresher.start();
+      expect(t.refresher.info()).toEqual({
+        source: "github-docs-yaml",
+        fetchedAt: NOW,
+        overrides: 1,
+        stale: false,
+      });
+      t.clock.advance(49 * HOUR);
+      expect(t.refresher.info()?.stale).toBe(true);
+    });
+
+    it("is undefined without a table", () => {
+      expect(setup([]).refresher.info()).toBeUndefined();
+    });
+  });
+
   describe("manual priceSource", () => {
     it("never calls the source and builds the table from overrides only", async () => {
       const t = setup([], {
