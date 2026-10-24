@@ -4,3 +4,4 @@ coverage/
 .vscode-test/
 docs/
 package-lock.json
+test/fixtures/pricing/
