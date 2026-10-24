@@ -16,6 +16,7 @@ import type { PreCheckResult } from "./budget/preCheck";
 import { recordingPolicy } from "./budget/recordingPolicy";
 import type { RecordingOutcome } from "./budget/recordingPolicy";
 import { StreamGuard } from "./budget/streamGuard";
+import { COMMAND_IDS } from "./commands";
 import { createCancellation } from "./cancellation/createCancellation";
 import { costAmount } from "./cost/costAmount";
 import type { CostModel } from "./cost/costModel";
@@ -70,8 +71,8 @@ export interface Deps {
   readonly subjects?: SubjectsContext;
 }
 
-/** The command the "Edit Subjects" button runs; it is registered in #37. */
-export const EDIT_SUBJECTS_COMMAND = "q0t4.editSubjects";
+/** The command the "Edit Subjects" button runs; registered in `extension.ts` (#37). */
+export const EDIT_SUBJECTS_COMMAND = COMMAND_IDS.editSubjects;
 
 export interface SubjectsContext {
   readonly unit: BudgetUnit;

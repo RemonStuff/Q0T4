@@ -16,6 +16,8 @@ import { chatHandler } from "./core/chatHandler";
 import { TokenCostModel } from "./core/cost/tokenCostModel";
 import { formatLedgerError } from "./core/errors/formatLedgerError";
 import { Ledger } from "./core/ledger/ledger";
+import { COMMAND_IDS, createCommands } from "./core/commands";
+import type { Commands } from "./core/commands";
 import { StatusBarController } from "./core/statusBar";
 import type { TimerPort } from "./core/statusBar";
 import { buildStatusRows } from "./core/statusRows";
@@ -58,6 +60,8 @@ export interface Q0T4TestHooks {
   readonly sessionId: string;
   /** Resolves when the activation housekeeping (legacy key, pruning) has finished. */
   readonly ready: Promise<void>;
+  /** Answers the modal confirmation of `q0t4.resetWeek`; `undefined` restores the real dialog. */
+  setConfirm(answer: ((message: string) => Promise<boolean>) | undefined): void;
   /** The status bar item: what it shows now (VS Code can't read it back), and a forced refresh. */
   readonly statusBar: { state(): StatusBarState | undefined; refresh(): Promise<void> };
   /** Overrides the limit of the default subject, in tokens; `undefined` restores it. */
@@ -78,8 +82,11 @@ export interface RequestHandlerOptions {
   readonly config: ConfigPort;
   readonly workspace: WorkspacePort;
   readonly clock?: ClockPort;
-  /** The status bar item. Without `ui` and `storage` there is none. */
-  readonly ui?: Pick<UiPort, "setStatusBar">;
+  /** The status bar item and the palette commands. Without `ui` and `storage` there are none. */
+  readonly ui?: Pick<
+    UiPort,
+    "setStatusBar" | "confirm" | "openSettings" | "showInfo" | "showDocument"
+  >;
   readonly storage?: StoragePort;
   readonly timers?: TimerPort;
 }
@@ -131,6 +138,20 @@ export function createRequestHandler({
           workspace: currentWorkspace,
           storage,
           timers,
+          limitOverride: () => limitOverride,
+        })
+      : undefined;
+
+  const commands: Commands | undefined =
+    ui !== undefined && statusBar !== undefined
+      ? createCommands({
+          ui,
+          ledger,
+          calendar,
+          clock,
+          config,
+          workspace: currentWorkspace,
+          statusBar,
           limitOverride: () => limitOverride,
         })
       : undefined;
@@ -269,6 +290,7 @@ export function createRequestHandler({
     requests,
     ledger,
     statusBar,
+    commands,
     setLimit(limit: number | undefined) {
       limitOverride = limit;
     },
@@ -304,20 +326,31 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
   const config = vscodeConfig((warnings) =>
     vscode.window.showWarningMessage(`Q0T4 settings: ${warnings.join(" ")}`),
   );
-  const ui = vscodeUi();
-  const { handleRequest, requests, ledger, setLimit, setWorkspace, statusBar } =
+  const ui = vscodeUi({ statusBarCommand: COMMAND_IDS.showUsage });
+  // Integration tests answer the modal confirmation through `setConfirm`.
+  let confirmOverride: ((message: string) => Promise<boolean>) | undefined;
+  const uiPort: UiPort = {
+    ...ui,
+    confirm: (message) => (confirmOverride ?? ui.confirm)(message),
+  };
+  const { handleRequest, requests, ledger, setLimit, setWorkspace, statusBar, commands } =
     createRequestHandler({
       ledgerPort: fileLedger(ledgerRoot, sessionId),
       config,
       workspace: workspaceRepo(),
-      ui,
+      ui: uiPort,
       storage,
     });
-  const bar = statusBar as StatusBarController; // `ui` and `storage` are given, so it exists
+  // `ui` and `storage` are given, so both exist.
+  const bar = statusBar as StatusBarController;
+  const palette = commands as Commands;
   const ready = housekeeping(ledger, storage).then(() => bar.start());
   context.subscriptions.push(
     ui,
     bar,
+    vscode.commands.registerCommand(COMMAND_IDS.showUsage, () => palette.showUsage()),
+    vscode.commands.registerCommand(COMMAND_IDS.resetWeek, () => palette.resetWeek()),
+    vscode.commands.registerCommand(COMMAND_IDS.editSubjects, () => palette.editSubjects()),
     vscode.window.onDidChangeActiveTextEditor(() => void bar.refresh()),
     vscode.workspace.onDidChangeWorkspaceFolders(() => void bar.refresh()),
   );
@@ -338,6 +371,9 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
       setLimit,
       setWorkspace,
       statusBar: { state: () => ui.lastStatusBar(), refresh: () => bar.refresh() },
+      setConfirm(answer) {
+        confirmOverride = answer;
+      },
     },
   };
 }

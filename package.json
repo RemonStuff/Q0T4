@@ -120,7 +120,24 @@
           "scope": "application"
         }
       }
-    }
+    },
+    "commands": [
+      {
+        "command": "q0t4.showUsage",
+        "title": "Show Usage",
+        "category": "Q0T4"
+      },
+      {
+        "command": "q0t4.resetWeek",
+        "title": "Reset This Week",
+        "category": "Q0T4"
+      },
+      {
+        "command": "q0t4.editSubjects",
+        "title": "Edit Subjects",
+        "category": "Q0T4"
+      }
+    ]
   },
   "scripts": {
     "build": "node esbuild.mjs",

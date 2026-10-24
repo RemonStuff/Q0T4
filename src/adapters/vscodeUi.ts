@@ -41,6 +41,13 @@ export function vscodeUi({ statusBarCommand }: VscodeUiOptions = {}): VscodeUi {
     showInfo(text) {
       void vscode.window.showInformationMessage(text);
     },
+    async showDocument(markdown) {
+      const document = await vscode.workspace.openTextDocument({
+        language: "markdown",
+        content: markdown,
+      });
+      await vscode.window.showTextDocument(document, { preview: true });
+    },
     lastStatusBar: () => last,
     dispose: () => item.dispose(),
   };

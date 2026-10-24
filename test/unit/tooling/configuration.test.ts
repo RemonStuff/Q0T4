@@ -1,3 +1,4 @@
+import { COMMAND_IDS } from "../../../src/core/commands";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -16,7 +17,10 @@ interface Property {
 }
 
 const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
-  contributes: { configuration: { title: string; properties: Record<string, Property> } };
+  contributes: {
+    configuration: { title: string; properties: Record<string, Property> };
+    commands: { command: string; title: string; category: string }[];
+  };
 };
 const properties = manifest.contributes.configuration.properties;
 
@@ -75,5 +79,15 @@ describe("package.json configuration", () => {
       expect(properties[`q0t4.${key}`]).toMatchObject({ type: "number", minimum: 1, maximum: 100 });
     }
     expect(properties["q0t4.defaultLimit"]).toMatchObject({ type: "number", minimum: 0 });
+  });
+});
+
+describe("palette commands in package.json", () => {
+  it("declares the three commands with the Q0T4 category", () => {
+    expect(manifest.contributes.commands).toEqual([
+      { command: COMMAND_IDS.showUsage, title: "Show Usage", category: "Q0T4" },
+      { command: COMMAND_IDS.resetWeek, title: "Reset This Week", category: "Q0T4" },
+      { command: COMMAND_IDS.editSubjects, title: "Edit Subjects", category: "Q0T4" },
+    ]);
   });
 });

@@ -307,4 +307,19 @@ describe("installed .vsix", () => {
       source.dispose();
     }
   });
+
+  it("the installed extension registers the three palette commands", async () => {
+    await installed().activate();
+    const registered = await vscode.commands.getCommands(true);
+    for (const id of ["q0t4.showUsage", "q0t4.resetWeek", "q0t4.editSubjects"]) {
+      assert.ok(registered.includes(id), `${id} is registered`);
+    }
+    const manifest = installed().packageJSON as {
+      contributes: { commands: { category: string }[] };
+    };
+    assert.deepEqual(
+      manifest.contributes.commands.map((c) => c.category),
+      ["Q0T4", "Q0T4", "Q0T4"],
+    );
+  });
 });
