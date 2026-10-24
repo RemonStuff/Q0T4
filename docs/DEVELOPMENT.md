@@ -222,7 +222,9 @@ Failure paths outside the model ([#40](https://github.com/RemonStuff/Q0T4/issues
 
 Release packaging ([#41](https://github.com/RemonStuff/Q0T4/issues/41)): the README is now the user's guide; this file holds the build notes. [`release.yml`](../.github/workflows/release.yml) runs on a `v*` tag: the full CI (`ci.yml` is also callable), then `vsce package` and a GitHub Release with the `.vsix`; a tag with a suffix such as `v0.1.0-rc.1` is a pre-release, and running it by hand is a dry run that only uploads the `.vsix` as an artifact. v0.1 is distributed through GitHub Releases only; nothing is published to a marketplace. A unit test ([`release.test.ts`](../test/unit/tooling/release.test.ts)) checks the package metadata, that the README documents every setting and command, the changelog and the workflow.
 
-All 1031 local unit tests pass with 100% core coverage. The pull request for #41
+Credit costs ([#48](https://github.com/RemonStuff/Q0T4/issues/48)): [`CreditCostModel`](../src/core/cost/creditCostModel.ts) turns tokens into credits from a `PriceTable`: `(input × inputRate + output × outputRate) / 1e6 × 100`. The tier comes from the request's input size against the model's threshold; the input rate is the higher of `input` and `cacheWrite`; an override replaces a model's rates; a model nobody priced costs the highest input and output rates in the table (and the overrides) and is flagged `unknownPrice` so the user can be warned. Each result carries a `RateSnapshot` (rates, tier, table date and source), so a recorded entry is never repriced. Credits are kept unrounded. [`matchModel`](../src/core/pricing/matchModel.ts) matches by display name only until #52. Nothing uses the model yet: credits mode is wired in #53.
+
+All 1052 local unit tests pass with 100% core coverage. The pull request for #48
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).
