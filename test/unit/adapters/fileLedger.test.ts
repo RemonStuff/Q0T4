@@ -169,4 +169,14 @@ describe("fileLedger", () => {
     await ledger.removeMonth("2026-10");
     expect((await ledger.read(all)).entries).toEqual([]);
   });
+
+  it("skips and counts a ledger file that can't be read, and still reads the others", async () => {
+    const ledger = fileLedger(root, "window-a");
+    await ledger.append(usage("a", "2026-10-14", 5));
+    // A directory named like a ledger file: reading it fails with EISDIR, whoever the user is.
+    await mkdir(join(root, "ledger", "2026-10", "broken.jsonl"));
+    const { entries, corrupt } = await ledger.read(all);
+    expect(entries.map((entry) => entry.id)).toEqual(["a"]);
+    expect(corrupt).toBe(1);
+  });
 });

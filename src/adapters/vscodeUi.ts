@@ -41,6 +41,9 @@ export function vscodeUi({ statusBarCommand }: VscodeUiOptions = {}): VscodeUi {
     showInfo(text) {
       void vscode.window.showInformationMessage(text);
     },
+    showWarning(text) {
+      void vscode.window.showWarningMessage(text);
+    },
     async showDocument(markdown) {
       const document = await vscode.workspace.openTextDocument({
         language: "markdown",

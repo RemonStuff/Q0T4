@@ -11,6 +11,8 @@ export interface UiPort {
   confirm(message: string): Promise<boolean>;
   openSettings(query: string): Promise<void>;
   showInfo(text: string): void;
+  /** A warning notification; never blocks and never throws. */
+  showWarning(text: string): void;
   /** Opens markdown text in a new editor tab. */
   showDocument(markdown: string): Promise<void>;
 }

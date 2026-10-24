@@ -262,7 +262,9 @@ The three palette commands ([#37](https://github.com/RemonStuff/Q0T4/issues/37))
 
 Context-window trimming ([#39](https://github.com/RemonStuff/Q0T4/issues/39)): with a budget, the input is counted message by message ([`trimToWindow`](src/core/messages/trimToWindow.ts)). When it exceeds 90% of the model's `maxInputTokens`, the oldest history pairs are dropped, whole pairs only, until it fits; the references and the prompt are never dropped. A progress note says how many earlier messages were left out, and the pre-check and the ledger use the count after trimming. If the references and the prompt alone do not fit, Q0T4 says so, sends nothing and charges nothing. The window is checked per model, so a fallback model (#38) is trimmed to its own window. Without a budget context nothing is counted or trimmed.
 
-All 996 local unit tests pass with 100% core coverage. The pull request for #39
+Failure paths outside the model ([#40](https://github.com/RemonStuff/Q0T4/issues/40)): problems with storage and settings never break a chat. Core's [`Diagnostics`](src/core/diagnostics/diagnostics.ts) logs every occurrence through a `LogPort` (the **Q0T4** output channel, [`outputChannelLog`](src/adapters/outputChannelLog.ts)) and tells the user once per problem per session. A usage write that fails (disk full, a locked file) keeps the reply and warns once that the weekly total may be too low. A ledger line or file that can't be read is skipped, counted and warned once. A stored price table that can't be read is treated as missing and warned once ([`loadStoredPrices`](src/core/pricing/loadStoredPrices.ts)). Invalid settings fall back to their defaults and are reported once for the same set of problems.
+
+All 1015 local unit tests pass with 100% core coverage. The pull request for #40
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).
