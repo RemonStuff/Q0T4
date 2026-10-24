@@ -236,7 +236,9 @@ Credits mode ([#53](https://github.com/RemonStuff/Q0T4/issues/53)): with `q0t4.b
 
 Billing cycle ([#54](https://github.com/RemonStuff/Q0T4/issues/54)): `BudgetCalendar` now has the monthly level next to the week. `cycleWindow(instant)` returns the `[start, end)` days of the cycle for `q0t4.cycleStartDay` (1 to 31, default 1), clamped to the last day of short months (31 gives 30 April and 28 or 29 February). `cycleDays`, `daysRemainingInCycle`, `daysOfWeekInsideCycle` and `splitWeekAtCycleBoundary` give the pool formula (#55) its day counts. All of it is calendar-day arithmetic on day keys in the clock's IANA zone, never milliseconds. Nothing uses the cycle yet.
 
-All 1301 local unit tests pass with 100% core coverage. The pull request for #54
+Rolling weekly budget ([#55](https://github.com/RemonStuff/Q0T4/issues/55)): with a pool, a subject's weekly budget is what is left of its monthly share spread over the days left in the cycle: `(share - cycleUsage) x daysOfWeekInsideCycle / daysRemainingInCycle(weekStart)`. A week that crosses a cycle end adds the new cycle's part (`share x days / cycleDays`); nothing carries over. It is computed once per week from usage before the week starts and stored as a `budget` ledger entry (the earliest entry wins), so it does not change with each request. Not wired into the chat yet (#62).
+
+All 1318 local unit tests pass with 100% core coverage. The pull request for #55
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).

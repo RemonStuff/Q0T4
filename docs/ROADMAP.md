@@ -23,8 +23,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 ([#18](issues/18-history-footer-strip-and-metadata.md)). Usage is an append-only ledger on
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands never call a model.
-**Current work:** [#54 the billing cycle](issues/54-budget-calendar-cycle.md): `BudgetCalendar` knows the monthly cycle (`q0t4.cycleStartDay`, clamped in short months) and how a week splits across a cycle boundary. 1301 local tests pass with 100% core coverage. Nothing uses it until #55.
-**Next:** [#55 rolling weekly budget](issues/55-rolling-weekly-budget.md).
+**Current work:** [#55 the rolling weekly budget](issues/55-rolling-weekly-budget.md): `WeeklyBudget` has one interface for both modes. `FixedWeeklyBudget` returns the fixed limit; `PoolWeeklyBudget` derives the week from the monthly share and stores it as a `budget` ledger entry. Pure core, 100% coverage. Nothing uses it until #62.
+**Next:** [#56 pool, share and reserve settings](issues/56-pool-settings.md).
 
 | Iteration | Done | State |
 |---|---|---|
@@ -36,9 +36,9 @@ Monday, shared by all windows. Slash commands never call a model.
 | 5 Visibility | 4 / 4 | ✅ done |
 | 6 Hardening and release (v0.1) | 4 / 4 | ✅ done |
 | 7 Live pricing | 6 / 6 | ✅ done |
-| 8 Pool, reserve and sync | 1 / 8 | in progress |
+| 8 Pool, reserve and sync | 2 / 8 | in progress |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **48 / 59** | 11 to build |
+| **Total** | **49 / 59** | 10 to build |
 
 **Done:**
 
@@ -91,6 +91,7 @@ Monday, shared by all windows. Slash commands never call a model.
 | #52 Map VS Code models to price-table entries | [#132](https://github.com/RemonStuff/Q0T4/pull/132) |
 | #53 Wire credits mode end to end | [#133](https://github.com/RemonStuff/Q0T4/pull/133) |
 | #54 BudgetCalendar billing cycle level | [#134](https://github.com/RemonStuff/Q0T4/pull/134) |
+| #55 Core rolling weekly budget from a monthly share | [#135](https://github.com/RemonStuff/Q0T4/pull/135) |
 | #33B Wire repo subjects end to end | [#119](https://github.com/RemonStuff/Q0T4/pull/119) |
 | #33A Wire subject resolution into the participant | [#118](https://github.com/RemonStuff/Q0T4/pull/118) |
 | #26B Settings schema and the VS Code config adapter | [#110](https://github.com/RemonStuff/Q0T4/pull/110) |
@@ -240,7 +241,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 
 ### Iteration 8: Pool, reserve and sync
 - [x] 54 `BudgetCalendar`: billing cycle level (needs 20, 21) · PR #134
-- [ ] 55 Rolling weekly budget from a monthly share (needs 22, 54)
+- [x] 55 Rolling weekly budget from a monthly share (needs 22, 54) · PR #135
 - [ ] 56 Pool, share and reserve settings (needs 26, 55)
 - [ ] 57 Reserve borrowing: auto, ask, off (needs 14, 15, 56)
 - [ ] 58 Monthly pace warning (needs 24, 55) ∥

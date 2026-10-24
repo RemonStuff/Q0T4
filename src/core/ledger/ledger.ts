@@ -4,9 +4,10 @@ import type { UsageSink } from "../../ports/UsageSink";
 import type { BudgetCalendar } from "../time/budgetCalendar";
 import { addDays } from "../time/budgetCalendar";
 import { isLedgerEntry } from "../types";
-import type { Cost, DayKey, LedgerEntry, SubjectName } from "../types";
+import type { BudgetUnit, Cost, DayKey, LedgerEntry, SubjectName } from "../types";
 
 type UsageEntry = Extract<LedgerEntry, { kind: "usage" }>;
+type BudgetEntry = Extract<LedgerEntry, { kind: "budget" }>;
 
 // The widest range the port accepts: every stored month.
 const EVERYTHING = { from: "0000-01-01", to: "9999-12-31" } as const;
@@ -122,6 +123,46 @@ export class Ledger implements UsageSink {
         e.kind === "usage" && (lastReset === undefined || e.at > lastReset.at),
     );
     return { used: sum(counted), requests: counted.length };
+  }
+
+  /**
+   * The subject's budget snapshot for the week starting `week`, in a unit: the earliest one
+   * if several windows stored one (docs/PLAN.md §9.2).
+   */
+  async budgetSnapshot(
+    subject: SubjectName,
+    week: DayKey,
+    unit: BudgetUnit,
+  ): Promise<BudgetEntry | undefined> {
+    const { entries } = await this.read({ from: week, to: addDays(week, 7) });
+    return entries
+      .filter(
+        (e): e is BudgetEntry =>
+          e.kind === "budget" && e.week === week && e.unit === unit && same(e.subject, subject),
+      )
+      .sort((a, b) => a.at.localeCompare(b.at))[0];
+  }
+
+  /** Stores the budget of a subject for a week. */
+  async snapshotBudget(
+    subject: SubjectName,
+    week: DayKey,
+    unit: BudgetUnit,
+    amount: number,
+  ): Promise<void> {
+    const now = this.clock.now();
+    await this.record({
+      v: 1,
+      id: this.newId(),
+      kind: "budget",
+      at: now.toISOString(),
+      day: this.calendar.dayKey(now),
+      subject,
+      source: "q0t4",
+      week,
+      unit,
+      amount,
+    });
   }
 
   /** Usage of a subject on today's local day. */
