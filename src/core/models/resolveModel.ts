@@ -15,3 +15,17 @@ export async function resolveModel(
   const model = models.find((candidate) => candidate.family === requestModel.family) ?? models[0];
   return model ? { kind: "ok", model } : { kind: "noModel" };
 }
+
+/**
+ * The model to retry with after `failed` was not found: another Copilot model,
+ * preferably of the same family. Never the one that just failed.
+ */
+export async function findFallbackModel(
+  failed: ModelPort,
+  selector: ModelSelectorPort,
+): Promise<ModelPort | undefined> {
+  const models = (await selector.select({ vendor: "copilot" })).filter(
+    (candidate) => candidate.id !== failed.id,
+  );
+  return models.find((candidate) => candidate.family === failed.family) ?? models[0];
+}

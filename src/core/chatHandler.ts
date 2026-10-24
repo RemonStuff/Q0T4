@@ -20,7 +20,7 @@ import { COMMAND_IDS } from "./commands";
 import { createCancellation } from "./cancellation/createCancellation";
 import { costAmount } from "./cost/costAmount";
 import type { CostModel } from "./cost/costModel";
-import { formatRequestError } from "./errors/formatRequestError";
+import { formatModelError, modelErrorKind } from "./errors/modelErrors";
 import { formatStatusError } from "./errors/formatStatusError";
 import { formatSubjectsError } from "./errors/formatSubjectsError";
 import { formatFooter } from "./format/footer";
@@ -33,7 +33,7 @@ import { formatSubjectList } from "./format/subjectList";
 import type { SubjectListItem } from "./format/subjectList";
 import { formatPaceWarning, formatWarning } from "./format/warnings";
 import { buildMessages } from "./messages/buildMessages";
-import { resolveModel } from "./models/resolveModel";
+import { findFallbackModel, resolveModel } from "./models/resolveModel";
 import type { ModelResolution } from "./models/resolveModel";
 import type {
   BudgetUnit,
@@ -42,6 +42,7 @@ import type {
   ResultMetadata,
   StoppedReason,
   SubjectName,
+  ChatMessage,
 } from "./types";
 
 export interface ChatHandlerRequest {
@@ -218,8 +219,8 @@ async function handle(
   let resolution: ModelResolution;
   try {
     resolution = await resolveModel(request.model, selector, request.availability);
-  } catch {
-    return reportFailure(deps);
+  } catch (error) {
+    return reportFailure(deps, undefined, false, error);
   }
 
   if (signal.isCancellationRequested) return result("cancelled");
@@ -252,6 +253,39 @@ async function handle(
   }
   if (signal.isCancellationRequested) return result("cancelled");
   const messages = buildMessages(request.prompt, request.history, references, request.historyScope);
+  const first = await sendOnce(deps, run, model, messages);
+  if (first !== NOT_FOUND) return first;
+  // The model vanished: try one other Copilot model, then give up.
+  let fallback: ModelPort | undefined;
+  try {
+    fallback = await findFallbackModel(model, selector);
+  } catch (error) {
+    return reportFailure(deps, model, false, error);
+  }
+  if (signal.isCancellationRequested) return result("cancelled");
+  const second = fallback === undefined ? NOT_FOUND : await sendOnce(deps, run, fallback, messages);
+  if (second !== NOT_FOUND) return second;
+  output.markdown(formatNoModel());
+  return result("noModel", run.model);
+}
+
+const NOT_FOUND = Symbol("notFound");
+
+/**
+ * One attempt with one model: count, pre-check, send, stream, record. Returns
+ * `NOT_FOUND` when the model rejected the request as gone, so the caller can try another.
+ */
+async function sendOnce(
+  deps: Deps,
+  run: Run,
+  model: ModelPort,
+  messages: readonly ChatMessage[],
+): Promise<ChatHandlerResult | typeof NOT_FOUND> {
+  const { output, signal } = deps;
+  run.model = model;
+  run.inputTokens = 0;
+  delete run.guard;
+  delete run.outcome;
   const budget = deps.budget;
   let cancellation: ReturnType<typeof createCancellation> | undefined;
   let guard: StreamGuard | undefined;
@@ -269,8 +303,8 @@ async function handle(
         budget: budget.budget,
         ...(budget.extraAllowance === undefined ? {} : { extraAllowance: budget.extraAllowance }),
       });
-    } catch {
-      return reportFailure(deps);
+    } catch (error) {
+      return reportFailure(deps, undefined, false, error);
     }
     if (signal.isCancellationRequested) return result("cancelled");
     if (!decision.allowed) {
@@ -294,9 +328,9 @@ async function handle(
         cancel: cancellation.cancel,
       });
       run.guard = guard;
-    } catch {
+    } catch (error) {
       cancellation.dispose();
-      return reportFailure(deps);
+      return reportFailure(deps, undefined, false, error);
     }
   }
   // Once `sendRequest` is called, anything that goes wrong is recorded as a failed stream.
@@ -304,10 +338,11 @@ async function handle(
     let stream: AsyncIterable<string>;
     try {
       stream = await model.sendRequest(messages, cancellation?.signal ?? signal);
-    } catch {
+    } catch (error) {
       run.outcome = "requestRejected";
       cancellation?.cancel();
-      return reportFailure(deps, model);
+      if (modelErrorKind(error) === "notFound") return NOT_FOUND;
+      return reportFailure(deps, model, false, error);
     }
     run.outcome = "failed";
 
@@ -316,7 +351,7 @@ async function handle(
       run.outcome = "cancelled";
       return result("cancelled", model);
     }
-    if (streamed.failed) return reportFailure(deps, model, streamed.hasOutput);
+    if (streamed.failed) return reportFailure(deps, model, streamed.hasOutput, streamed.error);
     if (guard?.stopped && budget !== undefined) {
       run.outcome = "budgetStopped";
       output.markdown(`${streamed.hasOutput ? "\n\n" : ""}${formatStopped(budget.subject)}`);
@@ -494,9 +529,14 @@ function result(
   return { metadata: model === undefined ? { outcome } : { outcome, model: model.name } };
 }
 
-function reportFailure(deps: Deps, model?: ModelPort, partial = false): ChatHandlerResult {
+function reportFailure(
+  deps: Deps,
+  model?: ModelPort,
+  partial = false,
+  error?: unknown,
+): ChatHandlerResult {
   if (deps.signal.isCancellationRequested) return result("cancelled", model);
-  deps.output.markdown(`${partial ? "\n\n" : ""}${formatRequestError()}`);
+  deps.output.markdown(`${partial ? "\n\n" : ""}${formatModelError(error)}`);
   return result("error", model);
 }
 
@@ -506,17 +546,18 @@ async function forwardStream(
   signal: CancellationSignal,
   guard?: StreamGuard,
   cancel?: () => void,
-): Promise<{ readonly failed: boolean; readonly hasOutput: boolean }> {
+): Promise<{ readonly failed: boolean; readonly hasOutput: boolean; readonly error?: unknown }> {
   let iterator: AsyncIterator<string, unknown>;
   try {
     iterator = stream[Symbol.asyncIterator]();
-  } catch {
+  } catch (error) {
     cancel?.();
-    return { failed: true, hasOutput: false };
+    return { failed: true, hasOutput: false, error };
   }
 
   let done = false;
   let failed = false;
+  let failure: unknown;
   let hasOutput = false;
   try {
     // Read explicitly so output failures are not caught as model failures.
@@ -524,8 +565,9 @@ async function forwardStream(
       let next: IteratorResult<string, unknown>;
       try {
         next = await iterator.next();
-      } catch {
+      } catch (error) {
         failed = true;
+        failure ??= error;
         break;
       }
       if (next.done) {
@@ -539,8 +581,9 @@ async function forwardStream(
       if (guard !== undefined) {
         try {
           if ((await guard.onChunk(next.value)) === "stop") break;
-        } catch {
+        } catch (error) {
           failed = true;
+          failure ??= error;
           break;
         }
       }
@@ -548,8 +591,9 @@ async function forwardStream(
     if (!failed && !signal.isCancellationRequested && guard !== undefined) {
       try {
         await guard.finalCount();
-      } catch {
+      } catch (error) {
         failed = true;
+        failure ??= error;
       }
     }
   } finally {
@@ -557,10 +601,11 @@ async function forwardStream(
     if (!done) {
       try {
         await iterator.return?.();
-      } catch {
+      } catch (error) {
         failed = true;
+        failure ??= error;
       }
     }
   }
-  return { failed, hasOutput };
+  return { failed, hasOutput, error: failure };
 }
