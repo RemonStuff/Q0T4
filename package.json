@@ -181,6 +181,11 @@
         "command": "q0t4.refreshPrices",
         "title": "Refresh Model Prices",
         "category": "Q0T4"
+      },
+      {
+        "command": "q0t4.logModels",
+        "title": "Log Copilot Models",
+        "category": "Q0T4"
       }
     ]
   },

@@ -11,6 +11,8 @@ export interface CostResult {
   readonly rates?: RateSnapshot;
   /** The model has no price: it was costed at the highest rates, and the user should be told. */
   readonly unknownPrice?: true;
+  /** The model is Auto, which hides the real one: the warning should say to pick a model. */
+  readonly autoModel?: true;
 }
 
 /**

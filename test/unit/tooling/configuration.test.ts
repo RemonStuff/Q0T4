@@ -89,12 +89,13 @@ describe("package.json configuration", () => {
 });
 
 describe("palette commands in package.json", () => {
-  it("declares the four commands with the Q0T4 category", () => {
+  it("declares the five commands with the Q0T4 category", () => {
     expect(manifest.contributes.commands).toEqual([
       { command: COMMAND_IDS.showUsage, title: "Show Usage", category: "Q0T4" },
       { command: COMMAND_IDS.resetWeek, title: "Reset This Week", category: "Q0T4" },
       { command: COMMAND_IDS.editSubjects, title: "Edit Subjects", category: "Q0T4" },
       { command: COMMAND_IDS.refreshPrices, title: "Refresh Model Prices", category: "Q0T4" },
+      { command: COMMAND_IDS.logModels, title: "Log Copilot Models", category: "Q0T4" },
     ]);
   });
 });

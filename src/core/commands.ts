@@ -1,5 +1,7 @@
 import type { ClockPort } from "../ports/ClockPort";
 import type { ConfigPort } from "../ports/ConfigPort";
+import type { LogPort } from "../ports/LogPort";
+import type { ModelSelectorPort } from "../ports/ModelSelectorPort";
 import type { UiPort } from "../ports/UiPort";
 import type { WorkspacePort } from "../ports/WorkspacePort";
 import { formatStatusError } from "./errors/formatStatusError";
@@ -19,6 +21,7 @@ export const COMMAND_IDS = {
   resetWeek: "q0t4.resetWeek",
   editSubjects: "q0t4.editSubjects",
   refreshPrices: "q0t4.refreshPrices",
+  logModels: "q0t4.logModels",
 } as const;
 
 /** What the commands read from and write to the ledger; `Ledger` implements it. */
@@ -39,6 +42,9 @@ export interface CommandDeps {
   readonly limitOverride?: () => number | undefined;
   /** Fetches the model prices on demand. Without it the refresh command says it isn't available. */
   readonly prices?: Pick<PriceRefresher, "refreshNow">;
+  /** For the diagnostic command that lists the Copilot models and where it writes them. */
+  readonly models?: ModelSelectorPort;
+  readonly log?: Pick<LogPort, "info" | "error">;
 }
 
 export interface Commands {
@@ -46,6 +52,7 @@ export interface Commands {
   resetWeek(): Promise<void>;
   editSubjects(): Promise<void>;
   refreshPrices(): Promise<void>;
+  logModels(): Promise<void>;
 }
 
 const READ_ERROR_ON_RESET = "Q0T4 couldn't read its usage record, so nothing was reset.";
@@ -126,6 +133,35 @@ export function createCommands(deps: CommandDeps): Commands {
 
     async editSubjects() {
       await ui.openSettings("q0t4.subjects");
+    },
+
+    /**
+     * Diagnostic: writes the name, family, id and vendor of every Copilot model to the log, so a
+     * real model's names can be checked against the price table (#52).
+     */
+    async logModels() {
+      const { models, log } = deps;
+      if (models === undefined || log === undefined) {
+        ui.showInfo("Q0T4 can't list models here.");
+        return;
+      }
+      try {
+        const found = await models.select({ vendor: "copilot" });
+        log.info(`Copilot models: ${found.length}`);
+        for (const model of found) {
+          log.info(
+            `name="${model.name}" family="${model.family}" id="${model.id}" vendor="${model.vendor}"`,
+          );
+        }
+        ui.showInfo(
+          found.length === 0
+            ? "There are no Copilot models. Check that GitHub Copilot is signed in."
+            : `Logged ${found.length} Copilot models to the Q0T4 output channel.`,
+        );
+      } catch (error) {
+        log.error("Couldn't list the Copilot models.", error);
+        ui.showInfo("Q0T4 couldn't list the Copilot models. See the Q0T4 output channel.");
+      }
     },
 
     /** Fetches the model prices now, even if they were fetched today, and says what happened. */

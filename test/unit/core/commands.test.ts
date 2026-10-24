@@ -7,7 +7,16 @@ import { Ledger } from "../../../src/core/ledger/ledger";
 import { buildStatusRows } from "../../../src/core/statusRows";
 import { BudgetCalendar } from "../../../src/core/time/budgetCalendar";
 import type { LedgerEntry } from "../../../src/core/types";
-import { FakeConfig, FakeUi, FakeWorkspace, FixedClock, InMemoryLedger } from "../../fakes";
+import {
+  FakeConfig,
+  FakeLog,
+  FakeModel,
+  FakeModelSelector,
+  FakeUi,
+  FakeWorkspace,
+  FixedClock,
+  InMemoryLedger,
+} from "../../fakes";
 
 // Wednesday 14 Oct 2026; the week started Monday 12 Oct and resets Monday 19 Oct.
 const NOW = "2026-10-14T09:00:00.000Z";
@@ -58,6 +67,7 @@ describe("command ids", () => {
       resetWeek: "q0t4.resetWeek",
       editSubjects: "q0t4.editSubjects",
       refreshPrices: "q0t4.refreshPrices",
+      logModels: "q0t4.logModels",
     });
   });
 });
@@ -319,5 +329,69 @@ describe("refreshPrices", () => {
     const t = setup();
     await t.commands.refreshPrices();
     expect(t.ui.infos).toEqual(["Q0T4 can't refresh model prices here."]);
+  });
+});
+
+describe("logModels", () => {
+  const models = [
+    new FakeModel({
+      name: "GPT-5 mini",
+      family: "gpt-5-mini",
+      id: "copilot-gpt-5-mini",
+      vendor: "copilot",
+    }),
+    new FakeModel({
+      name: "Claude Sonnet 5.5",
+      family: "claude-sonnet-5.5",
+      id: "claude-sonnet-5.5",
+      vendor: "copilot",
+    }),
+  ];
+
+  it("logs the name, family, id and vendor of every Copilot model, and says how many", async () => {
+    const log = new FakeLog();
+    const t = setup([], { models: new FakeModelSelector(models), log });
+    await t.commands.logModels();
+    expect(log.lines.map((line) => line.message)).toEqual([
+      "Copilot models: 2",
+      'name="GPT-5 mini" family="gpt-5-mini" id="copilot-gpt-5-mini" vendor="copilot"',
+      'name="Claude Sonnet 5.5" family="claude-sonnet-5.5" id="claude-sonnet-5.5" vendor="copilot"',
+    ]);
+    expect(t.ui.infos).toEqual(["Logged 2 Copilot models to the Q0T4 output channel."]);
+  });
+
+  it("only lists Copilot models", async () => {
+    const other = new FakeModel({ name: "Other", vendor: "someone-else" });
+    const log = new FakeLog();
+    const t = setup([], { models: new FakeModelSelector([...models, other]), log });
+    await t.commands.logModels();
+    expect(log.lines).toHaveLength(3);
+  });
+
+  it("says so when there are none", async () => {
+    const log = new FakeLog();
+    const t = setup([], { models: new FakeModelSelector([]), log });
+    await t.commands.logModels();
+    expect(t.ui.infos[0]).toMatch(/no Copilot models/i);
+    expect(log.lines.map((line) => line.message)).toEqual(["Copilot models: 0"]);
+  });
+
+  it("says why it failed when the lookup throws", async () => {
+    const selector = {
+      select: async () => {
+        throw new Error("not signed in");
+      },
+    };
+    const log = new FakeLog();
+    const t = setup([], { models: selector, log });
+    await t.commands.logModels();
+    expect(t.ui.infos[0]).toMatch(/couldn't list/i);
+    expect(log.lines[0]).toMatchObject({ level: "error" });
+  });
+
+  it("says it can't list models here without a model selector", async () => {
+    const t = setup();
+    await t.commands.logModels();
+    expect(t.ui.infos).toEqual(["Q0T4 can't list models here."]);
   });
 });
