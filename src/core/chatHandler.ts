@@ -351,7 +351,16 @@ async function sendOnce(
       run.outcome = "cancelled";
       return result("cancelled", model);
     }
-    if (streamed.failed) return reportFailure(deps, model, streamed.hasOutput, streamed.error);
+    if (streamed.failed) {
+      // The language model API reports a refused or missing model through the stream, so an
+      // error of these kinds before any output is a rejected request: nothing is charged.
+      const kind = modelErrorKind(streamed.error);
+      if (!streamed.hasOutput && (kind === "noPermissions" || kind === "notFound")) {
+        run.outcome = "requestRejected";
+        if (kind === "notFound") return NOT_FOUND;
+      }
+      return reportFailure(deps, model, streamed.hasOutput, streamed.error);
+    }
     if (guard?.stopped && budget !== undefined) {
       run.outcome = "budgetStopped";
       output.markdown(`${streamed.hasOutput ? "\n\n" : ""}${formatStopped(budget.subject)}`);

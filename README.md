@@ -260,7 +260,7 @@ The three palette commands ([#37](https://github.com/RemonStuff/Q0T4/issues/37))
 
 - Model errors ([#38](https://github.com/RemonStuff/Q0T4/issues/38)): the adapter ([`mapModelError`](src/adapters/errorMapping.ts)) turns a `LanguageModelError` into a core [`ModelError`](src/core/errors/modelErrors.ts) by its `code`, and core decides the rest. `NoPermissions` asks the user to accept the Copilot prompt and try again; `Blocked` says Copilot reports a quota or rate limit; `NotFound` is retried once with another Copilot model (same family first, never the one that was not found), and if that fails too, or there is none, the no-model message is shown; any other error shows the generic message with the first line of the original message (up to 200 characters). Internal errors keep the generic message only. A request that is rejected before anything streams charges nothing; an error after some output charges the input and what was streamed. The footer and metadata name the model that answered, so after a fallback that is the fallback.
 
-All 974 local unit tests pass with 100% core coverage. The pull request for #38
+All 979 local unit tests pass with 100% core coverage. The pull request for #38
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).

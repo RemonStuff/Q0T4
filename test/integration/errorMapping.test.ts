@@ -64,15 +64,17 @@ describe("errorMapping", () => {
     for (const [code, make] of Object.entries(factories)) {
       const mapped = mapModelError(make(`scripted ${code}`));
       assert.ok(mapped instanceof ModelError, code);
-      assert.equal(mapped.kind, expected[code], code);
-      assert.equal(mapped.message, `scripted ${code}`);
+      assert.equal((mapped as ModelError).kind, expected[code], code);
+      assert.equal((mapped as ModelError).message, `scripted ${code}`);
     }
   });
 
   it("maps other errors to unknown and keeps a ModelError as it is", () => {
-    assert.equal(mapModelError(new Error("boom")).kind, "unknown");
-    assert.equal(mapModelError("text").message, "text");
+    assert.equal((mapModelError(new Error("boom")) as ModelError).kind, "unknown");
+    assert.equal((mapModelError("text") as ModelError).message, "text");
     const own = new ModelError("blocked", "already mapped");
+    const cancelled = new vscode.CancellationError();
+    assert.equal(mapModelError(cancelled), cancelled);
     assert.equal(mapModelError(own), own);
   });
 

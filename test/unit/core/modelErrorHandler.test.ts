@@ -266,3 +266,63 @@ describe("the footer after an error", () => {
     expect(output.text).toContain("org/repo");
   });
 });
+
+describe("errors that arrive through the stream (as the VS Code API reports them)", () => {
+  it("NoPermissions before any output shows the consent message and records nothing", async () => {
+    const { request, deps, output, sink } = fixture({
+      failAfterChunk: { after: 0, error: new ModelError("noPermissions", "denied") },
+    });
+    const result = await chatHandler(request, deps);
+    expect(output.text).toContain(CONSENT);
+    expect(sink.entries).toEqual([]);
+    expect(result.metadata).toMatchObject({ inputTokens: 0, outputTokens: 0 });
+  });
+
+  it("NotFound before any output retries once with the fallback", async () => {
+    const fallback = copilot({ id: "second", name: "Second Model", chunks: ["ok"] });
+    const { request, deps, output, sink } = fixture(
+      { failAfterChunk: { after: 0, error: new ModelError("notFound", "gone") } },
+      [fallback],
+    );
+    const result = await chatHandler(request, deps);
+    expect(output.text).toContain("ok");
+    expect(output.text).not.toContain(GENERIC);
+    expect(result.metadata).toMatchObject({ outcome: "completed", model: "Second Model" });
+    expect(sink.entries).toHaveLength(1);
+    expect(sink.entries[0]).toMatchObject({ model: { name: "Second Model" } });
+  });
+
+  it("NotFound before any output with no fallback shows the no-model message", async () => {
+    const { request, deps, output, sink } = fixture({
+      failAfterChunk: { after: 0, error: new ModelError("notFound", "gone") },
+    });
+    await chatHandler(request, deps);
+    expect(output.text).toContain(NO_MODEL);
+    expect(sink.entries).toEqual([]);
+  });
+
+  it("NotFound after output is not retried and charges what was streamed", async () => {
+    const fallback = copilot({ id: "second", name: "Second Model" });
+    const { request, deps, output, sink } = fixture(
+      {
+        chunks: ["abcd", "never"],
+        failAfterChunk: { after: 1, error: new ModelError("notFound", "gone") },
+      },
+      [fallback],
+    );
+    await chatHandler(request, deps);
+    expect(fallback.calls.sendRequest).toHaveLength(0);
+    expect(output.text).toContain("abcd");
+    expect(output.text).toContain(`${GENERIC}\n\nDetails: gone`);
+    expect(sink.entries[0]).toMatchObject({ tokens: { input: 1, output: 1 } });
+  });
+
+  it("Blocked before any output still charges the input, like any failed stream", async () => {
+    const { request, deps, output, sink } = fixture({
+      failAfterChunk: { after: 0, error: new ModelError("blocked", "limit") },
+    });
+    await chatHandler(request, deps);
+    expect(output.text).toContain(QUOTA);
+    expect(sink.entries[0]).toMatchObject({ tokens: { input: 1, output: 0 } });
+  });
+});
