@@ -52,6 +52,13 @@ describe("priceTableFile", () => {
     expect((await store.load())?.models).toHaveLength(1);
   });
 
+  it("survives two windows saving at the same time", async () => {
+    const stores = [priceTableFile(root), priceTableFile(root)];
+    await Promise.all(Array.from({ length: 12 }, (_, n) => stores[n % 2]?.save(table(n + 1))));
+    expect(await readdir(join(root, "prices"))).toEqual(["table.json"]);
+    expect(await stores[0]?.load()).toBeDefined();
+  });
+
   it("keeps the old table when a save fails before the rename", async () => {
     const store = priceTableFile(root);
     await store.save(table(2));

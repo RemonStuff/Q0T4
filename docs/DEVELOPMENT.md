@@ -228,7 +228,7 @@ Price parsing ([#49](https://github.com/RemonStuff/Q0T4/issues/49)): two parsers
 
 Price adapters ([#50](https://github.com/RemonStuff/Q0T4/issues/50)): [`githubDocsPriceSource`](../src/adapters/githubDocsPriceSource.ts) implements `PriceSourcePort` with Node's `fetch` and a 10 s timeout. It asks the raw YAML first, conditional on the stored ETag (a 304 is `unchanged`), parses it with #49 and, if that request fails, returns a non-200 status, doesn't parse or yields no models, asks the docs article as Markdown. If both fail it returns `failed` with both reasons. [`priceTableFile`](../src/adapters/priceTableFile.ts) stores the table at `prices/table.json` through a temporary file and a rename, so a reader never sees half a file; a file that isn't a price table throws (core treats that as a missing table). The URLs are injectable and the tests run against a local HTTP server fixture, never the real network. Nothing calls the adapters yet: the refresher is #51.
 
-All 1186 local unit tests pass with 100% core coverage. The pull request for #50
+All 1187 local unit tests pass with 100% core coverage. The pull request for #50
 records exact-source hosted results when available; no automated VS Code
 tests were run on this machine. Full usage metadata remains
 [#18](https://github.com/RemonStuff/Q0T4/issues/18).

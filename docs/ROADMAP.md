@@ -23,7 +23,7 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 ([#18](issues/18-history-footer-strip-and-metadata.md)). Usage is an append-only ledger on
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands never call a model.
-**Current work:** [#50 price source and store adapters](issues/50-price-source-adapters.md) fetches GitHub's price list (YAML with an ETag, the docs article as the fallback) and stores the last good table atomically on disk. Run once against the real URLs it returned 28 models in 39 tiers, a 304 on the second call and the same 28 models from the article. 1186 local unit tests pass with 100% core coverage. Nothing uses the adapters yet (#51).
+**Current work:** [#50 price source and store adapters](issues/50-price-source-adapters.md) fetches GitHub's price list (YAML with an ETag, the docs article as the fallback) and stores the last good table atomically on disk. Run once against the real URLs it returned 28 models in 39 tiers, a 304 on the second call and the same 28 models from the article. 1187 local unit tests pass with 100% core coverage. Nothing uses the adapters yet (#51).
 **Next:** [#51 the price refresher, price settings and the refresh command](issues/51-price-refresher.md), then #52 and #53.
 
 | Iteration | Done | State |
