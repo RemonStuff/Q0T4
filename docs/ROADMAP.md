@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-23, PR #122. Counts include merged work only; #15 work is not
+2026-10-24, PR #123. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, 2, *Counting and the hard
@@ -23,8 +23,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 ([#18](issues/18-history-footer-strip-and-metadata.md)). Usage is an append-only ledger on
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands never call a model.
-**Current work:** [#37 the commands](issues/37-commands.md) finish iteration 5: **Q0T4: Show Usage** (the `/status` table in a new tab, also run by clicking the status bar), **Reset This Week** (a modal that names the week, then a reset marker per subject; nothing is deleted) and **Edit Subjects** (Settings filtered to `q0t4.subjects`, also the button under `/subjects`). 934 local unit tests pass with 100% core coverage. Iteration 5 is complete; it needs your manual look: run each command from the palette.
-**Next:** iteration 6, *Hardening and release*, starting with [#38 model error mapping](issues/38-model-error-handling.md); #39 and #40 can run in parallel.
+**Current work:** [#38 model error mapping](issues/38-model-error-handling.md) turns every `LanguageModelError` into a clear message: **NoPermissions** asks the user to accept the Copilot prompt, **Blocked** reports a quota or rate limit, **NotFound** is retried once with another Copilot model before the no-model message, and any other model error shows the generic message with the original message. Nothing is charged for a request rejected before streaming; an error mid-stream charges what was streamed. 979 local unit tests pass with 100% core coverage. Manual: in a fresh profile, deny the consent dialog and read the message.
+**Next:** [#39 context-window trimming](issues/39-context-window-trimming.md) and [#40 storage and config failures](issues/40-storage-and-config-failures.md), which can run in parallel; then #41, the README and the v0.1 release.
 
 | Iteration | Done | State |
 |---|---|---|
@@ -34,11 +34,11 @@ Monday, shared by all windows. Slash commands never call a model.
 | 3 Weekly storage | 6 / 6 | ✅ done |
 | 4 Repo subjects | 8 / 8 | ✅ done |
 | 5 Visibility | 4 / 4 | ✅ done |
-| 6 Hardening and release (v0.1) | 0 / 4 | ⚪ not started |
+| 6 Hardening and release (v0.1) | 1 / 4 | in progress |
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **37 / 59** | 22 to build |
+| **Total** | **38 / 59** | 21 to build |
 
 **Done:**
 
@@ -80,6 +80,7 @@ Monday, shared by all windows. Slash commands never call a model.
 | #35 `/subjects` list | [#121](https://github.com/RemonStuff/Q0T4/pull/121) |
 | #36 Status bar item | [#122](https://github.com/RemonStuff/Q0T4/pull/122) |
 | #37 Commands: Show Usage, Reset This Week, Edit Subjects | [#123](https://github.com/RemonStuff/Q0T4/pull/123) |
+| #38 Model error mapping: consent, missing model, quota | [#124](https://github.com/RemonStuff/Q0T4/pull/124) |
 | #33B Wire repo subjects end to end | [#119](https://github.com/RemonStuff/Q0T4/pull/119) |
 | #33A Wire subject resolution into the participant | [#118](https://github.com/RemonStuff/Q0T4/pull/118) |
 | #26B Settings schema and the VS Code config adapter | [#110](https://github.com/RemonStuff/Q0T4/pull/110) |
@@ -214,7 +215,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 37 Commands (needs 36) · PR #123. 🎯 **Install and try**
 
 ### Iteration 6: Hardening and release
-- [ ] 38 Model error mapping (needs 33)
+- [x] 38 Model error mapping (needs 33) · PR #124
 - [ ] 39 Context-window trimming (needs 33) ∥
 - [ ] 40 Storage and config failures (needs 25, 26) ∥
 - [ ] 41 README and release v0.1 (needs 38, 39, 40). 🎯 **v0.1 release**

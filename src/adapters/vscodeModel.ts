@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import type { ChatMessage } from "../core/types";
 import type { CancellationSignal } from "../ports/CancellationSignal";
 import type { ModelPort } from "../ports/ModelPort";
+import { mapModelError } from "./errorMapping";
 
 function message(input: ChatMessage): vscode.LanguageModelChatMessage {
   return input.role === "user"
@@ -52,7 +53,7 @@ function textStream(
         finished = true;
         cancellation.cancel();
         cancellation.dispose();
-        throw error;
+        throw mapModelError(error);
       }
     },
     async return() {
@@ -85,7 +86,7 @@ export function vscodeModel(model: vscode.LanguageModelChat): ModelPort {
       } catch (error) {
         cancellation.cancel();
         cancellation.dispose();
-        throw error;
+        throw mapModelError(error);
       }
     },
     async countTokens(input, signal) {

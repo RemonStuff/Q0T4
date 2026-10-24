@@ -1,3 +1,4 @@
+import { ModelError } from "../../src/core/errors/modelErrors";
 import * as assert from "node:assert/strict";
 import * as vscode from "vscode";
 import { chatStreamOutput } from "../../src/adapters/chatStreamOutput";
@@ -87,6 +88,11 @@ async function collect(text: AsyncIterable<string>): Promise<string[]> {
   const chunks: string[] = [];
   for await (const chunk of text) chunks.push(chunk);
   return chunks;
+}
+
+/** The adapter wraps a model failure in a core ModelError that keeps the original as its cause. */
+function isMappedFrom(error: unknown, original: unknown): boolean {
+  return error instanceof ModelError && error.cause === original;
 }
 
 describe("VS Code adapters", () => {
@@ -298,9 +304,8 @@ describe("VS Code adapters", () => {
         throw failure;
       };
       const signal = new TrackedSignal();
-      await assert.rejects(
-        vscodeModel(model).sendRequest([], signal),
-        (error: unknown) => error === failure,
+      await assert.rejects(vscodeModel(model).sendRequest([], signal), (error: unknown) =>
+        isMappedFrom(error, failure),
       );
       assert.equal(signal.active, 0);
       assert.equal(signal.disposals, 1);
@@ -333,9 +338,8 @@ describe("VS Code adapters", () => {
       },
     });
     const signal = new TrackedSignal();
-    await assert.rejects(
-      vscodeModel(model).sendRequest([], signal),
-      (error: unknown) => error === failure,
+    await assert.rejects(vscodeModel(model).sendRequest([], signal), (error: unknown) =>
+      isMappedFrom(error, failure),
     );
     assert.equal(signal.active, 0);
     assert.equal(signal.disposals, 1);
@@ -352,7 +356,7 @@ describe("VS Code adapters", () => {
     const signal = new TrackedSignal();
     const iterator = (await vscodeModel(model).sendRequest([], signal))[Symbol.asyncIterator]();
     assert.equal((await iterator.next()).value, "partial");
-    await assert.rejects(iterator.next(), (error: unknown) => error === failure);
+    await assert.rejects(iterator.next(), (error: unknown) => isMappedFrom(error, failure));
     await iterator.return?.();
     assert.equal(sends[0]?.token?.isCancellationRequested, true);
     assert.equal(signal.active, 0);

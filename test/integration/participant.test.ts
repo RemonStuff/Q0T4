@@ -246,7 +246,7 @@ describe("@q0t4 participant", () => {
     }
   });
 
-  it("shows a safe model error instead of the stub or private provider details", async () => {
+  it("shows the quota message for a Blocked model error instead of the stub or provider details", async () => {
     const api = await participantApi();
     const model = await fakeModel();
     await vscode.commands.executeCommand("q0t4-test.setError", "Blocked");
@@ -259,7 +259,7 @@ describe("@q0t4 participant", () => {
         ),
         { outcome: "error", model: model.name },
       );
-      assert.equal(replyText(markdown), "Q0T4 couldn't complete this request. Please try again.");
+      assert.equal(replyText(markdown), "Copilot reports a quota or rate limit. Try again later.");
     } finally {
       source.dispose();
     }
