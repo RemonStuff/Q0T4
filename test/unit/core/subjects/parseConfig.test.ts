@@ -18,6 +18,7 @@ describe("parseConfig defaults", () => {
       defaultLimit: 150_000,
       fallbackSubject: "general",
       resetDay: "monday",
+      cycleStartDay: 1,
       warnAtPercent: 80,
       dailyPaceWarning: 30,
       includeHistory: true,
@@ -166,6 +167,18 @@ describe("parseConfig scalar settings", () => {
     }
     expect(parse({ warnAtPercent: "x" }).config.warnAtPercent).toBe(80);
     expect(parse({ dailyPaceWarning: Number.NaN }).config.dailyPaceWarning).toBe(30);
+  });
+
+  it("accepts cycleStartDay 1 to 31 and otherwise uses 1 with a warning", () => {
+    expect(parse({ cycleStartDay: 15 }).config.cycleStartDay).toBe(15);
+    expect(parse({ cycleStartDay: 31 }).warnings).toEqual([]);
+    for (const bad of [0, 32, 1.5, "5", true, -3]) {
+      const result = parse({ cycleStartDay: bad });
+      expect(result.config.cycleStartDay).toBe(1);
+      expect(result.warnings.join()).toMatch(
+        /q0t4\.cycleStartDay must be a whole number from 1 to 31/,
+      );
+    }
   });
 
   it("rejects an unknown resetDay and uses monday; accepts any weekday, case-insensitively", () => {

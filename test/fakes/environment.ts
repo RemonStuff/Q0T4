@@ -42,6 +42,7 @@ export const TEST_CONFIG: Q0T4Config = {
   defaultLimit: 150_000,
   fallbackSubject: "general",
   resetDay: "monday",
+  cycleStartDay: 1,
   warnAtPercent: 80,
   dailyPaceWarning: 30,
   includeHistory: true,

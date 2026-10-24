@@ -97,6 +97,14 @@
           "markdownDescription": "The day the weekly budget resets, at local midnight.",
           "scope": "application"
         },
+        "q0t4.cycleStartDay": {
+          "type": "integer",
+          "default": 1,
+          "minimum": 1,
+          "maximum": 31,
+          "scope": "application",
+          "markdownDescription": "The day of the month your billing cycle starts, at local midnight. Short months use their last day (31 gives 30 April and 28 February). Used by the monthly pool."
+        },
         "q0t4.warnAtPercent": {
           "type": "number",
           "default": 80,
