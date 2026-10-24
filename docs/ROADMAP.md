@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-24, PR #126. Counts include merged work only; #15 work is not
+2026-10-24, PR #127. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, 2, *Counting and the hard
@@ -23,8 +23,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 ([#18](issues/18-history-footer-strip-and-metadata.md)). Usage is an append-only ledger on
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands never call a model.
-**Current work:** [#41 README, packaging and release](issues/41-readme-and-release.md) finishes iteration 6: a user-facing README, `CHANGELOG.md`, MIT `LICENSE`, an icon, version 0.1.0 and a tag-triggered release workflow that attaches the `.vsix` to a GitHub Release. 1031 local unit tests pass with 100% core coverage. What is left for v0.1.0: the manual checklist in [docs/manual-testing.md](manual-testing.md) against the release-candidate `.vsix`.
-**Next:** your manual check of the release candidate, then the `v0.1.0` tag. After that iteration 7 (credits, #42 onwards) once you approve.
+**Current work:** [#48 CreditCostModel](issues/48-credit-cost-model.md) costs a request in credits from a price table: tier by input size, the higher of input and cache-write rate, overrides, the highest rates for an unknown model with an `unknownPrice` flag, and a rate snapshot with every result. 1052 local unit tests pass with 100% core coverage. Not wired in yet (#53). Iteration 6 is done; v0.1.0-rc.1 awaits your manual check.
+**Next:** [#49 price-table parsers and validation](issues/49-price-table-parsers.md), then #50 to #53.
 
 | Iteration | Done | State |
 |---|---|---|
@@ -35,10 +35,10 @@ Monday, shared by all windows. Slash commands never call a model.
 | 4 Repo subjects | 8 / 8 | ✅ done |
 | 5 Visibility | 4 / 4 | ✅ done |
 | 6 Hardening and release (v0.1) | 4 / 4 | ✅ done |
-| 7 Live pricing | 0 / 6 | ⚪ not started |
+| 7 Live pricing | 1 / 6 | in progress |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **41 / 59** | 18 to build |
+| **Total** | **42 / 59** | 17 to build |
 
 **Done:**
 
@@ -84,6 +84,7 @@ Monday, shared by all windows. Slash commands never call a model.
 | #39 Context-window trimming | [#125](https://github.com/RemonStuff/Q0T4/pull/125) |
 | #40 Storage and config failure paths | [#126](https://github.com/RemonStuff/Q0T4/pull/126) |
 | #41 README, packaging and release workflow (v0.1, tokens mode) | [#127](https://github.com/RemonStuff/Q0T4/pull/127) |
+| #48 Core CreditCostModel: tiers, rate snapshots and unknown models | [#128](https://github.com/RemonStuff/Q0T4/pull/128) |
 | #33B Wire repo subjects end to end | [#119](https://github.com/RemonStuff/Q0T4/pull/119) |
 | #33A Wire subject resolution into the participant | [#118](https://github.com/RemonStuff/Q0T4/pull/118) |
 | #26B Settings schema and the VS Code config adapter | [#110](https://github.com/RemonStuff/Q0T4/pull/110) |
@@ -224,7 +225,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 41 README and release v0.1 (needs 38, 39, 40) · PR #127. 🎯 **v0.1 release**
 
 ### Iteration 7: Live pricing
-- [ ] 48 `CreditCostModel`: tiers, snapshots, unknown models (needs 13)
+- [x] 48 `CreditCostModel`: tiers, snapshots, unknown models (needs 13) · PR #128
 - [ ] 49 Price-table parsers and validation (needs 03) ∥
 - [ ] 50 Price source and price-table store adapters (needs 25, 49)
 - [ ] 51 `PriceRefresher`, price settings and refresh command (needs 26, 48, 49) ∥

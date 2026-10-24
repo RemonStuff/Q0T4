@@ -9,6 +9,8 @@ export interface CostResult {
   readonly cost: Cost;
   /** The rates used, for the ledger entry; absent in tokens mode. */
   readonly rates?: RateSnapshot;
+  /** The model has no price: it was costed at the highest rates, and the user should be told. */
+  readonly unknownPrice?: true;
 }
 
 /**
