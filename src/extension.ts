@@ -36,6 +36,7 @@ import { formatResetLong, formatResetShort, nextResetKey } from "./core/time/res
 import type { Cost } from "./core/types";
 import type { ClockPort } from "./ports/ClockPort";
 import type { ConfigPort } from "./ports/ConfigPort";
+import type { ModelSelectorPort } from "./ports/ModelSelectorPort";
 import type { StatusBarState, UiPort } from "./ports/UiPort";
 import type { WorkspacePort } from "./ports/WorkspacePort";
 import type { LedgerPort } from "./ports/LedgerPort";
@@ -99,6 +100,9 @@ export interface RequestHandlerOptions {
   readonly diagnostics?: Diagnostics;
   /** Fetches model prices for the refresh command. Credits mode starts it (#53). */
   readonly prices?: PriceRefresher;
+  /** For the command that lists Copilot models into the log. */
+  readonly models?: ModelSelectorPort;
+  readonly log?: LogPort;
 }
 
 const consoleLog: LogPort = {
@@ -123,6 +127,8 @@ export function createRequestHandler({
   timers = realTimers,
   diagnostics = new Diagnostics(consoleLog, () => undefined),
   prices,
+  models,
+  log,
 }: RequestHandlerOptions) {
   const requests: string[] = [];
   const calendar = new BudgetCalendar(clock, () => config.get().resetDay);
@@ -172,6 +178,8 @@ export function createRequestHandler({
           statusBar,
           limitOverride: () => limitOverride,
           ...(prices === undefined ? {} : { prices }),
+          ...(models === undefined ? {} : { models }),
+          ...(log === undefined ? {} : { log }),
         })
       : undefined;
 
@@ -345,7 +353,8 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
   const channel = vscode.window.createOutputChannel("Q0T4");
   context.subscriptions.push(channel);
   const ui = vscodeUi({ statusBarCommand: COMMAND_IDS.showUsage });
-  const diagnostics = new Diagnostics(outputChannelLog(channel), (text) => ui.showWarning(text));
+  const outputLog = outputChannelLog(channel);
+  const diagnostics = new Diagnostics(outputLog, (text) => ui.showWarning(text));
   const config = vscodeConfig((warnings) => diagnostics.configWarnings(warnings));
   // Integration tests answer the modal confirmation through `setConfirm`.
   let confirmOverride: ((message: string) => Promise<boolean>) | undefined;
@@ -371,6 +380,8 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
       storage,
       diagnostics,
       prices,
+      models: vscodeModelSelector,
+      log: outputLog,
     });
   // `ui` and `storage` are given, so both exist.
   const bar = statusBar as StatusBarController;
@@ -383,6 +394,10 @@ export function activate(context: vscode.ExtensionContext): Q0T4Exports {
     vscode.commands.registerCommand(COMMAND_IDS.resetWeek, () => palette.resetWeek()),
     vscode.commands.registerCommand(COMMAND_IDS.editSubjects, () => palette.editSubjects()),
     vscode.commands.registerCommand(COMMAND_IDS.refreshPrices, () => palette.refreshPrices()),
+    vscode.commands.registerCommand(COMMAND_IDS.logModels, async () => {
+      await palette.logModels();
+      channel.show(true);
+    }),
     { dispose: () => prices.dispose() },
     vscode.window.onDidChangeActiveTextEditor(() => void bar.refresh()),
     vscode.workspace.onDidChangeWorkspaceFolders(() => void bar.refresh()),

@@ -201,4 +201,39 @@ describe("CreditCostModel", () => {
     expect(cost.credits).toBeCloseTo(0.0012, 12);
     expect(cost.credits).not.toBe(Math.round(cost.credits ?? 0));
   });
+
+  describe("model matching", () => {
+    it("matches by family when the display name differs", () => {
+      const { rates, unknownPrice } = model().cost(
+        { name: "Picker Name", family: "gpt-5-mini" },
+        { input: 1, output: 1 },
+      );
+      expect(rates?.input).toBe(2);
+      expect(unknownPrice).toBeUndefined();
+    });
+
+    it("applies an override keyed by family or id", () => {
+      const byFamily = model(all, { "gpt-5-mini": { input: 8, output: 8 } });
+      expect(
+        byFamily.cost({ name: "Picker", family: "gpt-5-mini" }, { input: 1, output: 1 }).rates
+          ?.input,
+      ).toBe(8);
+      const byId = model(all, { "my-id": { input: 6, output: 6 } });
+      expect(
+        byId.cost({ name: "Picker", family: "x", id: "my-id" }, { input: 1, output: 1 }).rates
+          ?.input,
+      ).toBe(6);
+    });
+
+    it("costs Auto at the highest rates and flags it as the Auto model", () => {
+      const result = model().cost({ name: "Auto", family: "auto" }, { input: 1, output: 1 });
+      expect(result.unknownPrice).toBe(true);
+      expect(result.autoModel).toBe(true);
+      expect(result.rates).toMatchObject({ tier: "Unknown", input: 30, output: 150 });
+    });
+
+    it("does not flag an ordinary unknown model as Auto", () => {
+      expect(model().cost(ref("Nobody"), { input: 1, output: 1 }).autoModel).toBeUndefined();
+    });
+  });
 });

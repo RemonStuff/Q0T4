@@ -51,6 +51,7 @@ None of these call a model or cost tokens.
 - **Q0T4: Reset This Week**: asks for confirmation, then restarts this week's count for every subject. Nothing is deleted; earlier weeks are unchanged.
 - **Q0T4: Edit Subjects**: opens Settings filtered to `q0t4.subjects`.
 - **Q0T4: Refresh Model Prices**: fetches GitHub's published model prices now. Prices only matter in credits mode, which is planned for v1.0; in v0.1 budgets count tokens.
+- **Q0T4: Log Copilot Models**: a diagnostic. Writes the name, family, id and vendor of every Copilot model to the **Q0T4** output channel, which is how model names are checked against the price table.
 
 ## Settings
 

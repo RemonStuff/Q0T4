@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-24, PR #130. Counts include merged work only; #15 work is not
+2026-10-24, PR #131. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, 2, *Counting and the hard
@@ -23,8 +23,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 ([#18](issues/18-history-footer-strip-and-metadata.md)). Usage is an append-only ledger on
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands never call a model.
-**Current work:** [#51 the price refresher](issues/51-price-refresher.md) fetches the price table on start, then daily, and on the new command **Q0T4: Refresh Model Prices**. It validates before saving, keeps the last good table on any failure and warns once per failure streak; it reports staleness, applies `q0t4.modelPrices` overrides and, with `q0t4.priceSource` set to manual, builds the table from the overrides only. 1227 local unit tests pass with 100% core coverage. Credits mode (#53) starts it.
-**Next:** [#52 mapping VS Code models to price entries](issues/52-model-name-mapping.md), then #53, which wires credits mode end to end.
+**Current work:** [#52 model matching](issues/52-model-name-mapping.md) prices a VS Code model by display name, then by family and id slug, with overrides by name, family or id; the Auto model and variants such as a fast-mode preview are never matched to the wrong entry. The diagnostic command **Q0T4: Log Copilot Models** lists real model names. 1256 local unit tests pass with 100% core coverage. Your manual check: run the command and compare your models with the price list.
+**Next:** [#53 wire credits mode end to end](issues/53-wire-credits-mode.md), which finishes iteration 7.
 
 | Iteration | Done | State |
 |---|---|---|
@@ -35,10 +35,10 @@ Monday, shared by all windows. Slash commands never call a model.
 | 4 Repo subjects | 8 / 8 | ✅ done |
 | 5 Visibility | 4 / 4 | ✅ done |
 | 6 Hardening and release (v0.1) | 4 / 4 | ✅ done |
-| 7 Live pricing | 4 / 6 | in progress |
+| 7 Live pricing | 5 / 6 | in progress |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **45 / 59** | 14 to build |
+| **Total** | **46 / 59** | 13 to build |
 
 **Done:**
 
@@ -88,6 +88,7 @@ Monday, shared by all windows. Slash commands never call a model.
 | #49 Core price-table parsers and validation | [#129](https://github.com/RemonStuff/Q0T4/pull/129) |
 | #50 Price source and price-table store adapters | [#130](https://github.com/RemonStuff/Q0T4/pull/130) |
 | #51 Core PriceRefresher, price settings and the refresh command | [#131](https://github.com/RemonStuff/Q0T4/pull/131) |
+| #52 Map VS Code models to price-table entries | [#132](https://github.com/RemonStuff/Q0T4/pull/132) |
 | #33B Wire repo subjects end to end | [#119](https://github.com/RemonStuff/Q0T4/pull/119) |
 | #33A Wire subject resolution into the participant | [#118](https://github.com/RemonStuff/Q0T4/pull/118) |
 | #26B Settings schema and the VS Code config adapter | [#110](https://github.com/RemonStuff/Q0T4/pull/110) |
@@ -232,7 +233,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 - [x] 49 Price-table parsers and validation (needs 03) ∥ · PR #129
 - [x] 50 Price source and price-table store adapters (needs 25, 49) · PR #130
 - [x] 51 `PriceRefresher`, price settings and refresh command (needs 26, 48, 49) ∥ · PR #131
-- [ ] 52 Map VS Code models to price-table entries (needs 48, 49) ∥
+- [x] 52 Map VS Code models to price-table entries (needs 48, 49) ∥ · PR #132
 - [ ] 53 Wire credits mode end to end (needs 34, 36, 50, 51, 52). 🎯 **Install and try**
 
 ### Iteration 8: Pool, reserve and sync
