@@ -28,6 +28,11 @@ export class Diagnostics {
     this.safely(() => this.notify(text));
   }
 
+  /** Forgets that `key` was shown, so the next occurrence warns again (a failure streak ended). */
+  clearWarning(key: string): void {
+    this.told.delete(key);
+  }
+
   /** Usage could not be written: the reply is unaffected but the weekly total may be too low. */
   recordFailed(error: unknown): void {
     this.error("Couldn't record usage in the ledger.", error);

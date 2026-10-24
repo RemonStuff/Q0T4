@@ -45,6 +45,9 @@ export const TEST_CONFIG: Q0T4Config = {
   warnAtPercent: 80,
   dailyPaceWarning: 30,
   includeHistory: true,
+  priceSource: "auto",
+  modelPrices: {},
+  priceMaxAgeHours: 48,
 };
 
 /** Mutable settings that notify listeners on `update`. */

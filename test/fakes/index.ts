@@ -1,5 +1,6 @@
 export { FakeCancellation } from "./FakeCancellation";
 export { FakeLog } from "./FakeLog";
+export { FakeTimers } from "./FakeTimers";
 export type { LogLine } from "./FakeLog";
 export { FakeModel, FakeModelSelector } from "./FakeModel";
 export type { FakeModelOptions } from "./FakeModel";

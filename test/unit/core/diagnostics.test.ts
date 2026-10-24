@@ -45,6 +45,15 @@ describe("Diagnostics", () => {
     expect(log.lines.map((line) => line.message)).toEqual(["first", "first again", "second"]);
   });
 
+  it("warns again for a key after it was cleared", () => {
+    const { shown, diagnostics } = fixture();
+    diagnostics.warnOnce("a", "first");
+    diagnostics.clearWarning("a");
+    diagnostics.clearWarning("never shown");
+    diagnostics.warnOnce("a", "again");
+    expect(shown).toEqual(["first", "again"]);
+  });
+
   it("never throws when the log or the notification fails", () => {
     const log = new FakeLog();
     log.fail = true;

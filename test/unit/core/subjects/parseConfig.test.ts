@@ -21,6 +21,9 @@ describe("parseConfig defaults", () => {
       warnAtPercent: 80,
       dailyPaceWarning: 30,
       includeHistory: true,
+      priceSource: "auto",
+      modelPrices: {},
+      priceMaxAgeHours: 48,
     });
     expect(config).toEqual(DEFAULT_CONFIG);
     expect(warnings).toEqual([]);
@@ -241,5 +244,83 @@ describe("subjectDescription", () => {
   it("is undefined without a description or for an unlisted subject", () => {
     expect(subjectDescription(config, "plain")).toBeUndefined();
     expect(subjectDescription(config, "other/x")).toBeUndefined();
+  });
+});
+
+describe("parseConfig price settings", () => {
+  it("defaults to automatic prices, no overrides and 48 hours", () => {
+    const { config } = parse();
+    expect(config.priceSource).toBe("auto");
+    expect(config.modelPrices).toEqual({});
+    expect(config.priceMaxAgeHours).toBe(48);
+  });
+
+  it("accepts manual and auto, and warns about anything else", () => {
+    expect(parse({ priceSource: "manual" }).config.priceSource).toBe("manual");
+    expect(parse({ priceSource: "auto" }).warnings).toEqual([]);
+    for (const bad of ["web", 5, true]) {
+      const { config, warnings } = parse({ priceSource: bad });
+      expect(config.priceSource).toBe("auto");
+      expect(warnings).toEqual(['q0t4.priceSource must be "auto" or "manual"; using auto.']);
+    }
+  });
+
+  it("accepts a number of hours of 1 or more, and falls back for anything else", () => {
+    expect(parse({ priceMaxAgeHours: 72 }).config.priceMaxAgeHours).toBe(72);
+    expect(parse({ priceMaxAgeHours: 1 }).warnings).toEqual([]);
+    for (const bad of [0, -5, "48", Number.NaN, 0.5]) {
+      const { config, warnings } = parse({ priceMaxAgeHours: bad });
+      expect(config.priceMaxAgeHours).toBe(48);
+      expect(warnings).toEqual(["q0t4.priceMaxAgeHours must be a number of 1 or more; using 48."]);
+    }
+  });
+
+  it("accepts model price overrides with an input and an output rate", () => {
+    const { config, warnings } = parse({
+      modelPrices: { "GPT-5 mini": { input: 0.25, output: 2 }, free: { input: 0, output: 0 } },
+    });
+    expect(config.modelPrices).toEqual({
+      "GPT-5 mini": { input: 0.25, output: 2 },
+      free: { input: 0, output: 0 },
+    });
+    expect(warnings).toEqual([]);
+  });
+
+  it("drops invalid modelPrices entries with a warning each", () => {
+    const { config, warnings } = parse({
+      modelPrices: {
+        good: { input: 1, output: 2 },
+        negative: { input: -1, output: 2 },
+        text: { input: "1", output: 2 },
+        missing: { input: 1 },
+        notObject: 5,
+        nan: { input: Number.NaN, output: 1 },
+        "  ": { input: 1, output: 1 },
+      },
+    });
+    expect(config.modelPrices).toEqual({ good: { input: 1, output: 2 } });
+    expect(warnings).toHaveLength(6);
+    expect(warnings.join(" ")).toContain('q0t4.modelPrices["negative"]');
+    expect(warnings.join(" ")).toContain("empty name");
+  });
+
+  it("ignores the same model twice that differs only by case, keeping the first", () => {
+    const { config, warnings } = parse({
+      modelPrices: { "GPT-5 mini": { input: 1, output: 1 }, "gpt-5 MINI": { input: 9, output: 9 } },
+    });
+    expect(config.modelPrices).toEqual({ "GPT-5 mini": { input: 1, output: 1 } });
+    expect(warnings).toHaveLength(1);
+  });
+
+  it("warns when modelPrices is not an object", () => {
+    for (const bad of [5, "x", [], true]) {
+      const { config, warnings } = parse({ modelPrices: bad });
+      expect(config.modelPrices).toEqual({});
+      expect(warnings).toEqual(["q0t4.modelPrices must be an object of model names; using none."]);
+    }
+  });
+
+  it("never shares the overrides object between results", () => {
+    expect(parse().config.modelPrices).not.toBe(parse().config.modelPrices);
   });
 });

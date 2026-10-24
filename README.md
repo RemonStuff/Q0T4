@@ -50,6 +50,7 @@ None of these call a model or cost tokens.
 - **Q0T4: Show Usage**: opens the `/status` table in a tab. The status bar item (current subject and its usage, yellow near the limit, red when used up) runs it when clicked.
 - **Q0T4: Reset This Week**: asks for confirmation, then restarts this week's count for every subject. Nothing is deleted; earlier weeks are unchanged.
 - **Q0T4: Edit Subjects**: opens Settings filtered to `q0t4.subjects`.
+- **Q0T4: Refresh Model Prices**: fetches GitHub's published model prices now. Prices only matter in credits mode, which is planned for v1.0; in v0.1 budgets count tokens.
 
 ## Settings
 
@@ -62,6 +63,9 @@ None of these call a model or cost tokens.
 | `q0t4.warnAtPercent`    | `80`                                       | Show a warning under the reply from this percentage of the week.                                                                                                                          |
 | `q0t4.dailyPaceWarning` | `30`                                       | Warn when this percentage of the week is used within one day.                                                                                                                             |
 | `q0t4.includeHistory`   | `true`                                     | Send earlier messages of the same subject to the model. When off, only the current prompt is sent.                                                                                        |
+| `q0t4.priceSource`      | `auto`                                     | Credits mode (planned for v1.0). `auto` fetches GitHub's price list once a day; `manual` never fetches and uses only `q0t4.modelPrices`.                                                  |
+| `q0t4.modelPrices`      | `{}`                                       | Credits mode. Your own prices in USD per 1M tokens by model name, e.g. `{ "GPT-5 mini": { "input": 0.25, "output": 2 } }`.                                                                |
+| `q0t4.priceMaxAgeHours` | `48`                                       | Credits mode. Warn when the price list is older than this many hours.                                                                                                                     |
 
 An invalid value falls back to its default and shows one warning; the extension keeps working.
 

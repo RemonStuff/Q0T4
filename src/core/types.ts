@@ -55,6 +55,14 @@ export type ResetDay =
   "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
 
 /** Settings after validation (docs/PLAN.md §3). Pool and price settings join in #51 and #56. */
+/** A user's own price for one model (`q0t4.modelPrices`), in USD per 1M tokens. */
+export interface PriceOverride {
+  readonly input: number;
+  readonly output: number;
+}
+
+export type PriceSource = "auto" | "manual";
+
 export interface Q0T4Config {
   readonly budgetUnit: BudgetUnit;
   readonly subjects: Readonly<Record<SubjectName, SubjectConfig>>;
@@ -64,6 +72,10 @@ export interface Q0T4Config {
   readonly warnAtPercent: number;
   readonly dailyPaceWarning: number;
   readonly includeHistory: boolean;
+  readonly priceSource: PriceSource;
+  /** Overrides by model name; credits mode only. */
+  readonly modelPrices: Readonly<Record<string, PriceOverride>>;
+  readonly priceMaxAgeHours: number;
 }
 
 export const STOPPED_REASONS = [false, "budget", "cancelled", "precheck"] as const;

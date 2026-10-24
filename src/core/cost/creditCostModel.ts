@@ -1,14 +1,8 @@
 import { matchModel, normaliseName } from "../pricing/matchModel";
 import type { PriceTable } from "../pricing/priceTable";
 import { inputRate, pickTier } from "../pricing/ratesFor";
-import type { ModelRef } from "../types";
+import type { ModelRef, PriceOverride } from "../types";
 import type { CostModel, CostResult, TokenCounts } from "./costModel";
-
-/** A user's own price for one model (`q0t4.modelPrices`), in USD per 1M tokens. */
-export interface PriceOverride {
-  readonly input: number;
-  readonly output: number;
-}
 
 /** Overrides by model name; names match case-insensitively. */
 export type PriceOverrides = Readonly<Record<string, PriceOverride>>;
