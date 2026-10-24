@@ -9,7 +9,7 @@ Iterations 0–6 deliver **v0.1: weekly token budgets per repo**. Iterations 7�
 ## Status
 
 *Updated with every PR (definition of done, item 7). Last verified delivery:
-2026-10-23, PR #120. Counts include merged work only; #15 work is not
+2026-10-23, PR #121. Counts include merged work only; #15 work is not
 counted as done.*
 
 **Now:** iterations 0, *Test harness*, 1, *Walking skeleton*, 2, *Counting and the hard
@@ -23,8 +23,8 @@ a daily pace warning ([#17](issues/17-format-footer-and-warnings.md),
 ([#18](issues/18-history-footer-strip-and-metadata.md)). Usage is an append-only ledger on
 disk ([#22](issues/22-ledger.md), [#25](issues/25-wire-ledger.md)): weekly, resetting on
 Monday, shared by all windows. Slash commands never call a model.
-**Current work:** [#35 `/subjects`](issues/35-subjects-command.md) lists every known subject with its weekly limit, where the limit comes from, its description and whether it is the current repo, the fallback or this conversation's subject, plus the default limit for new repos and `/use` and settings hints. It ends with an Edit Subjects button whose command arrives in #37. It calls no model. 871 local unit tests pass with 100% core coverage.
-**Next:** [#36 the status bar](issues/36-status-bar.md), then [#37 commands](issues/37-commands.md), which finishes iteration 5.
+**Current work:** [#36 the status bar item](issues/36-status-bar.md) shows the open folder's repo (else the last-used or fallback subject) with its usage this week, yellow from `warnAtPercent` and red when used up, with a tooltip of every subject and the reset date. It refreshes after each request (also a refusal), on a settings change, on a change of the active editor or workspace folders, and at the weekly reset. 915 local unit tests pass with 100% core coverage. Manual: check the colours and the tooltip in VS Code.
+**Next:** [#37 the commands](issues/37-commands.md), which finishes iteration 5 and gives the status bar its click action.
 
 | Iteration | Done | State |
 |---|---|---|
@@ -33,12 +33,12 @@ Monday, shared by all windows. Slash commands never call a model.
 | 2 Counting and the hard stop | 7 / 7 | ✅ done |
 | 3 Weekly storage | 6 / 6 | ✅ done |
 | 4 Repo subjects | 8 / 8 | ✅ done |
-| 5 Visibility | 2 / 4 | in progress |
+| 5 Visibility | 3 / 4 | in progress |
 | 6 Hardening and release (v0.1) | 0 / 4 | ⚪ not started |
 | 7 Live pricing | 0 / 6 | ⚪ not started |
 | 8 Pool, reserve and sync | 0 / 8 (#60 not planned) | ⚪ not started |
 | 9 Public API (v1.0) | 0 / 4 | ⚪ not started |
-| **Total** | **35 / 59** | 24 to build |
+| **Total** | **36 / 59** | 23 to build |
 
 **Done:**
 
@@ -78,6 +78,7 @@ Monday, shared by all windows. Slash commands never call a model.
 | #32 Same-subject history filter and `includeHistory` | [#117](https://github.com/RemonStuff/Q0T4/pull/117) |
 | #34 `/status` table | [#120](https://github.com/RemonStuff/Q0T4/pull/120) |
 | #35 `/subjects` list | [#121](https://github.com/RemonStuff/Q0T4/pull/121) |
+| #36 Status bar item | [#122](https://github.com/RemonStuff/Q0T4/pull/122) |
 | #33B Wire repo subjects end to end | [#119](https://github.com/RemonStuff/Q0T4/pull/119) |
 | #33A Wire subject resolution into the participant | [#118](https://github.com/RemonStuff/Q0T4/pull/118) |
 | #26B Settings schema and the VS Code config adapter | [#110](https://github.com/RemonStuff/Q0T4/pull/110) |
@@ -208,7 +209,7 @@ Each issue depends only on issues with lower numbers, so working top to bottom i
 ### Iteration 5: Visibility
 - [x] 34 `/status` (needs 33) · PR #120
 - [x] 35 `/subjects` (needs 33) ∥ · PR #121
-- [ ] 36 Status bar (needs 33) ∥
+- [x] 36 Status bar (needs 33) ∥ · PR #122
 - [ ] 37 Commands (needs 36). 🎯 **Install and try**
 
 ### Iteration 6: Hardening and release

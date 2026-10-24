@@ -30,6 +30,17 @@ export interface StatusTableInput {
 
 const NO_SUBJECTS = "No subjects yet. Send a question to start tracking usage.";
 
+/** The current repo first, then by usage this week, then by name. */
+export function sortStatusRows(rows: readonly StatusRow[], unit: BudgetUnit): StatusRow[] {
+  return [...rows].sort(order(unit));
+}
+
+/** `74%`, or `–` when the budget is 0. Rounded down, like the warnings. */
+export function percentText(used: Cost, budget: Cost, unit: BudgetUnit): string {
+  const total = costAmount(budget, unit);
+  return total === 0 ? "–" : `${Math.floor((costAmount(used, unit) * 100) / total)}%`;
+}
+
 function order(unit: BudgetUnit) {
   return (a: StatusRow, b: StatusRow): number => {
     if (a.current !== b.current) return a.current ? -1 : 1;
@@ -46,9 +57,7 @@ function percentCell(row: StatusRow, input: StatusTableInput): string {
     budget: row.budget,
     warnAtPercent: input.warnAtPercent,
   });
-  const budget = costAmount(row.budget, input.unit);
-  const percent =
-    budget === 0 ? "–" : `${Math.floor((costAmount(row.used, input.unit) * 100) / budget)}%`;
+  const percent = percentText(row.used, row.budget, input.unit);
   return level === "ok" ? percent : `${percent} ${level === "warn" ? "⚠️" : "⛔"}`;
 }
 
@@ -67,7 +76,7 @@ export function formatStatusTable(input: StatusTableInput): string {
     `| Subject | Used${suffix} | Weekly budget${suffix} | % | Today${suffix} | Requests |`,
     "|---|---|---|---|---|---|",
   ];
-  for (const row of [...input.rows].sort(order(unit))) {
+  for (const row of sortStatusRows(input.rows, unit)) {
     const budget = `${formatAmount(row.budget, unit, "down")}${row.limitIsDefault ? " (default)" : ""}`;
     lines.push(
       `| ${markdownLiteral(row.subject)} | ${formatAmount(row.used, unit, "up")} | ${budget} | ` +

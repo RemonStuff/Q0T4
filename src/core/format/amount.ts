@@ -41,3 +41,21 @@ export function formatAmount(cost: Cost, unit: BudgetUnit, rounding: Rounding = 
   const amount = costAmount(cost, unit);
   return unit === "tokens" ? formatTokens(amount, rounding) : formatCredits(amount, rounding);
 }
+
+/** Credits for tight places such as the status bar: `7.2`, `950`, `2.1k`. */
+export function formatCreditsCompact(credits: number, rounding: Rounding = "down"): string {
+  if (credits < 1000) return formatCredits(credits, rounding);
+  return `${trimmed(round(credits / 1000, 1, rounding), 1)}k`;
+}
+
+/** The amount in the active unit in its shortest form (credits as `2.1k`, without the unit). */
+export function formatAmountCompact(
+  cost: Cost,
+  unit: BudgetUnit,
+  rounding: Rounding = "down",
+): string {
+  const amount = costAmount(cost, unit);
+  return unit === "tokens"
+    ? formatTokens(amount, rounding)
+    : formatCreditsCompact(amount, rounding);
+}
